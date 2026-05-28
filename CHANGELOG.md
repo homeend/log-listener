@@ -7,6 +7,23 @@ and this project adheres to phased delivery per `PLAN.md`.
 
 ## [Unreleased]
 
+### Phase 4 — Color stdout + SSE
+- `internal/sink/stdout.go`: colorized terminal output using bare ANSI SGR
+  codes (no `fatih/color` dep). Color auto-disables when stdout isn't a
+  TTY (`(*os.File).Stat().Mode() & os.ModeCharDevice`) or when the user
+  passes `--no-color`.
+- `internal/sink/sse.go`: HTTP/SSE hub. Single `GET /stream` endpoint
+  serves the full `render.Event` as JSON per SSE message. Slow clients
+  see drops (per-client 256-event buffer); the hub never blocks the Emit
+  caller. 15-second keepalive comments defeat intermediary timeouts.
+- `cmd/log-listener` now creates a `Stdout` sink and an `SSEHub` (if
+  `cfg.SSEAddr != ""`), and routes every rendered event to both. The
+  inline formatter in `main.go` is gone — its logic moved into
+  `sink.Stdout.Emit`.
+- `render.Event` and `render.Part` now carry JSON tags so the SSE
+  payload matches the PLAN.md schema (`ts`, `file`, `group`, `raw`,
+  `renderer`, `captures`, `rendered`).
+
 ### Phase 3 review fixes
 - `emit()` no longer adds a second newline when the template already ends
   with `\n`. Output now has exactly one line break between the prefix line

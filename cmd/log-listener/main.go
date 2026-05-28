@@ -5,7 +5,6 @@ package main
 import (
 	"bufio"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/fs"
@@ -19,6 +18,7 @@ import (
 	"log-listener/internal/config"
 	"log-listener/internal/discover"
 	"log-listener/internal/render"
+	"log-listener/internal/sink"
 	"log-listener/internal/watch"
 )
 
@@ -47,22 +47,46 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 
+	useColor := !cfg.NoColor
+	// Auto-disable color when stdout isn't a TTY (piped). Tests pass a
+	// bytes.Buffer here which isn't an *os.File and stays plain.
+	if f, ok := stdout.(*os.File); ok {
+		if !sink.IsTTY(f) {
+			useColor = false
+		}
+	} else if useColor && !cfg.NoColor {
+		// Non-file writer (typically a test buffer): plain output, but
+		// respect explicit --no-color too.
+		useColor = false
+	}
+	stdoutSink := sink.NewStdout(stdout, useColor)
+
+	var sseHub *sink.SSEHub
+	if cfg.SSEAddr != "" {
+		sseHub = sink.NewSSEHub(cfg.SSEAddr)
+		if err := sseHub.Start(); err != nil {
+			fmt.Fprintln(stderr, "log-listener: sse:", err)
+			return 1
+		}
+		defer sseHub.Close()
+	}
+
 	if cfg.Once {
-		if err := runOnce(assignments, pipeline, stdout); err != nil {
+		if err := runOnce(assignments, pipeline, stdoutSink, sseHub); err != nil {
 			fmt.Fprintln(stderr, "log-listener:", err)
 			return 1
 		}
 		return 0
 	}
 
-	if err := runWatch(cfg, assignments, pipeline, stdout, stderr); err != nil {
+	if err := runWatch(cfg, assignments, pipeline, stdoutSink, sseHub, stderr); err != nil {
 		fmt.Fprintln(stderr, "log-listener:", err)
 		return 1
 	}
 	return 0
 }
 
-func runOnce(assignments []discover.Assignment, pipeline *render.Pipeline, stdout io.Writer) error {
+func runOnce(assignments []discover.Assignment, pipeline *render.Pipeline, stdoutSink *sink.Stdout, sseHub *sink.SSEHub) error {
 	for _, a := range assignments {
 		f, err := os.Open(a.Path)
 		if err != nil {
@@ -71,7 +95,7 @@ func runOnce(assignments []discover.Assignment, pipeline *render.Pipeline, stdou
 		s := bufio.NewScanner(f)
 		s.Buffer(make([]byte, 64*1024), 16*1024*1024)
 		for s.Scan() {
-			emit(stdout, pipeline, a.GroupID, a.Path, s.Text())
+			emit(pipeline, stdoutSink, sseHub, a.GroupID, a.Path, s.Text())
 		}
 		if err := s.Err(); err != nil {
 			f.Close()
@@ -82,7 +106,7 @@ func runOnce(assignments []discover.Assignment, pipeline *render.Pipeline, stdou
 	return nil
 }
 
-func runWatch(cfg *config.Config, assignments []discover.Assignment, pipeline *render.Pipeline, stdout, stderr io.Writer) error {
+func runWatch(cfg *config.Config, assignments []discover.Assignment, pipeline *render.Pipeline, stdoutSink *sink.Stdout, sseHub *sink.SSEHub, stderr io.Writer) error {
 	matcher := makeNewFileMatcher(cfg)
 	w, err := watch.New(matcher, 500*time.Millisecond)
 	if err != nil {
@@ -120,7 +144,7 @@ func runWatch(cfg *config.Config, assignments []discover.Assignment, pipeline *r
 	for {
 		select {
 		case ev := <-w.Events():
-			emit(stdout, pipeline, ev.Group, ev.Path, ev.Line)
+			emit(pipeline, stdoutSink, sseHub, ev.Group, ev.Path, ev.Line)
 		case e := <-w.Errors():
 			fmt.Fprintf(stderr, "log-listener: %v\n", e)
 		case <-ctx.Done():
@@ -128,7 +152,7 @@ func runWatch(cfg *config.Config, assignments []discover.Assignment, pipeline *r
 			for {
 				select {
 				case ev := <-w.Events():
-					emit(stdout, pipeline, ev.Group, ev.Path, ev.Line)
+					emit(pipeline, stdoutSink, sseHub, ev.Group, ev.Path, ev.Line)
 				case e := <-w.Errors():
 					fmt.Fprintf(stderr, "log-listener: %v\n", e)
 				case <-drainDeadline:
@@ -139,40 +163,16 @@ func runWatch(cfg *config.Config, assignments []discover.Assignment, pipeline *r
 	}
 }
 
-// emit runs a raw line through the renderer pipeline and writes the result
-// to w. Format: "[<group>] <basename>: <text>" on the first line, followed by
-// any structured JSON/XML parts each on their own lines. Dropped lines (no
-// renderer matched + drop_unmatched) produce no output.
-func emit(w io.Writer, p *render.Pipeline, group, path, line string) {
+// emit routes a raw line through the renderer pipeline then fans out to the
+// stdout sink and (if running) the SSE broadcast hub.
+func emit(p *render.Pipeline, stdoutSink *sink.Stdout, sseHub *sink.SSEHub, group, path, line string) {
 	ev, ok := p.Render(time.Now(), group, path, line)
 	if !ok {
 		return
 	}
-	var textBuf strings.Builder
-	var blocks []string
-	for _, part := range ev.Rendered {
-		switch part.Type {
-		case "text":
-			textBuf.WriteString(part.Value.(string))
-		case "json":
-			b, err := json.MarshalIndent(part.Value, "", "  ")
-			if err != nil {
-				continue
-			}
-			blocks = append(blocks, string(b))
-		case "xml":
-			blocks = append(blocks, part.Value.(string))
-		}
-	}
-	text := textBuf.String()
-	fmt.Fprintf(w, "[%s] %s: %s", ev.Group, filepath.Base(ev.File), text)
-	// Ensure exactly one newline at end of prefix line, even if the template
-	// already supplied a trailing \n.
-	if !strings.HasSuffix(text, "\n") {
-		fmt.Fprintln(w)
-	}
-	for _, b := range blocks {
-		fmt.Fprintln(w, b)
+	stdoutSink.Emit(ev)
+	if sseHub != nil {
+		sseHub.Emit(ev)
 	}
 }
 

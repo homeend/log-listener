@@ -77,13 +77,13 @@ func (r *Renderer) Match(line string) []string {
 // the parts produced by the matching renderer (or a single text part holding
 // the raw line if no renderer matched).
 type Event struct {
-	Ts       time.Time
-	File     string
-	Group    string
-	Raw      string
-	Renderer string
-	Captures []string
-	Rendered []Part
+	Ts       time.Time `json:"ts"`
+	File     string    `json:"file"`
+	Group    string    `json:"group"`
+	Raw      string    `json:"raw"`
+	Renderer string    `json:"renderer,omitempty"`
+	Captures []string  `json:"captures,omitempty"`
+	Rendered []Part    `json:"rendered"`
 }
 
 // Pipeline holds the ordered list of compiled renderers plus the

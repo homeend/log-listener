@@ -18,8 +18,8 @@ import (
 // When the json or xml decoder fails on its input, the part falls back to
 // {Type:"text", Value:<raw input>} so output is never lost.
 type Part struct {
-	Type  string
-	Value interface{}
+	Type  string      `json:"type"`
+	Value interface{} `json:"value"`
 }
 
 // Template is a parsed renderer template.
