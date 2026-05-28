@@ -19,6 +19,7 @@ import (
 	"log-listener/internal/discover"
 	"log-listener/internal/render"
 	"log-listener/internal/sink"
+	"log-listener/internal/tui"
 	"log-listener/internal/watch"
 )
 
@@ -71,6 +72,23 @@ func run(args []string, stdout, stderr io.Writer) int {
 
 	if cfg.Once {
 		if err := runOnce(assignments, pipeline, stdoutSink, sseHub); err != nil {
+			fmt.Fprintln(stderr, "log-listener:", err)
+			return 1
+		}
+		return 0
+	}
+
+	// TUI mode requires a TTY and --no-tui not set; --once already returned.
+	useTUI := !cfg.NoTUI
+	if useTUI {
+		f, ok := stdout.(*os.File)
+		if !ok || !sink.IsTTY(f) {
+			useTUI = false
+		}
+	}
+
+	if useTUI {
+		if err := runWatchTUI(cfg, assignments, pipeline, sseHub, stderr); err != nil {
 			fmt.Fprintln(stderr, "log-listener:", err)
 			return 1
 		}
@@ -172,6 +190,76 @@ func emit(p *render.Pipeline, stdoutSink *sink.Stdout, sseHub *sink.SSEHub, grou
 	if sseHub != nil {
 		sseHub.Emit(ev)
 	}
+}
+
+// runWatchTUI is the TUI variant of runWatch. The bubbletea program owns the
+// terminal on the main goroutine, while a background goroutine pumps watcher
+// events through the renderer pipeline into app.Push() and (if configured)
+// the SSE hub.
+func runWatchTUI(cfg *config.Config, assignments []discover.Assignment, pipeline *render.Pipeline, sseHub *sink.SSEHub, stderr io.Writer) error {
+	matcher := makeNewFileMatcher(cfg)
+	w, err := watch.New(matcher, 500*time.Millisecond)
+	if err != nil {
+		return err
+	}
+	defer w.Close()
+
+	for _, a := range assignments {
+		if err := w.Add(a.Path, a.GroupID, false); err != nil {
+			fmt.Fprintf(stderr, "log-listener: cannot tail %s: %v\n", a.Path, err)
+		}
+	}
+	for _, d := range dirsToWatch(cfg) {
+		if err := w.WatchDir(d); err != nil {
+			fmt.Fprintf(stderr, "log-listener: cannot watch %s: %v\n", d, err)
+		}
+	}
+
+	app := tui.New(cfg.TUIScrollback)
+
+	// Initial file list — files added via fsnotify Create events later won't
+	// be reflected in this snapshot; we accept that for Phase 5.
+	initial := make([]tui.FileEntry, 0, len(assignments))
+	for _, a := range assignments {
+		initial = append(initial, tui.FileEntry{Path: a.Path, Group: a.GroupID})
+	}
+	app.SetFiles(initial)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	sigCh := make(chan os.Signal, 4)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		<-sigCh
+		app.Quit()
+		for range sigCh {
+			os.Exit(130)
+		}
+	}()
+
+	go func() {
+		for {
+			select {
+			case ev := <-w.Events():
+				rev, ok := pipeline.Render(time.Now(), ev.Group, ev.Path, ev.Line)
+				if !ok {
+					continue
+				}
+				app.Push(rev)
+				if sseHub != nil {
+					sseHub.Emit(rev)
+				}
+			case <-w.Errors():
+				// Errors go to /dev/null in TUI mode for now — a future
+				// phase could surface them in a status bar.
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	return app.Run()
 }
 
 func makeNewFileMatcher(cfg *config.Config) watch.NewFileMatcher {

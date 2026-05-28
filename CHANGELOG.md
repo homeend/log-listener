@@ -7,6 +7,20 @@ and this project adheres to phased delivery per `PLAN.md`.
 
 ## [Unreleased]
 
+### Phase 5 — TUI
+- `internal/tui`: bubbletea-based interactive UI. Streaming log view with
+  a bounded ring-buffer scrollback (default 10k, configurable via
+  `tui.scrollback` in YAML). Tab / Ctrl+I toggles the watched-files
+  panel (both keys bound since terminals send byte 0x09 for both).
+  Arrow keys / `j` / `k` scroll. `q` / Ctrl+C quit. Esc closes the
+  files overlay.
+- `cmd/log-listener` now picks TUI mode automatically when stdout is a
+  TTY and `--no-tui` was not passed. In TUI mode the watcher events are
+  pumped through the renderer pipeline by a background goroutine and
+  delivered to the TUI via `app.Push`; SSE still runs in parallel.
+- New dependencies: `github.com/charmbracelet/bubbletea`,
+  `github.com/charmbracelet/lipgloss`.
+
 ### Phase 4 review fixes
 - Simplified the color-detection block in `cmd/log-listener/main.go`:
   one boolean (`useColor`) is set per the `--no-color` flag and then
