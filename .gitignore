@@ -9,9 +9,10 @@
 coverage.txt
 coverage.html
 
-# IDE
+# IDE / tooling
 .idea/
 .vscode/
+.claude/
 
 # OS
 .DS_Store
