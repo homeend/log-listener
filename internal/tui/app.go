@@ -75,11 +75,16 @@ type FileEntry struct {
 //
 // isBlock=true lines are continuation rows from JSON/XML pretty-prints —
 // they never carry a prefix and always render with their pre-styled body.
+//
+// bodyWidth is the unstyled visual width of body (in runes). Cached at
+// decompose time so the per-render path doesn't have to stripANSI to
+// compute the row's pad-to-width amount.
 type displayLine struct {
-	group   string // unstyled — used for filtering and prefix render
-	file    string // basename, unstyled
-	body    string // post-prefix content (plain for heads, dim-styled for blocks)
-	isBlock bool
+	group     string // unstyled — used for filtering and prefix render
+	file      string // basename, unstyled
+	body      string // post-prefix content (plain for heads, dim-styled for blocks)
+	bodyWidth int    // visual width of body in runes (unstyled)
+	isBlock   bool
 }
 
 // EventMsg pushes a rendered event into the TUI.
@@ -450,7 +455,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "$":
 			widest := 0
 			for _, dl := range m.events {
-				w := runeLen(stripANSI(m.renderDisplayLine(dl)))
+				_, w := m.renderDisplayLine(dl)
 				if w > widest {
 					widest = w
 				}
@@ -516,14 +521,19 @@ func decomposeEvent(ev render.Event) []displayLine {
 	}
 	base := filepath.Base(ev.File)
 	text := strings.TrimRight(textBuf.String(), "\n")
-	out := []displayLine{{group: ev.Group, file: base, body: text}}
+	out := []displayLine{{
+		group: ev.Group, file: base,
+		body:      text,
+		bodyWidth: runeLen(text),
+	}}
 	for _, b := range blocks {
 		for _, ln := range strings.Split(b, "\n") {
 			out = append(out, displayLine{
-				group:   ev.Group,
-				file:    base,
-				body:    dimStyle.Render(ln),
-				isBlock: true,
+				group:     ev.Group,
+				file:      base,
+				body:      dimStyle.Render(ln),
+				bodyWidth: runeLen(ln),
+				isBlock:   true,
 			})
 		}
 	}
@@ -532,21 +542,26 @@ func decomposeEvent(ev render.Event) []displayLine {
 
 // renderDisplayLine assembles one terminal row from a displayLine using
 // the model's current column toggles. Block lines never carry a prefix.
-func (m *model) renderDisplayLine(dl displayLine) string {
+// Returns the styled string AND its visual width (runes) so clipLine can
+// pad to terminal width without re-stripping ANSI.
+func (m *model) renderDisplayLine(dl displayLine) (string, int) {
 	if dl.isBlock {
-		return dl.body
+		return dl.body, dl.bodyWidth
 	}
 	var sb strings.Builder
+	visW := dl.bodyWidth
 	if m.showGroup {
 		sb.WriteString(groupStyle.Render("[" + dl.group + "]"))
 		sb.WriteByte(' ')
+		visW += runeLen(dl.group) + 3 // "[" + id + "]" + " "
 	}
 	if m.showFile {
 		sb.WriteString(fileStyle.Render(dl.file))
 		sb.WriteString(": ")
+		visW += runeLen(dl.file) + 2 // ": "
 	}
 	sb.WriteString(dl.body)
-	return sb.String()
+	return sb.String(), visW
 }
 
 // lineEnabled reports whether dl should appear in the stream window
@@ -606,7 +621,7 @@ func (m *model) View() string {
 	if disabled > 0 {
 		groupStat += fmt.Sprintf(" (%d off)", disabled)
 	}
-	footer := dimStyle.Render(fmt.Sprintf(" events: %d · %s · col: %d%s · %s · files: %d ",
+	footer := dimStyle.Width(m.width).Render(fmt.Sprintf(" events: %d · %s · col: %d%s · %s · files: %d ",
 		len(m.events), pos, m.horizScroll, cols, groupStat, len(m.files)))
 
 	return header + "\n" + body + "\n" + footer
@@ -623,15 +638,15 @@ func (m *model) disabledGroupCount() int {
 }
 
 func (m *model) renderGroupsPanel(rows int) string {
-	var b strings.Builder
-	b.WriteString(headerBg.Width(m.width).Render(" Groups (Ctrl+G or Esc to close · 1-9 to toggle) "))
-	b.WriteString("\n")
+	out := make([]string, 0, rows)
+	out = append(out, headerBg.Width(m.width).Render(" Groups (Ctrl+G or Esc to close · 1-9 to toggle) "))
 	if len(m.groupOrder) == 0 {
-		b.WriteString(dimStyle.Render("  (no groups defined)"))
-		b.WriteString(strings.Repeat("\n", rows-2))
-		return b.String()
+		out = append(out, m.padRow(dimStyle.Render("  (no groups defined)")))
+		for i := 2; i < rows; i++ {
+			out = append(out, m.blankRow())
+		}
+		return strings.Join(out, "\n")
 	}
-	// Count files per group from m.files.
 	counts := map[string]int{}
 	for _, f := range m.files {
 		counts[f.Group]++
@@ -658,16 +673,28 @@ func (m *model) renderGroupsPanel(rows int) string {
 		if i < 9 {
 			key = fmt.Sprintf("[%d]", i+1)
 		}
-		row := fmt.Sprintf("  %s  %s  %s  (%d file%s)",
+		out = append(out, m.padRow(fmt.Sprintf("  %s  %s  %s  (%d file%s)",
 			key, mark, groupStyle.Render(gid),
-			counts[gid], pluralS(counts[gid]))
-		b.WriteString(row)
-		b.WriteString("\n")
+			counts[gid], pluralS(counts[gid]))))
 	}
 	for i := end - start; i < avail; i++ {
-		b.WriteString("\n")
+		out = append(out, m.blankRow())
 	}
-	return b.String()
+	return strings.Join(out, "\n")
+}
+
+// padRow strips ANSI to measure visible width, then appends spaces to fill
+// the terminal row. Used by the side panels (files / groups) where rows
+// have arbitrary styling so we don't have a pre-computed width.
+func (m *model) padRow(s string) string {
+	if m.width <= 0 {
+		return s
+	}
+	w := runeLen(stripANSI(s))
+	if w >= m.width {
+		return s
+	}
+	return s + strings.Repeat(" ", m.width-w)
 }
 
 func pluralS(n int) string {
@@ -710,45 +737,86 @@ func (m *model) collectVisible(rows int) []displayLine {
 
 func (m *model) renderStream(rows int) string {
 	if len(m.events) == 0 {
-		return strings.Repeat("\n", rows-1)
+		return m.blankRows(rows)
 	}
 	visible := m.collectVisible(rows)
-	rendered := make([]string, len(visible))
-	for i, dl := range visible {
-		rendered[i] = m.clipLine(m.renderDisplayLine(dl))
+	rendered := make([]string, 0, rows)
+	for _, dl := range visible {
+		styled, visW := m.renderDisplayLine(dl)
+		rendered = append(rendered, m.clipLine(styled, visW))
 	}
-	out := strings.Join(rendered, "\n")
 	missing := rows - len(rendered)
 	if missing > 0 {
-		out += strings.Repeat("\n", missing)
+		blank := m.blankRow()
+		for i := 0; i < missing; i++ {
+			rendered = append(rendered, blank)
+		}
 	}
-	return out
+	return strings.Join(rendered, "\n")
 }
 
-// clipLine applies horizontal scroll + width truncation to a single rendered
-// line. At horizScroll == 0 we return the line as-is — the terminal wraps
-// over-wide lines (long-established log-tailer behaviour) and we avoid the
-// stripANSI regex on the hot path. When horizScroll > 0 we strip ANSI, slice
-// runewise, and emit plain text — scrolling and colorized styling don't
-// easily coexist with naive slicing.
-func (m *model) clipLine(line string) string {
-	if m.horizScroll == 0 || m.width <= 0 {
+// blankRow returns a string of spaces exactly m.width long — used to clear
+// any leftover content under shorter lines after scrolling.
+func (m *model) blankRow() string {
+	if m.width <= 0 {
+		return ""
+	}
+	return strings.Repeat(" ", m.width)
+}
+
+// blankRows returns n blank rows separated by \n (each row is m.width wide).
+func (m *model) blankRows(n int) string {
+	if n <= 0 {
+		return ""
+	}
+	blank := m.blankRow()
+	rows := make([]string, n)
+	for i := range rows {
+		rows[i] = blank
+	}
+	return strings.Join(rows, "\n")
+}
+
+// clipLine applies horizontal scroll + width clamping to a single rendered
+// line. Two responsibilities, in this order:
+//
+//  1. If horizScroll > 0, strip ANSI and slice runewise to expose the
+//     scrolled-right portion. Otherwise the styled line is kept verbatim.
+//  2. Pad with trailing spaces to exactly m.width so the terminal repaints
+//     the entire row — without this, switching to a shorter line during
+//     PgUp/PgDn leaves the previous row's tail visible (the "ghost row"
+//     glitch the user reported).
+//
+// visW is the unstyled visual width of the line. Callers compute it once
+// in renderDisplayLine so we don't need stripANSI on the hot path.
+func (m *model) clipLine(line string, visW int) string {
+	if m.width <= 0 {
 		return line
+	}
+	if m.horizScroll == 0 {
+		if visW >= m.width {
+			return line
+		}
+		return line + strings.Repeat(" ", m.width-visW)
 	}
 	plain := stripANSI(line)
 	plain = runeSliceLeft(plain, m.horizScroll)
 	plain = runeTruncate(plain, m.width)
+	if w := runeLen(plain); w < m.width {
+		plain += strings.Repeat(" ", m.width-w)
+	}
 	return plain
 }
 
 func (m *model) renderFiles(rows int) string {
-	var b strings.Builder
-	b.WriteString(headerBg.Width(m.width).Render(" Watched files (Ctrl+I or Esc to close) "))
-	b.WriteString("\n")
+	out := make([]string, 0, rows)
+	out = append(out, headerBg.Width(m.width).Render(" Watched files (Ctrl+I or Esc to close) "))
 	if len(m.files) == 0 {
-		b.WriteString(dimStyle.Render("  (no files yet)"))
-		b.WriteString(strings.Repeat("\n", rows-2))
-		return b.String()
+		out = append(out, m.padRow(dimStyle.Render("  (no files yet)")))
+		for i := 2; i < rows; i++ {
+			out = append(out, m.blankRow())
+		}
+		return strings.Join(out, "\n")
 	}
 	avail := rows - 1
 	start := m.filesScroll
@@ -764,14 +832,11 @@ func (m *model) renderFiles(rows int) string {
 	}
 	for i := start; i < end; i++ {
 		f := m.files[i]
-		row := fmt.Sprintf("  %s  %s",
-			groupStyle.Render("["+f.Group+"]"),
-			f.Path)
-		b.WriteString(row)
-		b.WriteString("\n")
+		out = append(out, m.padRow(fmt.Sprintf("  %s  %s",
+			groupStyle.Render("["+f.Group+"]"), f.Path)))
 	}
 	for i := end - start; i < avail; i++ {
-		b.WriteString("\n")
+		out = append(out, m.blankRow())
 	}
-	return b.String()
+	return strings.Join(out, "\n")
 }

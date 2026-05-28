@@ -536,7 +536,11 @@ func TestDecomposeAndRenderDisplayLine(t *testing.T) {
 	m.showFile = true
 	rendered := []string{}
 	for _, dl := range dls {
-		rendered = append(rendered, m.renderDisplayLine(dl))
+		styled, visW := m.renderDisplayLine(dl)
+		if visW <= 0 {
+			t.Fatalf("renderDisplayLine returned non-positive width for %+v", dl)
+		}
+		rendered = append(rendered, styled)
 	}
 	if !strings.Contains(rendered[0], "a.log") {
 		t.Fatalf("missing basename in head row: %q", rendered[0])
@@ -544,5 +548,31 @@ func TestDecomposeAndRenderDisplayLine(t *testing.T) {
 	joined := strings.Join(rendered, "\n")
 	if !strings.Contains(joined, `"k": "v"`) {
 		t.Fatalf("json missing in output: %s", joined)
+	}
+}
+
+// TestModelStreamRowsPadToWidth nails down the ghost-row fix: every line
+// renderStream emits — content rows AND blank fillers — must be exactly
+// m.width terminal columns wide (visible width via stripANSI), so when
+// the terminal repaints a shorter line nothing from the previous render
+// leaks through on the right.
+func TestModelStreamRowsPadToWidth(t *testing.T) {
+	m := newModel(100)
+	m.groupOrder = []string{"g"}
+	m.groupEnabled["g"] = true
+	m.appendEvent(render.Event{
+		Group: "g", File: "/a.log",
+		Rendered: []render.Part{{Type: "text", Value: "tiny"}},
+	})
+	const width, height = 80, 12
+	m2, _ := m.Update(tea.WindowSizeMsg{Width: width, Height: height})
+	m = m2.(*model)
+	body := m.renderStream(m.contentHeight())
+	for i, ln := range strings.Split(body, "\n") {
+		got := runeLen(stripANSI(ln))
+		if got != width {
+			t.Errorf("row %d visible width = %d, want %d (line=%q)",
+				i, got, width, stripANSI(ln))
+		}
 	}
 }
