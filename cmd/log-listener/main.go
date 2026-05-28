@@ -218,15 +218,15 @@ func runWatchTUI(cfg *config.Config, assignments []discover.Assignment, pipeline
 		}
 	}
 
-	app := tui.New(cfg.TUIScrollback)
-
-	// Initial file list — files added via fsnotify Create events later won't
-	// be reflected in this snapshot; we accept that for Phase 5.
+	// Initial file list — pass through tui.New so the model is seeded
+	// before bubbletea starts. Calling SetFiles before Run would deadlock:
+	// bubbletea's msgs channel is unbuffered and Run hasn't started
+	// reading from it yet.
 	initial := make([]tui.FileEntry, 0, len(assignments))
 	for _, a := range assignments {
 		initial = append(initial, tui.FileEntry{Path: a.Path, Group: a.GroupID})
 	}
-	app.SetFiles(initial)
+	app := tui.New(cfg.TUIScrollback, initial)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

@@ -155,6 +155,40 @@ func TestE2ELiveTailingAppend(t *testing.T) {
 	}
 }
 
+// TestE2ELiveTailingFileGroup is the -f path: a single file given by path,
+// not a directory glob. Must behave identically to the -d path for an
+// already-existing file.
+func TestE2ELiveTailingFileGroup(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "single.log")
+	if err := os.WriteFile(path, []byte("seed-existing\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	s := startListener(t, "-f", path, "--no-tui", "--no-color")
+	time.Sleep(300 * time.Millisecond)
+
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0o644)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.WriteString("file-group-live\n"); err != nil {
+		t.Fatal(err)
+	}
+	f.Close()
+
+	want := "file-group-live"
+	matched, all, timedOut := s.Await(5*time.Second, func(line string) bool {
+		return strings.Contains(line, want)
+	})
+	if timedOut {
+		t.Fatalf("never saw %q via -f; lines:\n  %s", want, strings.Join(all, "\n  "))
+	}
+	if !strings.Contains(matched, "single.log") {
+		t.Fatalf("expected single.log in line, got: %q", matched)
+	}
+}
+
 // TestE2ELiveTailingNewFile covers the Create-event branch: a file that
 // didn't exist at startup is later created in the watched dir.
 func TestE2ELiveTailingNewFile(t *testing.T) {

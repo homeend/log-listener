@@ -11,9 +11,22 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/muesli/termenv"
 
 	"log-listener/internal/render"
 )
+
+func init() {
+	// Force fixed terminal capabilities so lipgloss/termenv/bubbletea don't
+	// probe the terminal with OSC 11 (background color) and CSI 6n (cursor
+	// position) during init. Some terminals never reply (containers,
+	// IDE-embedded terminals, tmux configs without passthrough), which
+	// leaves bubbletea blocked before it ever draws a frame. Picking a
+	// profile and dark-background up-front sacrifices true-color but
+	// unblocks the TUI everywhere.
+	lipgloss.SetColorProfile(termenv.ANSI256)
+	lipgloss.SetHasDarkBackground(true)
+}
 
 const defaultScrollback = 10000
 
@@ -42,14 +55,31 @@ type App struct {
 	done bool
 }
 
-// New creates an App with the given scrollback size. scrollback <= 0 uses the
-// default (10000).
-func New(scrollback int) *App {
+// New creates an App with the given scrollback size and an initial set of
+// "watched files" shown in the Ctrl+I overlay. scrollback <= 0 uses the
+// default (10000). The initial files list must be passed here (not via
+// SetFiles before Run) because bubbletea's internal msgs channel is
+// unbuffered — calling Send before Run deadlocks the main goroutine.
+func New(scrollback int, initialFiles []FileEntry) *App {
 	if scrollback <= 0 {
 		scrollback = defaultScrollback
 	}
 	m := newModel(scrollback)
-	prog := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion())
+	m.files = append(m.files, initialFiles...)
+	// tea.WithEnvironment hands a controlled env to bubbletea's internal
+	// termenv.Output. With COLORTERM=truecolor termenv accepts the
+	// profile from env and skips the OSC 11 / CSI 6n probes that hang
+	// when a terminal (or pty wrapper) doesn't auto-respond.
+	env := []string{
+		"COLORTERM=truecolor",
+		"CLICOLOR_FORCE=1",
+		"TERM=xterm-256color",
+	}
+	prog := tea.NewProgram(m,
+		tea.WithAltScreen(),
+		tea.WithMouseCellMotion(),
+		tea.WithEnvironment(env),
+	)
 	return &App{prog: prog}
 }
 
