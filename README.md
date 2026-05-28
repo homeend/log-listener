@@ -214,6 +214,12 @@ directories:
     paths: [/var/log/special]
     file_filter:
       name_regex: 'panic-.*\.log'
+  - id: noisy
+    paths: [/var/log/very-noisy]
+    off: true                       # loaded but hidden in TUI on start
+  - id: archived
+    paths: [/var/log/old]
+    disabled: true                  # not loaded at all — ignored entirely
 
 # files — corresponds to -f / -fN; always unfiltered
 files:
@@ -234,6 +240,14 @@ renderers:
     applies_to:
       groups: [1]
       paths: ['*.app.log']
+  - name: pretty-xml                # registered but starts off
+    line_regex: '.+'
+    template: 'xml($0)'
+    off: true
+  - name: legacy                    # ignored entirely
+    line_regex: '.+'
+    template: '$0'
+    disabled: true
 
 output:
   color: true                       # ignored when stdout isn't a TTY
@@ -249,6 +263,22 @@ tui:
 
 YAML is strict — unknown keys (e.g. `directorys:` typo) are an error.
 Duplicate group ids within `directories:` or `files:` are an error.
+
+### `disabled:` vs `off:` on entries
+
+Every directory group, file group, and renderer accepts two booleans:
+
+- **`disabled: true`** — *hard* disable. The entry is filtered out at
+  load time and never reaches the pipeline / watcher / TUI. The
+  keyboard cannot bring it back. Use this to mothball a config block
+  without deleting it.
+- **`off: true`** — *soft* disable. The entry is loaded normally, but
+  its TUI toggle starts in the off position (group hidden in stream
+  view; renderer skipped in first-match-wins dispatch). The user can
+  toggle it back on with the digit / shifted-digit key or the panel.
+
+If both are set on the same entry, `disabled` wins and `off` is
+ignored.
 
 ### CLI ↔ YAML precedence
 
@@ -404,6 +434,24 @@ useful when you only care about content. Toggles are instant; the
 scrollback isn't rebuilt (the prefix is composed at render time, so the
 toggle has near-zero overhead per event).
 
+### Renderer toggling
+
+Renderers can be toggled at runtime via the shifted-digit keys (`!`
+`@` `#` `$` `%` `^` `&` `*` `(`) — the same idea as `1`–`9` for
+groups, but for the renderers list. **Toggling re-renders the entire
+scrollback live**: a JSON pretty-print block turns back into the raw
+log line, and toggling on regenerates the pretty-print from the same
+raw source. The pipeline is updated atomically so future events also
+honor the new state. Stdout and SSE consumers see the change for new
+events only — they don't have a scrollback to re-render.
+
+`Ctrl+E` opens the **Renderers** overlay, mirroring the Groups panel:
+each renderer is listed with its toggle key, `ON`/`OFF` state, and
+name. The footer status line shows `rend: N (M off)`.
+
+Only the first 9 renderers are keyboard-addressable; beyond that they
+stay always-on (use `disabled:` or `off:` in YAML to start one disabled).
+
 ### Search
 
 Press **`/`** to enter search mode. Type the term — the footer shows
@@ -467,7 +515,8 @@ browsing, so you can see at a glance whether the view is live.
 | Ctrl+← / Shift+←    | Pan view left 50 columns.                             |
 | Ctrl+→ / Shift+→    | Pan view right 50 columns.                            |
 | `0`                 | Jump back to column 0 (leftmost).                     |
-| `$`                 | Jump right to reveal the end of the widest line.      |
+| **`Ctrl+E`**        | **Toggle the "renderers" overlay.**                   |
+| **`!` `@` `#` `$` `%` `^` `&` `*` `(`** | **Toggle renderer 1–9 on/off (shifted digits).** |
 
 When you pan horizontally (`←` / `→`), the visible window is clipped from
 the left and ANSI styling is dropped for the scrolled portion — that's a

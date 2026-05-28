@@ -291,3 +291,95 @@ directories:
 		t.Fatal("expected regex compile error")
 	}
 }
+
+func TestLoadYAMLDisabledAndOff(t *testing.T) {
+	dir := t.TempDir()
+	yml := writeYAML(t, dir, "log.yml", `
+directories:
+  - id: keep
+    paths: [/var/log/a]
+  - id: drop-me
+    paths: [/var/log/b]
+    disabled: true
+  - id: start-off
+    paths: [/var/log/c]
+    off: true
+files:
+  - id: keep-files
+    paths: ['/tmp/x.log']
+  - id: drop-files
+    paths: ['/tmp/y.log']
+    disabled: true
+  - id: off-files
+    paths: ['/tmp/z.log']
+    off: true
+renderers:
+  - name: alive
+    line_regex: '^.+$'
+    template: '$0'
+  - name: dead
+    line_regex: '^.+$'
+    template: '$0'
+    disabled: true
+  - name: sleeping
+    line_regex: '^.+$'
+    template: '$0'
+    off: true
+`)
+	homeStub := func() (string, error) { return dir, nil }
+	cfg, err := loadWithFS([]string{"--config", yml}, refNow, homeStub)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Disabled groups are filtered out entirely; off groups stay with StartOff=true.
+	gotIDs := make([]string, 0, len(cfg.Groups))
+	for _, g := range cfg.Groups {
+		gotIDs = append(gotIDs, g.ID)
+	}
+	for _, want := range []string{"keep", "start-off", "keep-files", "off-files"} {
+		found := false
+		for _, got := range gotIDs {
+			if got == want {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("group %q missing from cfg.Groups: %v", want, gotIDs)
+		}
+	}
+	for _, banned := range []string{"drop-me", "drop-files"} {
+		for _, got := range gotIDs {
+			if got == banned {
+				t.Errorf("disabled group %q must not be loaded: %v", banned, gotIDs)
+			}
+		}
+	}
+
+	// StartOff propagation.
+	for _, g := range cfg.Groups {
+		switch g.ID {
+		case "keep", "keep-files":
+			if g.StartOff {
+				t.Errorf("group %q should start enabled", g.ID)
+			}
+		case "start-off", "off-files":
+			if !g.StartOff {
+				t.Errorf("group %q with off:true should have StartOff=true", g.ID)
+			}
+		}
+	}
+
+	// Renderers: dead is dropped; sleeping is loaded with StartOff=true.
+	if len(cfg.RendererSpecs) != 2 {
+		t.Fatalf("want 2 renderers (alive + sleeping), got %d: %+v",
+			len(cfg.RendererSpecs), cfg.RendererSpecs)
+	}
+	if cfg.RendererSpecs[0].Name != "alive" || cfg.RendererSpecs[0].StartOff {
+		t.Errorf("alive renderer misconfigured: %+v", cfg.RendererSpecs[0])
+	}
+	if cfg.RendererSpecs[1].Name != "sleeping" || !cfg.RendererSpecs[1].StartOff {
+		t.Errorf("sleeping renderer should have StartOff=true: %+v", cfg.RendererSpecs[1])
+	}
+}

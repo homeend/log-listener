@@ -218,7 +218,7 @@ func runWatchTUI(cfg *config.Config, assignments []discover.Assignment, pipeline
 		}
 	}
 
-	// Initial file list and ordered group IDs — passed through tui.New
+	// Initial file list, groups, and renderers — passed through tui.New
 	// so the model is seeded before bubbletea starts. Calling SetFiles
 	// before Run would deadlock: bubbletea's msgs channel is unbuffered
 	// and Run hasn't started reading from it yet.
@@ -226,11 +226,27 @@ func runWatchTUI(cfg *config.Config, assignments []discover.Assignment, pipeline
 	for _, a := range assignments {
 		initial = append(initial, tui.FileEntry{Path: a.Path, Group: a.GroupID})
 	}
-	groupIDs := make([]string, 0, len(cfg.Groups))
+	groups := make([]tui.GroupInfo, 0, len(cfg.Groups))
 	for _, g := range cfg.Groups {
-		groupIDs = append(groupIDs, g.ID)
+		groups = append(groups, tui.GroupInfo{ID: g.ID, StartOff: g.StartOff})
 	}
-	app := tui.New(cfg.TUIScrollback, initial, groupIDs)
+	renderers := make([]tui.RendererInfo, pipeline.RendererCount())
+	for i := range renderers {
+		renderers[i] = tui.RendererInfo{
+			Name:     pipeline.RendererName(i),
+			StartOff: !pipeline.IsEnabled(i),
+		}
+	}
+	app := tui.New(tui.Options{
+		Scrollback:    cfg.TUIScrollback,
+		InitialFiles:  initial,
+		Groups:        groups,
+		Renderers:     renderers,
+		SetRendererOn: pipeline.SetRendererEnabled,
+		RenderFn: func(group, file, raw string) (render.Event, bool) {
+			return pipeline.Render(time.Now(), group, file, raw)
+		},
+	})
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

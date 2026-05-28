@@ -106,23 +106,51 @@ type App struct {
 	done bool
 }
 
-// New creates an App with the given scrollback size, an initial set of
-// "watched files" (shown in the Ctrl+I overlay), and the ordered list of
-// group IDs (shown in the Ctrl+G panel, addressable via digit keys 1-9).
-// scrollback <= 0 uses the default (10000). Files and groups must be
-// passed here, not via SetFiles before Run, because bubbletea's internal
+// GroupInfo is one entry in Options.Groups: ID + soft-off seed.
+type GroupInfo struct {
+	ID       string
+	StartOff bool
+}
+
+// RendererInfo is one entry in Options.Renderers: name + soft-off seed.
+type RendererInfo struct {
+	Name     string
+	StartOff bool
+}
+
+// Options bundles everything tui.New needs. Most fields are optional —
+// nil callbacks turn the corresponding feature into a no-op so tests
+// can construct an App without plumbing the pipeline.
+type Options struct {
+	Scrollback        int
+	InitialFiles      []FileEntry
+	Groups            []GroupInfo
+	Renderers         []RendererInfo
+	SetRendererOn     func(idx int, on bool) // called when shift+digit toggles a renderer
+	RenderFn          RenderFunc             // called per scrollback entry when toggling triggers re-render
+}
+
+// New creates an App from Options. Files and groups must be passed
+// here, not via SetFiles before Run, because bubbletea's internal
 // msgs channel is unbuffered — Send before Run deadlocks the main
 // goroutine.
-func New(scrollback int, initialFiles []FileEntry, groupIDs []string) *App {
+func New(opts Options) *App {
+	scrollback := opts.Scrollback
 	if scrollback <= 0 {
 		scrollback = defaultScrollback
 	}
 	m := newModel(scrollback)
-	m.files = append(m.files, initialFiles...)
-	m.groupOrder = append(m.groupOrder, groupIDs...)
-	for _, gid := range groupIDs {
-		m.groupEnabled[gid] = true
+	m.files = append(m.files, opts.InitialFiles...)
+	for _, g := range opts.Groups {
+		m.groupOrder = append(m.groupOrder, g.ID)
+		m.groupEnabled[g.ID] = !g.StartOff
 	}
+	for _, r := range opts.Renderers {
+		m.rendererOrder = append(m.rendererOrder, r.Name)
+		m.rendererEnabled = append(m.rendererEnabled, !r.StartOff)
+	}
+	m.setRendererEnabled = opts.SetRendererOn
+	m.renderFn = opts.RenderFn
 	// tea.WithEnvironment hands a controlled env to bubbletea's internal
 	// termenv.Output. With COLORTERM=truecolor termenv accepts the
 	// profile from env and skips the OSC 11 / CSI 6n probes that hang
@@ -193,8 +221,25 @@ func (a *App) Quit() {
 
 // model is the bubbletea state. Exported only via App; tests construct it
 // directly via newModel.
+// scrollbackEvent holds the source data for one rendered emission
+// (one log line that came out of the pipeline) plus the displayLines
+// it currently decomposes into. The source fields (group, file, raw)
+// survive any number of re-renders; the lines field is regenerated
+// whenever a renderer toggle changes how the line should look.
+type scrollbackEvent struct {
+	group, file, raw string
+	lines            []displayLine
+}
+
 type model struct {
-	events      []displayLine // each event becomes 1 head + N block lines
+	// entries is the source of truth: one per pipeline emission. lines
+	// is a derived flat cache (concat of every entry's lines) — kept in
+	// sync by appendEvent / trimToCap / reRenderAll. Everything on the
+	// hot path (View, search, collectVisible, streamTop/searchHit
+	// indexing) reads from m.lines, so the cached layout means no
+	// per-render walk of m.entries.
+	entries     []scrollbackEvent
+	lines       []displayLine
 	scrollback  int
 	width       int
 	height      int
@@ -222,7 +267,7 @@ type model struct {
 
 	// Group enable/disable — toggled with digit keys 1-9 (mapped to the
 	// first 9 entries of groupOrder). A disabled group's events stay in
-	// m.events but are skipped during the renderStream window walk.
+	// m.lines but are skipped during the renderStream window walk.
 	groupOrder      []string
 	groupEnabled    map[string]bool
 	showGroupsPanel bool
@@ -232,7 +277,7 @@ type model struct {
 	//   searchInput == true : user is typing the query after "/"
 	//   searchQuery         : characters typed so far (display + commit source)
 	//   searchTerm          : committed lowercase substring; empty = inactive
-	//   searchHit           : absolute index into m.events of the current hit
+	//   searchHit           : absolute index into m.lines of the current hit
 	//                         (-1 when no hit is current)
 	//   wrapPrompt          : 'n' or 'p' when "wrap around?" is pending;
 	//                         0 otherwise. The matching y answer wraps from
@@ -242,7 +287,30 @@ type model struct {
 	searchTerm  string
 	searchHit   int
 	wrapPrompt  rune
+
+	// Renderer enable/disable — toggled with the shifted-digit chars
+	// (!@#$%^&*( for 1-9). Ctrl+E opens the renderers panel. The
+	// authoritative on/off state lives in the pipeline (atomic.Bool per
+	// renderer); rendererEnabled is the TUI's cached mirror used for
+	// panel rendering and footer counts. setRendererEnabled wraps both
+	// the pipeline call and the cache update, and triggers a re-render
+	// of the whole scrollback.
+	rendererOrder      []string
+	rendererEnabled    []bool
+	showRenderersPanel bool
+	renderersScroll    int
+	setRendererEnabled func(idx int, on bool) // pipeline-side flip
+	renderFn           RenderFunc             // re-render a single source
 }
+
+// RenderFunc runs a single (group, file, raw) tuple through the
+// pipeline using its current renderer-enable state, returning the
+// resulting Event. ok=false means the pipeline dropped the line
+// (drop_unmatched + no matching renderer); the entry stays in
+// scrollback so a later toggle can resurrect it, but contributes
+// zero display lines. main.go provides this; the TUI handles
+// decompose internally (displayLine is unexported).
+type RenderFunc func(group, file, raw string) (ev render.Event, ok bool)
 
 const (
 	horizStep      = 10 // columns moved per Left/Right keypress
@@ -273,9 +341,9 @@ func (m *model) unstickFromTail() {
 	m.tailMode = false
 	rows := m.contentHeight()
 	count := 0
-	idx := len(m.events) - 1
+	idx := len(m.lines) - 1
 	for ; idx >= 0 && count < rows; idx-- {
-		if m.lineEnabled(m.events[idx]) {
+		if m.lineEnabled(m.lines[idx]) {
 			count++
 		}
 	}
@@ -292,8 +360,8 @@ func (m *model) maybeReStick() {
 	// content-height window, we're effectively at the tail.
 	rows := m.contentHeight()
 	enabled := 0
-	for i := m.streamTop; i < len(m.events); i++ {
-		if m.lineEnabled(m.events[i]) {
+	for i := m.streamTop; i < len(m.lines); i++ {
+		if m.lineEnabled(m.lines[i]) {
 			enabled++
 		}
 	}
@@ -341,12 +409,14 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.showFiles = !m.showFiles
 			if m.showFiles {
 				m.showGroupsPanel = false
+				m.showRenderersPanel = false
 			}
 			m.filesScroll = 0
 		case "ctrl+g":
 			m.showGroupsPanel = !m.showGroupsPanel
 			if m.showGroupsPanel {
 				m.showFiles = false
+				m.showRenderersPanel = false
 			}
 			m.groupsScroll = 0
 		case "esc":
@@ -356,9 +426,12 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.showGroupsPanel {
 				m.showGroupsPanel = false
 			}
+			if m.showRenderersPanel {
+				m.showRenderersPanel = false
+			}
 			// Esc with no overlay open clears any active search results
 			// — term goes away, highlights vanish, hit pointer resets.
-			if !m.showFiles && !m.showGroupsPanel && m.searchTerm != "" {
+			if !m.showFiles && !m.showGroupsPanel && !m.showRenderersPanel && m.searchTerm != "" {
 				m.clearSearch()
 			}
 		case "/":
@@ -376,10 +449,12 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Clear the TUI's scrollback. The watcher / sinks / SSE hub
 			// keep running; only the in-memory view is reset. Re-enter
 			// tail mode so the next event appears immediately at the top.
-			m.events = nil
+			m.entries = nil
+			m.lines = nil
 			m.streamTop = 0
 			m.tailMode = true
 			m.horizScroll = 0
+			m.searchHit = -1
 		case "1", "2", "3", "4", "5", "6", "7", "8", "9":
 			idx := int(msg.String()[0] - '1')
 			if idx < len(m.groupOrder) {
@@ -502,19 +577,33 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.horizScroll += horizFastStep
 		case "0":
 			m.horizScroll = 0
+		// Renderer toggles: shifted digits 1-9 → !@#$%^&*( .
+		// $ used to be "jump-to-widest-line" — removed in favor of this.
+		case "!":
+			m.toggleRenderer(0)
+		case "@":
+			m.toggleRenderer(1)
+		case "#":
+			m.toggleRenderer(2)
 		case "$":
-			widest := 0
-			for _, dl := range m.events {
-				_, w := m.renderDisplayLine(dl)
-				if w > widest {
-					widest = w
-				}
+			m.toggleRenderer(3)
+		case "%":
+			m.toggleRenderer(4)
+		case "^":
+			m.toggleRenderer(5)
+		case "&":
+			m.toggleRenderer(6)
+		case "*":
+			m.toggleRenderer(7)
+		case "(":
+			m.toggleRenderer(8)
+		case "ctrl+e":
+			m.showRenderersPanel = !m.showRenderersPanel
+			if m.showRenderersPanel {
+				m.showFiles = false
+				m.showGroupsPanel = false
 			}
-			target := widest - m.width + 10
-			if target < 0 {
-				target = 0
-			}
-			m.horizScroll = target
+			m.renderersScroll = 0
 		}
 	case EventMsg:
 		m.appendEvent(msg.Event)
@@ -530,21 +619,101 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *model) appendEvent(ev render.Event) {
-	for _, dl := range decomposeEvent(ev) {
-		m.events = append(m.events, dl)
+	lines := decomposeEvent(ev)
+	m.entries = append(m.entries, scrollbackEvent{
+		group: ev.Group,
+		file:  ev.File,
+		raw:   ev.Raw,
+		lines: lines,
+	})
+	m.lines = append(m.lines, lines...)
+	m.trimToCap()
+}
+
+// appendStored pushes a pre-built scrollbackEvent (used when re-running
+// the pipeline on existing scrollback isn't applicable — e.g. tests
+// that bypass the pipeline). lines may be empty.
+func (m *model) appendStored(e scrollbackEvent) {
+	m.entries = append(m.entries, e)
+	m.lines = append(m.lines, e.lines...)
+	m.trimToCap()
+}
+
+// trimToCap enforces the scrollback line-count cap by evicting WHOLE
+// entries from the head of m.entries until the flat-line count fits.
+// Whole-entry eviction keeps m.entries and m.lines in lockstep — no
+// half-evicted event whose head row is gone but blocks remain.
+//
+// When the user is browsing (!tailMode), streamTop and searchHit are
+// dragged down by exactly the number of lines evicted so the absolute
+// rows they reference don't drift.
+func (m *model) trimToCap() {
+	if m.scrollback <= 0 || len(m.lines) <= m.scrollback {
+		return
 	}
-	// trim ring buffer; when the user is browsing (!tailMode) we must drag
-	// streamTop down by the same amount so the absolute lines they're
-	// looking at stay anchored.
-	if len(m.events) > m.scrollback {
-		drop := len(m.events) - m.scrollback
-		m.events = m.events[drop:]
-		if !m.tailMode {
-			m.streamTop -= drop
-			if m.streamTop < 0 {
-				m.streamTop = 0
-			}
+	dropLines := 0
+	dropEntries := 0
+	for dropEntries < len(m.entries) && len(m.lines)-dropLines > m.scrollback {
+		dropLines += len(m.entries[dropEntries].lines)
+		dropEntries++
+	}
+	if dropEntries == 0 {
+		return
+	}
+	m.entries = m.entries[dropEntries:]
+	m.lines = m.lines[dropLines:]
+	if !m.tailMode {
+		m.streamTop -= dropLines
+		if m.streamTop < 0 {
+			m.streamTop = 0
 		}
+	}
+	if m.searchHit >= 0 {
+		m.searchHit -= dropLines
+		if m.searchHit < 0 {
+			m.searchHit = -1 // hit scrolled off-screen
+		}
+	}
+}
+
+// reRenderAll walks every stored entry through renderFn and rebuilds
+// m.lines from the resulting display lines. Called when a renderer
+// toggle changes how the pipeline dispatches lines. Index anchors
+// (streamTop, searchHit) are clamped to the new flat-line range —
+// the viewport may visibly jump if a long stack-trace block collapsed
+// into a single raw line, which is the correct UX for "this is what
+// this line looks like now."
+//
+// If renderFn is nil (no pipeline plumbed — early bootstrap, tests
+// that bypass main.go) reRenderAll is a no-op.
+func (m *model) reRenderAll() {
+	if m.renderFn == nil {
+		return
+	}
+	totalLines := 0
+	for i := range m.entries {
+		ev, ok := m.renderFn(m.entries[i].group, m.entries[i].file, m.entries[i].raw)
+		var lines []displayLine
+		if ok {
+			lines = decomposeEvent(ev)
+		}
+		m.entries[i].lines = lines
+		totalLines += len(lines)
+	}
+	flat := make([]displayLine, 0, totalLines)
+	for i := range m.entries {
+		flat = append(flat, m.entries[i].lines...)
+	}
+	m.lines = flat
+	// Clamp anchors to the new line count.
+	if m.streamTop > len(m.lines) {
+		m.streamTop = len(m.lines)
+	}
+	if m.streamTop < 0 {
+		m.streamTop = 0
+	}
+	if m.searchHit >= len(m.lines) {
+		m.searchHit = -1
 	}
 }
 
@@ -606,7 +775,7 @@ func (m *model) renderDisplayLine(dl displayLine) (string, int) {
 // row holds the current search hit. Falls through to the plain core
 // when no search is active.
 func (m *model) renderDisplayLineAt(idx int) (string, int) {
-	dl := m.events[idx]
+	dl := m.lines[idx]
 	isCurrent := m.searchTerm != "" && idx == m.searchHit
 	return m.renderDisplayLineCore(dl, isCurrent)
 }
@@ -682,13 +851,15 @@ func (m *model) View() string {
 	if m.height == 0 {
 		return ""
 	}
-	header := headerBg.Width(m.width).Render(" log-listener — q quit · Tab files · Ctrl+G groups · 1-9 toggle · Ctrl+P/L cols · Ctrl+R clear · / search · n/p next/prev ")
+	header := headerBg.Width(m.width).Render(" log-listener — q quit · Tab files · Ctrl+G groups · Ctrl+E rend · 1-9 grp · !-( rend · Ctrl+P/L cols · Ctrl+R clear · / search · n/p ")
 	contentH := m.contentHeight()
 
 	var body string
 	switch {
 	case m.showGroupsPanel:
 		body = m.renderGroupsPanel(contentH)
+	case m.showRenderersPanel:
+		body = m.renderRenderersPanel(contentH)
 	case m.showFiles:
 		body = m.renderFiles(contentH)
 	default:
@@ -720,7 +891,7 @@ func (m *model) renderFooter() string {
 	}
 	pos := "tail"
 	if !m.tailMode {
-		pos = fmt.Sprintf("@%d/%d", m.streamTop, len(m.events))
+		pos = fmt.Sprintf("@%d/%d", m.streamTop, len(m.lines))
 	}
 	cols := ""
 	if !m.showGroup {
@@ -734,12 +905,19 @@ func (m *model) renderFooter() string {
 	if disabled > 0 {
 		groupStat += fmt.Sprintf(" (%d off)", disabled)
 	}
+	rendStat := ""
+	if len(m.rendererOrder) > 0 {
+		rendStat = fmt.Sprintf(" · rend: %d", len(m.rendererOrder))
+		if off := m.disabledRendererCount(); off > 0 {
+			rendStat += fmt.Sprintf(" (%d off)", off)
+		}
+	}
 	search := ""
 	if m.searchTerm != "" {
 		search = fmt.Sprintf(" · /%s", m.searchQuery)
 	}
-	return dimStyle.Width(m.width).Render(fmt.Sprintf(" events: %d · %s · col: %d%s · %s · files: %d%s ",
-		len(m.events), pos, m.horizScroll, cols, groupStat, len(m.files), search))
+	return dimStyle.Width(m.width).Render(fmt.Sprintf(" events: %d · %s · col: %d%s · %s%s · files: %d%s ",
+		len(m.lines), pos, m.horizScroll, cols, groupStat, rendStat, len(m.files), search))
 }
 
 func (m *model) disabledGroupCount() int {
@@ -750,6 +928,32 @@ func (m *model) disabledGroupCount() int {
 		}
 	}
 	return n
+}
+
+func (m *model) disabledRendererCount() int {
+	n := 0
+	for _, on := range m.rendererEnabled {
+		if !on {
+			n++
+		}
+	}
+	return n
+}
+
+// toggleRenderer flips the i-th renderer's enable state, both in the
+// pipeline (via the wired-up callback) and in the TUI's mirror cache,
+// then re-renders every scrollback entry so existing lines reflect the
+// new state immediately. Out-of-range indices and a nil callback are
+// silent no-ops (lets unit tests construct a model without plumbing).
+func (m *model) toggleRenderer(i int) {
+	if i < 0 || i >= len(m.rendererOrder) {
+		return
+	}
+	m.rendererEnabled[i] = !m.rendererEnabled[i]
+	if m.setRendererEnabled != nil {
+		m.setRendererEnabled(i, m.rendererEnabled[i])
+	}
+	m.reRenderAll()
 }
 
 func (m *model) renderGroupsPanel(rows int) string {
@@ -798,6 +1002,57 @@ func (m *model) renderGroupsPanel(rows int) string {
 	return strings.Join(out, "\n")
 }
 
+// rendererShiftChar returns the shifted-digit character that toggles
+// the i-th renderer (i in [0, 9)). Mirrors the digit-key mapping
+// used by the groups panel.
+func rendererShiftChar(i int) string {
+	chars := []string{"!", "@", "#", "$", "%", "^", "&", "*", "("}
+	if i < 0 || i >= len(chars) {
+		return " "
+	}
+	return chars[i]
+}
+
+func (m *model) renderRenderersPanel(rows int) string {
+	out := make([]string, 0, rows)
+	out = append(out, headerBg.Width(m.width).Render(" Renderers (Ctrl+E or Esc to close · !-( to toggle) "))
+	if len(m.rendererOrder) == 0 {
+		out = append(out, m.padRow(dimStyle.Render("  (no renderers defined)")))
+		for i := 2; i < rows; i++ {
+			out = append(out, m.blankRow())
+		}
+		return strings.Join(out, "\n")
+	}
+	avail := rows - 1
+	start := m.renderersScroll
+	if start > len(m.rendererOrder)-avail {
+		start = len(m.rendererOrder) - avail
+	}
+	if start < 0 {
+		start = 0
+	}
+	end := start + avail
+	if end > len(m.rendererOrder) {
+		end = len(m.rendererOrder)
+	}
+	for i := start; i < end; i++ {
+		mark := "OFF"
+		if m.rendererEnabled[i] {
+			mark = "ON "
+		}
+		key := "[ ]"
+		if i < 9 {
+			key = "[" + rendererShiftChar(i) + "]"
+		}
+		out = append(out, m.padRow(fmt.Sprintf("  %s  %s  %s",
+			key, mark, groupStyle.Render(m.rendererOrder[i]))))
+	}
+	for i := end - start; i < avail; i++ {
+		out = append(out, m.blankRow())
+	}
+	return strings.Join(out, "\n")
+}
+
 // padRow strips ANSI to measure visible width, then appends spaces to fill
 // the terminal row. Used by the side panels (files / groups) where rows
 // have arbitrary styling so we don't have a pre-computed width.
@@ -824,13 +1079,13 @@ func pluralS(n int) string {
 // browse mode we walk forward from streamTop. Disabled-group lines
 // are skipped, so a run of hidden events doesn't leave a gap.
 func (m *model) collectVisible(rows int) []int {
-	if rows <= 0 || len(m.events) == 0 {
+	if rows <= 0 || len(m.lines) == 0 {
 		return nil
 	}
 	out := make([]int, 0, rows)
 	if m.tailMode {
-		for i := len(m.events) - 1; i >= 0 && len(out) < rows; i-- {
-			if !m.lineEnabled(m.events[i]) {
+		for i := len(m.lines) - 1; i >= 0 && len(out) < rows; i-- {
+			if !m.lineEnabled(m.lines[i]) {
 				continue
 			}
 			out = append(out, i)
@@ -841,8 +1096,8 @@ func (m *model) collectVisible(rows int) []int {
 		}
 		return out
 	}
-	for i := m.streamTop; i < len(m.events) && len(out) < rows; i++ {
-		if !m.lineEnabled(m.events[i]) {
+	for i := m.streamTop; i < len(m.lines) && len(out) < rows; i++ {
+		if !m.lineEnabled(m.lines[i]) {
 			continue
 		}
 		out = append(out, i)
@@ -851,7 +1106,7 @@ func (m *model) collectVisible(rows int) []int {
 }
 
 func (m *model) renderStream(rows int) string {
-	if len(m.events) == 0 {
+	if len(m.lines) == 0 {
 		return m.blankRows(rows)
 	}
 	visible := m.collectVisible(rows)

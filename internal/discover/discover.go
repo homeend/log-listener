@@ -58,6 +58,11 @@ type Group struct {
 	Paths     []string
 	Recursive bool
 	Filter    *FileFilter
+	// StartOff is the soft-disable flag from YAML's `off: true`. Group is
+	// loaded and watched normally; the TUI seeds its per-group enable map
+	// to false so events are emitted to stdout/SSE but hidden in the view
+	// until the user toggles the group on.
+	StartOff bool
 }
 
 // Assignment is a single file's binding to its owning group.

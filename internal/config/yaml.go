@@ -22,6 +22,11 @@ type RendererSpec struct {
 	LineRegex string
 	Template  string
 	AppliesTo *AppliesTo
+	// StartOff is the soft-disable flag from YAML's `off: true`. The
+	// renderer is registered in the pipeline but its atomic-enabled flag
+	// is initialized to false, so it's skipped during first-match-wins
+	// dispatch until the user toggles it on via the TUI.
+	StartOff bool
 }
 
 // AppliesTo is the renderer scope filter; semantics: a renderer applies to
@@ -47,11 +52,18 @@ type yamlDirGroup struct {
 	Paths      []string    `yaml:"paths"`
 	Recursive  *bool       `yaml:"recursive"`
 	FileFilter *yamlFilter `yaml:"file_filter"`
+	// disabled: true -> entry filtered out entirely at load time.
+	// off: true      -> entry loaded, but its TUI toggle starts off.
+	// If both are set, disabled wins and off is ignored.
+	Disabled bool `yaml:"disabled"`
+	Off      bool `yaml:"off"`
 }
 
 type yamlFileGroup struct {
-	ID    string   `yaml:"id"`
-	Paths []string `yaml:"paths"`
+	ID       string   `yaml:"id"`
+	Paths    []string `yaml:"paths"`
+	Disabled bool     `yaml:"disabled"`
+	Off      bool     `yaml:"off"`
 }
 
 type yamlFilter struct {
@@ -66,6 +78,8 @@ type yamlRenderer struct {
 	LineRegex string         `yaml:"line_regex"`
 	Template  string         `yaml:"template"`
 	AppliesTo *yamlAppliesTo `yaml:"applies_to"`
+	Disabled  bool           `yaml:"disabled"`
+	Off       bool           `yaml:"off"`
 }
 
 type yamlAppliesTo struct {
@@ -197,6 +211,11 @@ func mergeYAMLInto(cfg *Config, yc *yamlConfig, now time.Time) error {
 			return fmt.Errorf("directories: duplicate id %q", id)
 		}
 		yamlDirSeen[id] = struct{}{}
+		// disabled: true — drop the entry entirely. Skip the CLI-already-
+		// exists check too (a disabled YAML entry does not shadow CLI).
+		if ydg.Disabled {
+			continue
+		}
 		if _, exists := cfg.indexDir[id]; exists {
 			continue // CLI wins
 		}
@@ -214,6 +233,7 @@ func mergeYAMLInto(cfg *Config, yc *yamlConfig, now time.Time) error {
 			Paths:     append([]string(nil), ydg.Paths...),
 			Recursive: recursive,
 			Filter:    filter,
+			StartOff:  ydg.Off,
 		}
 		cfg.indexDir[id] = len(cfg.Groups)
 		cfg.Groups = append(cfg.Groups, g)
@@ -230,13 +250,17 @@ func mergeYAMLInto(cfg *Config, yc *yamlConfig, now time.Time) error {
 			return fmt.Errorf("files: duplicate id %q", id)
 		}
 		yamlFileSeen[id] = struct{}{}
+		if yfg.Disabled {
+			continue
+		}
 		if _, exists := cfg.indexFile[id]; exists {
 			continue
 		}
 		g := &discover.Group{
-			ID:    id,
-			Kind:  discover.GroupFile,
-			Paths: append([]string(nil), yfg.Paths...),
+			ID:       id,
+			Kind:     discover.GroupFile,
+			Paths:    append([]string(nil), yfg.Paths...),
+			StartOff: yfg.Off,
 		}
 		cfg.indexFile[id] = len(cfg.Groups)
 		cfg.Groups = append(cfg.Groups, g)
@@ -244,10 +268,17 @@ func mergeYAMLInto(cfg *Config, yc *yamlConfig, now time.Time) error {
 
 	// renderers — Phase 2 just carries these through
 	for _, yr := range yc.Renderers {
+		// disabled: true — drop entirely. After this filter, the loaded
+		// order == panel order == toggle-key index, so we don't need a
+		// "loaded but inactive" tier.
+		if yr.Disabled {
+			continue
+		}
 		spec := RendererSpec{
 			Name:      yr.Name,
 			LineRegex: yr.LineRegex,
 			Template:  yr.Template,
+			StartOff:  yr.Off,
 		}
 		if yr.AppliesTo != nil {
 			spec.AppliesTo = &AppliesTo{

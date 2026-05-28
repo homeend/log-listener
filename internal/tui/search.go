@@ -30,7 +30,7 @@ func (m *model) commitSearch() {
 	m.searchTerm = strings.ToLower(q)
 	start := m.streamTop
 	if m.tailMode {
-		start = len(m.events) - 1
+		start = len(m.lines) - 1
 		// In tail mode walk backward — most-recent match is what the
 		// user expects to land on first.
 		hit := m.findHit(start, -1)
@@ -62,7 +62,7 @@ func (m *model) commitSearch() {
 // searchNext advances to the next hit after the current one. If no
 // hit exists between cursor+1 and end, sets wrapPrompt='n'.
 func (m *model) searchNext() {
-	if m.searchTerm == "" || len(m.events) == 0 {
+	if m.searchTerm == "" || len(m.lines) == 0 {
 		return
 	}
 	from := m.searchHit + 1
@@ -80,7 +80,7 @@ func (m *model) searchNext() {
 // searchPrev steps to the previous hit before the current one. If no
 // hit exists between cursor-1 and start, sets wrapPrompt='p'.
 func (m *model) searchPrev() {
-	if m.searchTerm == "" || len(m.events) == 0 {
+	if m.searchTerm == "" || len(m.lines) == 0 {
 		return
 	}
 	from := m.searchHit - 1
@@ -142,7 +142,7 @@ func (m *model) handleWrapPromptKey(msg tea.KeyMsg) tea.Model {
 		if dir == 'n' {
 			hit = m.findHit(0, +1)
 		} else {
-			hit = m.findHit(len(m.events)-1, -1)
+			hit = m.findHit(len(m.lines)-1, -1)
 		}
 		if hit >= 0 {
 			m.jumpToHit(hit)
@@ -166,7 +166,7 @@ func (m *model) handleWrapPromptKey(msg tea.KeyMsg) tea.Model {
 // Both heads and block (JSON/XML) lines are searched — the user sees
 // them both in the stream so they should both be reachable.
 func (m *model) findHit(start, dir int) int {
-	if m.searchTerm == "" || len(m.events) == 0 {
+	if m.searchTerm == "" || len(m.lines) == 0 {
 		return -1
 	}
 	if dir == 0 {
@@ -175,11 +175,11 @@ func (m *model) findHit(start, dir int) int {
 	if start < 0 {
 		start = 0
 	}
-	if start >= len(m.events) {
-		start = len(m.events) - 1
+	if start >= len(m.lines) {
+		start = len(m.lines) - 1
 	}
-	for i := start; i >= 0 && i < len(m.events); i += dir {
-		ev := m.events[i]
+	for i := start; i >= 0 && i < len(m.lines); i += dir {
+		ev := m.lines[i]
 		if !m.lineEnabled(ev) {
 			continue
 		}
@@ -201,7 +201,7 @@ func (m *model) findHit(start, dir int) int {
 // buffer bounds) and exits tail mode. The hit index becomes the active
 // one used by n/p.
 func (m *model) jumpToHit(idx int) {
-	if idx < 0 || idx >= len(m.events) {
+	if idx < 0 || idx >= len(m.lines) {
 		return
 	}
 	m.searchHit = idx
@@ -211,8 +211,8 @@ func (m *model) jumpToHit(idx int) {
 	if top < 0 {
 		top = 0
 	}
-	if top > len(m.events)-1 {
-		top = len(m.events) - 1
+	if top > len(m.lines)-1 {
+		top = len(m.lines) - 1
 	}
 	m.streamTop = top
 }

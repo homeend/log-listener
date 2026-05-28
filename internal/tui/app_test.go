@@ -175,8 +175,8 @@ func TestModelAppendEventBoundedScrollback(t *testing.T) {
 			Rendered: []render.Part{{Type: "text", Value: "line"}},
 		})
 	}
-	if len(m.events) > 3 {
-		t.Fatalf("scrollback breached: %d", len(m.events))
+	if len(m.lines) > 3 {
+		t.Fatalf("scrollback breached: %d", len(m.lines))
 	}
 }
 
@@ -219,10 +219,14 @@ func TestModelFileListReplaces(t *testing.T) {
 // tui.New() is reflected in the model before any Update is processed —
 // the SetFiles-before-Run deadlock fix.
 func TestNewSeedsInitialFiles(t *testing.T) {
-	app := New(100, []FileEntry{
-		{Path: "/a.log", Group: "g1"},
-		{Path: "/b.log", Group: "g2"},
-	}, []string{"g1", "g2"})
+	app := New(Options{
+		Scrollback: 100,
+		InitialFiles: []FileEntry{
+			{Path: "/a.log", Group: "g1"},
+			{Path: "/b.log", Group: "g2"},
+		},
+		Groups: []GroupInfo{{ID: "g1"}, {ID: "g2"}},
+	})
 	// Reach into the model via reflection-free fast path: the underlying
 	// *model isn't exposed, but if seeding worked, app.prog's initial
 	// model has files preset. We can't easily inspect that without
@@ -283,7 +287,7 @@ func TestModelPageUpPageDown(t *testing.T) {
 		t.Fatal("PgUp should unstick from tail")
 	}
 	// streamTop should be (bottom of view = events - page) - page.
-	wantTop := len(m.events) - 2*page
+	wantTop := len(m.lines) - 2*page
 	if m.streamTop != wantTop {
 		t.Fatalf("after PgUp streamTop=%d want %d", m.streamTop, wantTop)
 	}
@@ -393,8 +397,8 @@ func TestModelScrollbackTrimAdjustsStreamTop(t *testing.T) {
 			Rendered: []render.Part{{Type: "text", Value: fmt.Sprintf("ev %d", i)}},
 		})
 	}
-	if m.streamTop < 0 || m.streamTop >= len(m.events) {
-		t.Fatalf("streamTop=%d out of range (events=%d)", m.streamTop, len(m.events))
+	if m.streamTop < 0 || m.streamTop >= len(m.lines) {
+		t.Fatalf("streamTop=%d out of range (events=%d)", m.streamTop, len(m.lines))
 	}
 	if m.tailMode {
 		t.Fatal("eviction must not silently re-stick to tail")
@@ -483,7 +487,7 @@ func TestModelFastScrollKeys(t *testing.T) {
 	if m.tailMode {
 		t.Fatal("Ctrl+Up should unstick from tail")
 	}
-	wantTop := len(m.events) - m.contentHeight() - vertFastStep
+	wantTop := len(m.lines) - m.contentHeight() - vertFastStep
 	if m.streamTop != wantTop {
 		t.Fatalf("Ctrl+Up: streamTop=%d want %d", m.streamTop, wantTop)
 	}
@@ -576,8 +580,8 @@ func TestModelClearSession(t *testing.T) {
 	// Ctrl+R clears everything.
 	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyCtrlR})
 	m = m2.(*model)
-	if len(m.events) != 0 {
-		t.Fatalf("Ctrl+R should empty events, got %d", len(m.events))
+	if len(m.lines) != 0 {
+		t.Fatalf("Ctrl+R should empty events, got %d", len(m.lines))
 	}
 	if !m.tailMode {
 		t.Fatal("Ctrl+R should re-enter tail mode")

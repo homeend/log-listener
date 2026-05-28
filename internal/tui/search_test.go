@@ -204,7 +204,7 @@ func TestModelSearchSkipsDisabledGroup(t *testing.T) {
 	m = typeQuery(t, m, "needle")
 	if m.searchHit != 2 {
 		t.Fatalf("disabled group b hits must be skipped; got hit at %d (events=%+v)",
-			m.searchHit, m.events)
+			m.searchHit, m.lines)
 	}
 }
 

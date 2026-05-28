@@ -26,6 +26,14 @@ directories:
     file_filter:
       name_regex: 'panic-.*\.log'
 
+  # disabled: true → entry filtered out at load time (no watcher, no panel).
+  # off: true      → entry loaded but TUI toggle starts off (group hidden;
+  #                   user can re-enable with digit / shift+digit keys).
+  # Either both fields may be set; disabled wins if both are true.
+  # - id: noisy
+  #   paths: [/var/log/very-noisy]
+  #   off: true
+
 files:
   - id: default                # corresponds to -f
     paths:
@@ -47,6 +55,14 @@ renderers:
     applies_to:
       groups: [errors]         # only files assigned to the "errors" group
       paths: ['*.app.log']     # AND filename glob (both must match)
+
+  # Same disabled / off semantics as groups. Toggling a loaded renderer
+  # at runtime (shift+digit, !@#$%^&*( or the Ctrl+E panel) re-renders
+  # all scrollback so existing rows reflect the new state.
+  # - name: legacy
+  #   line_regex: '.+'
+  #   template: '$0'
+  #   off: true
 
 # ----- output destinations ------------------------------------------------
 

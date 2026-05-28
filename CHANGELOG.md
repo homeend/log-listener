@@ -17,6 +17,42 @@ and this project adheres to phased delivery per `PLAN.md`.
 
 ## [Unreleased]
 
+### Runtime renderer toggles + YAML `disabled` / `off`
+- **Renderer toggles** — `!` `@` `#` `$` `%` `^` `&` `*` `(` (shifted
+  digits 1–9) toggle renderers on/off in the TUI, mirroring the
+  digit-key toggles for groups. **The entire scrollback re-renders
+  live**: existing JSON-pretty-print blocks turn back into the raw log
+  line, and toggling back on regenerates them from the same source.
+  Future events also honor the new state.
+- **`Ctrl+E`** opens the new **Renderers** overlay (mirror of Ctrl+G
+  Groups): lists every loaded renderer with its toggle key, `ON`/`OFF`
+  state, and name.
+- Footer status grows a new `rend: N (M off)` segment.
+- **`disabled: true`** (hard) — works on dir groups, file groups, and
+  renderers. The entry is filtered out at YAML load time and never
+  reaches the pipeline / watcher / TUI; keyboard cannot bring it back.
+- **`off: true`** (soft) — same three entry kinds. The entry is loaded
+  normally, but its TUI toggle starts in the off position. The user
+  can flip it on with the digit / shifted-digit key or the panel. For
+  renderers, the pipeline's atomic enable flag is initialized to false.
+  If both `disabled` and `off` are set, `disabled` wins.
+- Removed the `$` "jump-to-widest-line" horizontal-scroll binding —
+  `$` is now the renderer-#4 toggle. Right-arrow still pans.
+
+Internals: TUI scrollback restructured. `m.events` was a flat
+`[]displayLine`; it's now a pair of fields: `m.entries []scrollbackEvent`
+(source of truth — group, file, raw, lines) and `m.lines []displayLine`
+(derived flat cache used by every hot-path reader, kept in sync by
+`appendEvent` / `trimToCap` / `reRenderAll`). Scrollback cap stays
+line-count-based; trim evicts whole entries from the head and shifts
+`streamTop` / `searchHit` by lines-dropped. `tui.New` now takes an
+`Options` struct instead of positional args (callers: main.go +
+TestNewSeedsInitialFiles). `render.Pipeline` gained `sync/atomic`-based
+per-renderer enable flags (`SetRendererEnabled` / `IsEnabled` /
+`RendererCount` / `RendererName`), so `Render` does a lock-free atomic
+load on the hot path and toggle calls from the bubbletea goroutine
+need no mutex.
+
 ### TUI: in-line search (`/`, `n`, `p`)
 - **`/`** opens a search prompt at the bottom of the screen. Type the
   term (case-insensitive substring), press **Enter** to commit, or

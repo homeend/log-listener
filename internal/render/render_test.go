@@ -226,3 +226,88 @@ func TestPipelineRendererScopedByAppliesTo(t *testing.T) {
 		})
 	}
 }
+
+func TestPipelineSetRendererEnabledFallsToNextMatch(t *testing.T) {
+	specs := []config.RendererSpec{
+		{Name: "first", LineRegex: `^X`, Template: `[first]`},
+		{Name: "second", LineRegex: `^X`, Template: `[second]`},
+	}
+	p, err := NewPipeline(specs, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ev, _ := p.Render(time.Now(), "d", "/x", "X line")
+	if ev.Renderer != "first" {
+		t.Fatalf("baseline: renderer=%q want first", ev.Renderer)
+	}
+
+	p.SetRendererEnabled(0, false)
+	if p.IsEnabled(0) {
+		t.Fatal("renderer 0 should be off after SetRendererEnabled(0, false)")
+	}
+	ev2, _ := p.Render(time.Now(), "d", "/x", "X line")
+	if ev2.Renderer != "second" {
+		t.Fatalf("after disabling first: renderer=%q want second", ev2.Renderer)
+	}
+
+	// Re-enable — first wins again.
+	p.SetRendererEnabled(0, true)
+	ev3, _ := p.Render(time.Now(), "d", "/x", "X line")
+	if ev3.Renderer != "first" {
+		t.Fatalf("after re-enabling: renderer=%q want first", ev3.Renderer)
+	}
+}
+
+func TestPipelineDisabledFallsThroughToRaw(t *testing.T) {
+	p, err := NewPipeline([]config.RendererSpec{
+		{Name: "only", LineRegex: `.*`, Template: `[styled]`},
+	}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p.SetRendererEnabled(0, false)
+	ev, ok := p.Render(time.Now(), "d", "/x", "hello")
+	if !ok {
+		t.Fatal("non-drop pipeline must not drop a disabled-renderer line")
+	}
+	if ev.Renderer != "" {
+		t.Fatalf("renderer name should be empty on raw fallthrough, got %q", ev.Renderer)
+	}
+	if len(ev.Rendered) != 1 || ev.Rendered[0].Value != "hello" {
+		t.Fatalf("expected raw text part, got %+v", ev.Rendered)
+	}
+}
+
+func TestPipelineStartOffHonored(t *testing.T) {
+	p, _ := NewPipeline([]config.RendererSpec{
+		{Name: "sleeping", LineRegex: `.*`, Template: `[s]`, StartOff: true},
+	}, false)
+	if p.IsEnabled(0) {
+		t.Fatal("StartOff=true must initialize renderer disabled")
+	}
+	ev, _ := p.Render(time.Now(), "d", "/x", "hello")
+	if ev.Renderer != "" {
+		t.Fatalf("disabled renderer should not run; got %q", ev.Renderer)
+	}
+}
+
+func TestPipelineRendererAccessors(t *testing.T) {
+	p, _ := NewPipeline([]config.RendererSpec{
+		{Name: "a", LineRegex: `.*`, Template: `$0`},
+		{Name: "b", LineRegex: `.*`, Template: `$0`},
+	}, false)
+	if p.RendererCount() != 2 {
+		t.Fatalf("count=%d want 2", p.RendererCount())
+	}
+	if p.RendererName(0) != "a" || p.RendererName(1) != "b" {
+		t.Fatalf("names: %q %q", p.RendererName(0), p.RendererName(1))
+	}
+	// Out-of-range stays silent.
+	p.SetRendererEnabled(99, false)
+	if p.IsEnabled(99) {
+		t.Fatal("out-of-range IsEnabled must return false")
+	}
+	if p.RendererName(99) != "" {
+		t.Fatal("out-of-range name must be empty")
+	}
+}

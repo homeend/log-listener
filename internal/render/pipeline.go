@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"regexp"
+	"sync/atomic"
 	"time"
 
 	"log-listener/internal/config"
@@ -87,14 +88,18 @@ type Event struct {
 }
 
 // Pipeline holds the ordered list of compiled renderers plus the
-// drop-unmatched switch.
+// drop-unmatched switch. Each renderer has a parallel atomic.Bool
+// (`enabled`) so the TUI can flip individual renderers on/off
+// concurrently with Render without locking.
 type Pipeline struct {
 	renderers []*Renderer
+	enabled   []*atomic.Bool
 	drop      bool
 }
 
 // NewPipeline compiles all specs into a Pipeline. The order is preserved as
-// declared.
+// declared. Each renderer starts enabled, except those whose spec carries
+// `StartOff: true` (from YAML `off: true`).
 func NewPipeline(specs []config.RendererSpec, dropUnmatched bool) (*Pipeline, error) {
 	p := &Pipeline{drop: dropUnmatched}
 	for _, s := range specs {
@@ -102,17 +107,25 @@ func NewPipeline(specs []config.RendererSpec, dropUnmatched bool) (*Pipeline, er
 		if err != nil {
 			return nil, err
 		}
+		flag := &atomic.Bool{}
+		flag.Store(!s.StartOff)
 		p.renderers = append(p.renderers, r)
+		p.enabled = append(p.enabled, flag)
 	}
 	return p, nil
 }
 
 // Render attempts to match line against each renderer in declaration order.
-// First match wins. Returns ok=false when no renderer matched and the
-// pipeline was configured to drop unmatched lines.
+// First match wins. Disabled renderers are skipped, so a line that would
+// have been handled by a disabled renderer falls through to the next
+// matching one (or to raw text, or to drop). Returns ok=false when no
+// renderer matched and the pipeline was configured to drop unmatched lines.
 func (p *Pipeline) Render(now time.Time, group, path, raw string) (Event, bool) {
 	ev := Event{Ts: now, File: path, Group: group, Raw: raw}
-	for _, r := range p.renderers {
+	for i, r := range p.renderers {
+		if !p.enabled[i].Load() {
+			continue
+		}
 		if !r.Applies(group, path) {
 			continue
 		}
@@ -130,4 +143,34 @@ func (p *Pipeline) Render(now time.Time, group, path, raw string) (Event, bool) 
 	}
 	ev.Rendered = []Part{{Type: "text", Value: raw}}
 	return ev, true
+}
+
+// SetRendererEnabled toggles the i-th renderer's enable flag. Indices
+// out of range are silent no-ops so callers can pass through user-
+// supplied indices without bounds-checking.
+func (p *Pipeline) SetRendererEnabled(i int, on bool) {
+	if i < 0 || i >= len(p.enabled) {
+		return
+	}
+	p.enabled[i].Store(on)
+}
+
+// IsEnabled reports the current enable state of the i-th renderer.
+// Out-of-range indices return false.
+func (p *Pipeline) IsEnabled(i int) bool {
+	if i < 0 || i >= len(p.enabled) {
+		return false
+	}
+	return p.enabled[i].Load()
+}
+
+// RendererCount returns the number of compiled renderers.
+func (p *Pipeline) RendererCount() int { return len(p.renderers) }
+
+// RendererName returns the i-th renderer's name. Empty for out-of-range.
+func (p *Pipeline) RendererName(i int) string {
+	if i < 0 || i >= len(p.renderers) {
+		return ""
+	}
+	return p.renderers[i].Name
 }
