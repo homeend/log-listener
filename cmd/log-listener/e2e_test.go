@@ -257,6 +257,172 @@ func TestE2ELiveTailingRotation(t *testing.T) {
 	}
 }
 
+// TestE2EStaticDirGlobAtStartup asserts that -d with a glob pattern
+// expands at startup to all matching directories and picks up files in
+// each of them.
+func TestE2EStaticDirGlobAtStartup(t *testing.T) {
+	base := t.TempDir()
+	// Two sibling dirs matching the pattern.
+	for _, sub := range []string{"acp-A", "acp-B"} {
+		d := filepath.Join(base, sub, "log")
+		if err := os.MkdirAll(d, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(d, "x.log"), []byte{}, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	pattern := filepath.Join(base, "acp-*", "log")
+	s := startListener(t, "-d", pattern, "-r", `name:\.log$`, "--no-tui", "--no-color")
+	time.Sleep(400 * time.Millisecond)
+
+	// Append a line to each — both must be visible.
+	for _, sub := range []string{"acp-A", "acp-B"} {
+		f, err := os.OpenFile(filepath.Join(base, sub, "log", "x.log"), os.O_APPEND|os.O_WRONLY, 0o644)
+		if err != nil {
+			t.Fatal(err)
+		}
+		f.WriteString("hi-from-" + sub + "\n")
+		f.Close()
+	}
+
+	want := map[string]bool{"hi-from-acp-A": false, "hi-from-acp-B": false}
+	deadline := time.Now().Add(5 * time.Second)
+	for !allSeen(want) && time.Now().Before(deadline) {
+		_, all, to := s.Await(500*time.Millisecond, func(line string) bool {
+			for marker := range want {
+				if !want[marker] && strings.Contains(line, marker) {
+					want[marker] = true
+					return true
+				}
+			}
+			return false
+		})
+		_ = all
+		_ = to
+	}
+	for marker, seen := range want {
+		if !seen {
+			t.Fatalf("never saw %q (pattern: %s)", marker, pattern)
+		}
+	}
+}
+
+func allSeen(m map[string]bool) bool {
+	for _, v := range m {
+		if !v {
+			return false
+		}
+	}
+	return true
+}
+
+// TestE2ENewDirMatchingPattern starts with one matching dir, then creates
+// a second one at runtime. Files in the runtime-created dir must be
+// tailed.
+func TestE2ENewDirMatchingPattern(t *testing.T) {
+	base := t.TempDir()
+	// One existing matching dir.
+	existing := filepath.Join(base, "acp-old", "log")
+	if err := os.MkdirAll(existing, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(existing, "x.log"), []byte{}, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	pattern := filepath.Join(base, "acp-*", "log")
+	s := startListener(t, "-d", pattern, "-r", `name:\.log$`, "--no-tui", "--no-color")
+	time.Sleep(400 * time.Millisecond)
+
+	// Create a NEW matching dir + file at runtime.
+	fresh := filepath.Join(base, "acp-new", "log")
+	if err := os.MkdirAll(fresh, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(300 * time.Millisecond) // let the new-dir cascade settle
+	if err := os.WriteFile(filepath.Join(fresh, "fresh.log"), []byte("hello-from-new\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	matched, all, to := s.Await(5*time.Second, func(l string) bool {
+		return strings.Contains(l, "hello-from-new")
+	})
+	if to {
+		t.Fatalf("runtime-created dir's file never tailed; lines:\n  %s",
+			strings.Join(all, "\n  "))
+	}
+	if !strings.Contains(matched, "fresh.log") {
+		t.Fatalf("got %q", matched)
+	}
+}
+
+// TestE2ENewDirWithDelayedSubdir covers the multi-hop case where the
+// pattern has segments AFTER the wildcard: the matching parent appears
+// first, then the sub-directory inside it, then the file.
+func TestE2ENewDirWithDelayedSubdir(t *testing.T) {
+	base := t.TempDir()
+	pattern := filepath.Join(base, "run-*", "logs")
+	s := startListener(t, "-d", pattern, "-r", `name:\.log$`, "--no-tui", "--no-color")
+	time.Sleep(400 * time.Millisecond)
+
+	// Step 1: the wildcard-matching parent appears.
+	mid := filepath.Join(base, "run-42")
+	if err := os.Mkdir(mid, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(200 * time.Millisecond)
+
+	// Step 2: the suffix sub-dir appears.
+	deep := filepath.Join(mid, "logs")
+	if err := os.Mkdir(deep, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(200 * time.Millisecond)
+
+	// Step 3: the file appears.
+	if err := os.WriteFile(filepath.Join(deep, "app.log"), []byte("multi-hop-marker\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	_, all, to := s.Await(5*time.Second, func(l string) bool {
+		return strings.Contains(l, "multi-hop-marker")
+	})
+	if to {
+		t.Fatalf("multi-hop create chain not picked up; lines:\n  %s",
+			strings.Join(all, "\n  "))
+	}
+}
+
+// TestE2EFileGlobPicksUpNewDirs verifies the -f / files-group runtime
+// glob behaviour: a brand-new directory containing a file that matches
+// the file-group glob gets tailed.
+func TestE2EFileGlobPicksUpNewDirs(t *testing.T) {
+	base := t.TempDir()
+	pattern := filepath.Join(base, "session-*", "out.log")
+	s := startListener(t, "-f", pattern, "--no-tui", "--no-color")
+	time.Sleep(400 * time.Millisecond)
+
+	// Create new session dir + matching file.
+	d := filepath.Join(base, "session-new")
+	if err := os.Mkdir(d, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(200 * time.Millisecond)
+	if err := os.WriteFile(filepath.Join(d, "out.log"), []byte("file-glob-marker\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	_, all, to := s.Await(5*time.Second, func(l string) bool {
+		return strings.Contains(l, "file-glob-marker")
+	})
+	if to {
+		t.Fatalf("file-group glob did not pick up new dir; lines:\n  %s",
+			strings.Join(all, "\n  "))
+	}
+}
+
 // TestE2ESSEDeliversEvents asserts that the SSE broadcast carries the same
 // rendered events that show up on stdout.
 func TestE2ESSEDeliversEvents(t *testing.T) {

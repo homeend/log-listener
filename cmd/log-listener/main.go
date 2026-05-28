@@ -126,11 +126,11 @@ func runOnce(assignments []discover.Assignment, pipeline *render.Pipeline, stdou
 }
 
 func runWatch(cfg *config.Config, assignments []discover.Assignment, pipeline *render.Pipeline, stdoutSink *sink.Stdout, sseHub *sink.SSEHub, stderr io.Writer) error {
-	matcher := makeNewFileMatcher(cfg)
-	w, err := watch.New(matcher, 500*time.Millisecond)
+	w, err := watch.New(makeNewFileMatcher(cfg), 500*time.Millisecond)
 	if err != nil {
 		return err
 	}
+	w.SetDirMatcher(makeNewDirMatcher(cfg))
 	defer w.Close()
 
 	for _, a := range assignments {
@@ -200,11 +200,11 @@ func emit(p *render.Pipeline, stdoutSink *sink.Stdout, sseHub *sink.SSEHub, grou
 // events through the renderer pipeline into app.Push() and (if configured)
 // the SSE hub.
 func runWatchTUI(cfg *config.Config, assignments []discover.Assignment, pipeline *render.Pipeline, sseHub *sink.SSEHub, stderr io.Writer) error {
-	matcher := makeNewFileMatcher(cfg)
-	w, err := watch.New(matcher, 500*time.Millisecond)
+	w, err := watch.New(makeNewFileMatcher(cfg), 500*time.Millisecond)
 	if err != nil {
 		return err
 	}
+	w.SetDirMatcher(makeNewDirMatcher(cfg))
 	defer w.Close()
 
 	for _, a := range assignments {
@@ -272,10 +272,26 @@ func makeNewFileMatcher(cfg *config.Config) watch.NewFileMatcher {
 			return "", false
 		}
 		for _, g := range cfg.Groups {
-			if g.Kind != discover.GroupDir {
+			if g.Kind == discover.GroupFile {
+				// File groups: literal exact match or glob pattern match
+				// on the full path. No filter applied (file groups are
+				// always unfiltered, like the static -f expansion).
+				for _, p := range g.Paths {
+					absP, _ := filepath.Abs(p)
+					absFile, _ := filepath.Abs(path)
+					if discover.HasMeta(absP) {
+						if m, _ := filepath.Match(absP, absFile); m {
+							return g.ID, true
+						}
+					} else if absP == absFile {
+						return g.ID, true
+					}
+				}
 				continue
 			}
-			if !pathUnderAny(path, g.Paths, g.Recursive) {
+			// Dir group: path must lie under one of the configured paths
+			// (literal or pattern), then satisfy the file filter.
+			if !fileBelongsToDirGroup(g, path) {
 				continue
 			}
 			if !g.Filter.Allow(info.Name(), info.ModTime()) {
@@ -287,6 +303,87 @@ func makeNewFileMatcher(cfg *config.Config) watch.NewFileMatcher {
 			return g.ID, true
 		}
 		return "", false
+	}
+}
+
+// makeNewDirMatcher accepts a newly-appeared directory if any group's
+// configured path (literal recursive dir, or pattern) plausibly leads to
+// log files inside that directory tree. Used by the watcher to decide
+// whether to add an fsnotify watch on the new dir and scan it.
+func makeNewDirMatcher(cfg *config.Config) watch.NewDirMatcher {
+	return func(path string) bool {
+		absPath, err := filepath.Abs(path)
+		if err != nil {
+			return false
+		}
+		for _, g := range cfg.Groups {
+			for _, p := range g.Paths {
+				absP, err := filepath.Abs(p)
+				if err != nil {
+					continue
+				}
+				if discover.HasMeta(absP) {
+					// Pattern: watch if absPath is a prefix-match. Covers
+					// the multi-hop case (e.g. /tmp/acp-*/sub where we
+					// need to start watching /tmp/acp-NEW before /sub is
+					// created inside it).
+					if m, _ := discover.PrefixMatchesPattern(absP, absPath); m {
+						return true
+					}
+				} else if g.Kind == discover.GroupDir && g.Recursive {
+					// Recursive literal dir: any descendant matters.
+					if pathUnderAny(absPath, []string{absP}, true) {
+						return true
+					}
+				}
+			}
+		}
+		return false
+	}
+}
+
+// fileBelongsToDirGroup reports whether filePath is under some entry in
+// g.Paths, honouring g.Recursive. Pattern entries are matched
+// segment-wise; literal entries fall through to pathUnderAny.
+func fileBelongsToDirGroup(g *discover.Group, filePath string) bool {
+	absFile, err := filepath.Abs(filePath)
+	if err != nil {
+		return false
+	}
+	for _, p := range g.Paths {
+		absP, err := filepath.Abs(p)
+		if err != nil {
+			continue
+		}
+		if discover.HasMeta(absP) {
+			if fileMatchesDirPattern(absP, absFile, g.Recursive) {
+				return true
+			}
+		} else if pathUnderAny(absFile, []string{absP}, g.Recursive) {
+			return true
+		}
+	}
+	return false
+}
+
+// fileMatchesDirPattern reports whether file is inside some directory
+// that matches dirPattern. recursive=false → file's immediate parent
+// must match; recursive=true → any ancestor may match.
+func fileMatchesDirPattern(dirPattern, file string, recursive bool) bool {
+	fileDir := filepath.Dir(file)
+	dir := fileDir
+	for {
+		if m, _ := discover.MatchesPath(dirPattern, dir); m {
+			if !recursive {
+				return dir == fileDir
+			}
+			return true
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return false
+		}
+		dir = parent
 	}
 }
 
@@ -328,22 +425,53 @@ func dirsToWatch(cfg *config.Config) []string {
 		seen[abs] = struct{}{}
 		out = append(out, abs)
 	}
-	for _, g := range cfg.Groups {
-		if g.Kind != discover.GroupDir {
-			continue
+
+	walkDirIntoWatches := func(root string, recursive bool) {
+		info, err := os.Stat(root)
+		if err != nil || !info.IsDir() {
+			return
 		}
+		add(root)
+		if !recursive {
+			return
+		}
+		_ = filepath.WalkDir(root, func(p string, d fs.DirEntry, walkErr error) error {
+			if walkErr != nil || !d.IsDir() {
+				return nil
+			}
+			add(p)
+			return nil
+		})
+	}
+
+	for _, g := range cfg.Groups {
 		for _, root := range g.Paths {
-			if !g.Recursive {
-				add(root)
+			if discover.HasMeta(root) {
+				// Pattern path: watch the literal prefix so future dirs
+				// matching the pattern fire Create events. Also walk all
+				// currently-matching expansions so their existing subtrees
+				// are watched (dir group recurses; file group only needs
+				// the matched dir for its file events).
+				if prefix := discover.LiteralPrefix(root); prefix != "" {
+					add(prefix)
+				}
+				matches, _ := filepath.Glob(root)
+				for _, m := range matches {
+					if g.Kind == discover.GroupDir {
+						walkDirIntoWatches(m, g.Recursive)
+					} else {
+						add(filepath.Dir(m))
+					}
+				}
 				continue
 			}
-			_ = filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
-				if err != nil || !d.IsDir() {
-					return nil
-				}
-				add(p)
-				return nil
-			})
+
+			// Literal path. Dir groups → walk; file groups → parent dir.
+			if g.Kind == discover.GroupDir {
+				walkDirIntoWatches(root, g.Recursive)
+			} else {
+				add(filepath.Dir(root))
+			}
 		}
 	}
 	return out

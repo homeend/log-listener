@@ -80,6 +80,28 @@ to. Numbered ids (`-d1`, `-r1`, `-d2`, …) let you keep multiple groups with
 distinct rules in a single invocation. A rule flag (`-rN`) pairs with the
 directory flag of the same number (`-dN`).
 
+### Pattern paths
+
+Both `-d` (directory groups) and `-f` (file groups) accept glob patterns
+in their paths (`*`, `?`, `[abc]` — `path.Match` semantics). Patterns
+are evaluated both at startup AND at runtime:
+
+- **At startup**, each pattern is expanded to all currently-matching
+  paths.
+- **At runtime**, the watcher monitors each pattern's *literal prefix*
+  (the part before the first `*`/`?`/`[`). Any newly-created directory
+  that could plausibly lead to a pattern match is automatically watched
+  and recursively scanned for matching files. This covers multi-hop
+  patterns where the parent of the wildcard appears first, then the
+  suffix directory, then the file — all three Create events are
+  cascaded through.
+
+Example: `-d '/tmp/acp-logs-*/sub' -r 'name:\.log$'` watches every
+`.log` file in `/tmp/acp-logs-*/sub`, and when a brand-new
+`/tmp/acp-logs-XYZ/sub/` directory appears later, its files are tailed
+as soon as they're created. Same for files: `-f '/tmp/session-*/out.log'`
+picks up `out.log` inside any new `session-*` directory.
+
 ### First-match-wins
 
 Two places, same rule:
@@ -486,11 +508,10 @@ payloads — both are tested.
 - **Linux first.** Built for fsnotify on `inotify`. macOS works (fsnotify
   supports kqueue) but is less exercised. Windows is a future-milestone
   goal — not currently supported.
-- **No recursive subdirectory creation handling.** If a *new* subdirectory
-  appears under a recursive group at runtime, files created inside it
-  aren't observed (the parent directory watches at startup don't extend
-  to subdirs created later). Files created in **existing** subdirs are
-  fine.
+- **Recursive subdirectory creation IS handled** — see the "Pattern
+  paths" section above. New subdirectories appearing inside a recursive
+  group (or inside a watched glob expansion) at runtime get an fsnotify
+  watch + a recursive scan, and their files are tailed as they appear.
 - **`$10` ambiguity.** Multi-digit captures parse greedily —
   `$10` is capture 10, not "$1 followed by 0". Use a literal escape if
   you need that.

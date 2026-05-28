@@ -17,6 +17,28 @@ and this project adheres to phased delivery per `PLAN.md`.
 
 ## [Unreleased]
 
+### Pattern-based directory matching with runtime new-dir detection
+- `-d` and `directories: paths:` now accept glob patterns (`*`, `?`,
+  `[abc]`) in any path segment — not just `-f`.
+- At startup, each pattern is expanded to all currently-matching
+  directories. Missing matches are not an error (literal-path typos
+  still are).
+- At runtime, the watcher monitors each pattern's *literal prefix* and
+  any directory the pattern could lead to. New directories are picked
+  up via fsnotify Create events and recursively scanned; matching files
+  inside them start tailing immediately. Multi-hop create chains are
+  cascaded (e.g. `/tmp/acp-*/sub`: new `acp-NEW/`, then `sub/`, then
+  `file.log` — all three trigger).
+- Same dynamic behaviour applies to `-f` glob paths whose parent
+  directory doesn't exist yet (e.g. `-f /tmp/session-*/out.log`).
+- New API: `watch.NewDirMatcher` + `Watcher.SetDirMatcher`. The matcher
+  decides whether a newly-created directory is interesting enough to
+  watch + scan.
+- New helpers in `internal/discover`: `HasMeta`, `LiteralPrefix`,
+  `MatchesPath`, `PrefixMatchesPattern`.
+- README: removed the "no recursive subdir creation handling"
+  limitation; added a "Pattern paths" section under Concepts.
+
 ### TUI tail mode + browse mode
 - Replaced the offset-from-end `streamScroll` with a proper tail/browse
   state machine: `tailMode bool` + `streamTop int` (absolute index).

@@ -89,33 +89,57 @@ func ListCandidates(g Group) ([]candidate, error) {
 
 	switch g.Kind {
 	case GroupDir:
-		for _, root := range g.Paths {
-			info, err := statPath(root)
-			if err != nil {
-				return nil, fmt.Errorf("discover: %s: %w", root, err)
-			}
-			if !info.IsDir() {
-				return nil, fmt.Errorf("discover: %s is not a directory", root)
-			}
-			walkFn := func(p string, d fs.DirEntry, err error) error {
+		for _, configured := range g.Paths {
+			// A path with glob meta expands to zero-or-more concrete
+			// directories at this point in time. Missing matches at
+			// startup are NOT an error — the runtime watcher will pick
+			// them up when they appear. A literal path that doesn't
+			// exist IS an error (likely a typo).
+			var roots []string
+			if HasMeta(configured) {
+				matches, err := filepath.Glob(configured)
 				if err != nil {
-					return err
+					return nil, fmt.Errorf("discover: bad pattern %q: %w", configured, err)
 				}
-				if d.IsDir() {
-					if !g.Recursive && p != root {
-						return fs.SkipDir
+				roots = matches
+			} else {
+				roots = []string{configured}
+			}
+			for _, root := range roots {
+				info, err := statPath(root)
+				if err != nil {
+					if HasMeta(configured) {
+						// Race: matched then immediately removed. Skip.
+						continue
 					}
+					return nil, fmt.Errorf("discover: %s: %w", root, err)
+				}
+				if !info.IsDir() {
+					if HasMeta(configured) {
+						continue // glob matched a non-dir; ignore
+					}
+					return nil, fmt.Errorf("discover: %s is not a directory", root)
+				}
+				walkFn := func(p string, d fs.DirEntry, err error) error {
+					if err != nil {
+						return err
+					}
+					if d.IsDir() {
+						if !g.Recursive && p != root {
+							return fs.SkipDir
+						}
+						return nil
+					}
+					fi, ferr := d.Info()
+					if ferr != nil {
+						return ferr
+					}
+					add(p, fi)
 					return nil
 				}
-				fi, ferr := d.Info()
-				if ferr != nil {
-					return ferr
+				if err := filepath.WalkDir(root, walkFn); err != nil {
+					return nil, fmt.Errorf("discover: walk %s: %w", root, err)
 				}
-				add(p, fi)
-				return nil
-			}
-			if err := filepath.WalkDir(root, walkFn); err != nil {
-				return nil, fmt.Errorf("discover: walk %s: %w", root, err)
 			}
 		}
 	case GroupFile:

@@ -2,6 +2,8 @@ package watch
 
 import (
 	"errors"
+	"io/fs"
+	"os"
 	"path/filepath"
 	"sync"
 	"time"
@@ -20,21 +22,29 @@ type Event struct {
 // which group it belongs to.
 type NewFileMatcher func(path string) (groupID string, accept bool)
 
+// NewDirMatcher decides whether a newly-created directory is interesting
+// enough to add a watch on (so its children fire fsnotify events) and to
+// recursively scan for matching files. Used to pick up pattern-based dir
+// matches (-d '/tmp/acp-logs-*/sub') and the parent-of-glob case for files
+// (-f '/tmp/acp-logs-*/sub/*.log').
+type NewDirMatcher func(path string) (accept bool)
+
 // Watcher fans fsnotify events out to per-file Tailers and forwards their
 // lines on Events(). New files appearing in a watched directory are matched
 // via NewFileMatcher; if accepted, a Tailer is created for them.
 type Watcher struct {
-	fs       *fsnotify.Watcher
-	matcher  NewFileMatcher
-	mu       sync.Mutex
-	tailers  map[string]*Tailer // path → tailer
-	groups   map[string]string  // path → group ID
-	watched  map[string]struct{} // directory paths we've added to fsnotify
-	events   chan Event
-	errs     chan error
-	done     chan struct{}
-	closeOnce sync.Once
-	pollEvery time.Duration
+	fs         *fsnotify.Watcher
+	matcher    NewFileMatcher
+	dirMatcher NewDirMatcher
+	mu         sync.Mutex
+	tailers    map[string]*Tailer  // path → tailer
+	groups     map[string]string   // path → group ID
+	watched    map[string]struct{} // directory paths we've added to fsnotify
+	events     chan Event
+	errs       chan error
+	done       chan struct{}
+	closeOnce  sync.Once
+	pollEvery  time.Duration
 }
 
 // New creates a Watcher. matcher may be nil; in that case new files are
@@ -58,6 +68,16 @@ func New(matcher NewFileMatcher, pollEvery time.Duration) (*Watcher, error) {
 	}
 	go w.loop()
 	return w, nil
+}
+
+// SetDirMatcher installs a NewDirMatcher that is consulted whenever a
+// directory appears (Create event on a watched parent). If it accepts the
+// new dir, the watcher adds an fsnotify watch on it AND recursively scans
+// it for files; each file is offered to the NewFileMatcher.
+func (w *Watcher) SetDirMatcher(m NewDirMatcher) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.dirMatcher = m
 }
 
 // Add registers a file for tailing. fromStart controls whether the existing
@@ -182,7 +202,21 @@ func (w *Watcher) handleFsEvent(ev fsnotify.Event) {
 		return
 	}
 
-	if ev.Has(fsnotify.Create) && w.matcher != nil {
+	if !ev.Has(fsnotify.Create) {
+		return
+	}
+
+	// Stat to find out whether this is a file or a directory. A miss is
+	// fine (created-then-removed race) — just bail.
+	info, statErr := os.Stat(abs)
+	if statErr != nil {
+		return
+	}
+	if info.IsDir() {
+		w.handleNewDir(abs)
+		return
+	}
+	if w.matcher != nil {
 		gid, ok := w.matcher(abs)
 		if !ok {
 			return
@@ -193,6 +227,55 @@ func (w *Watcher) handleFsEvent(ev fsnotify.Event) {
 			w.pushErr(err)
 		}
 	}
+}
+
+// handleNewDir runs when a Create event fires for a path that turned out to
+// be a directory. If the dirMatcher accepts the new dir, we add a watch on
+// it (so future child Creates fire) and recursively scan it for files —
+// each file is offered to the file matcher. The dir matcher's "accept"
+// semantics are "prefix match of some configured pattern" so intermediate
+// dirs in a multi-segment pattern (e.g. /tmp/acp-*/sub) get watched too.
+func (w *Watcher) handleNewDir(abs string) {
+	w.mu.Lock()
+	accept := w.dirMatcher != nil && w.dirMatcher(abs)
+	matcher := w.matcher
+	w.mu.Unlock()
+	if !accept {
+		return
+	}
+	if err := w.WatchDir(abs); err != nil && !errors.Is(err, fsnotify.ErrEventOverflow) {
+		w.pushErr(err)
+	}
+	// Walk for any pre-existing files / subdirs that already lived under
+	// this dir at Create time (rare for log dirs but cheap to handle).
+	_ = filepath.WalkDir(abs, func(p string, d fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return nil
+		}
+		if d.IsDir() {
+			if p == abs {
+				return nil
+			}
+			// Recurse into descendant dirs the same way: if the dirMatcher
+			// would accept them, watch them so their children fire events.
+			w.mu.Lock()
+			subAccept := w.dirMatcher != nil && w.dirMatcher(p)
+			w.mu.Unlock()
+			if subAccept {
+				_ = w.WatchDir(p)
+			}
+			return nil
+		}
+		if matcher == nil {
+			return nil
+		}
+		gid, ok := matcher(p)
+		if !ok {
+			return nil
+		}
+		_ = w.Add(p, gid, true)
+		return nil
+	})
 }
 
 func (w *Watcher) tickAll() {

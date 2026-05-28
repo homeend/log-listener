@@ -86,6 +86,52 @@ func TestListCandidatesDirNonRecursive(t *testing.T) {
 	}
 }
 
+func TestListCandidatesDirGlob(t *testing.T) {
+	dir := t.TempDir()
+	// Create two sibling dirs matching the pattern, and one that doesn't.
+	for _, sub := range []string{"acp-1", "acp-2", "other"} {
+		writeFile(t, filepath.Join(dir, sub, "log", "a.log"), "x", time.Time{})
+	}
+	g := Group{
+		ID: "default", Kind: GroupDir,
+		Paths:     []string{filepath.Join(dir, "acp-*", "log")},
+		Recursive: true,
+	}
+	got, err := ListCandidates(g)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Should see 2 files (one in acp-1/log, one in acp-2/log), not 3.
+	if len(got) != 2 {
+		t.Fatalf("want 2 from dir glob, got %d: %+v", len(got), got)
+	}
+}
+
+func TestListCandidatesDirGlobNoMatchIsNotError(t *testing.T) {
+	dir := t.TempDir()
+	g := Group{
+		ID: "default", Kind: GroupDir,
+		Paths: []string{filepath.Join(dir, "never-matches-*", "sub")},
+	}
+	got, err := ListCandidates(g)
+	if err != nil {
+		t.Fatalf("dir glob with zero matches at startup should not error: %v", err)
+	}
+	if len(got) != 0 {
+		t.Fatalf("want 0, got %d", len(got))
+	}
+}
+
+func TestListCandidatesLiteralDirMissingIsError(t *testing.T) {
+	g := Group{
+		ID: "default", Kind: GroupDir,
+		Paths: []string{"/tmp/this-literal-dir-does-not-exist-asdf-9999"},
+	}
+	if _, err := ListCandidates(g); err == nil {
+		t.Fatal("literal dir that doesn't exist should still error (likely a typo)")
+	}
+}
+
 func TestListCandidatesFileGlob(t *testing.T) {
 	dir := t.TempDir()
 	writeFile(t, filepath.Join(dir, "x.log"), "x", time.Time{})

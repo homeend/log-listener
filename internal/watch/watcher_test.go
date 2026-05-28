@@ -89,6 +89,47 @@ func TestWatcherPicksUpNewFiles(t *testing.T) {
 	}
 }
 
+func TestWatcherPicksUpFileInNewSubdir(t *testing.T) {
+	dir := t.TempDir()
+
+	fileMatcher := func(path string) (string, bool) {
+		if filepath.Ext(path) == ".log" {
+			return "g1", true
+		}
+		return "", false
+	}
+	w, err := New(fileMatcher, 100*time.Millisecond)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer w.Close()
+	// Watch ALL new dirs (mimicking a "watch everything under here" matcher).
+	w.SetDirMatcher(func(_ string) bool { return true })
+	if err := w.WatchDir(dir); err != nil {
+		t.Fatal(err)
+	}
+
+	time.Sleep(50 * time.Millisecond)
+
+	// Create a new SUBDIRECTORY, then a file inside it.
+	sub := filepath.Join(dir, "newsub")
+	if err := os.Mkdir(sub, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(150 * time.Millisecond) // let watcher pick up the new subdir
+	if err := os.WriteFile(filepath.Join(sub, "deep.log"), []byte("nested\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	got := drain(t, w, 1, 2*time.Second)
+	if len(got) != 1 || got[0].Line != "nested" {
+		t.Fatalf("want [nested], got %+v", got)
+	}
+	if got[0].Group != "g1" {
+		t.Fatalf("group=%q want g1", got[0].Group)
+	}
+}
+
 func TestWatcherIgnoresUnmatchedNewFiles(t *testing.T) {
 	dir := t.TempDir()
 	matcher := func(path string) (string, bool) {
