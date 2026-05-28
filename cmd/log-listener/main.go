@@ -126,7 +126,7 @@ func runOnce(assignments []discover.Assignment, pipeline *render.Pipeline, stdou
 }
 
 func runWatch(cfg *config.Config, assignments []discover.Assignment, pipeline *render.Pipeline, stdoutSink *sink.Stdout, sseHub *sink.SSEHub, stderr io.Writer) error {
-	w, err := watch.New(makeNewFileMatcher(cfg), 500*time.Millisecond)
+	w, err := watch.New(makeNewFileMatcher(cfg), 2*time.Second)
 	if err != nil {
 		return err
 	}
@@ -200,7 +200,7 @@ func emit(p *render.Pipeline, stdoutSink *sink.Stdout, sseHub *sink.SSEHub, grou
 // events through the renderer pipeline into app.Push() and (if configured)
 // the SSE hub.
 func runWatchTUI(cfg *config.Config, assignments []discover.Assignment, pipeline *render.Pipeline, sseHub *sink.SSEHub, stderr io.Writer) error {
-	w, err := watch.New(makeNewFileMatcher(cfg), 500*time.Millisecond)
+	w, err := watch.New(makeNewFileMatcher(cfg), 2*time.Second)
 	if err != nil {
 		return err
 	}

@@ -14,17 +14,21 @@ import (
 // fsnotify events (or periodically) to read newly appended bytes, split them
 // into complete lines, and detect rotation/truncation.
 type Tailer struct {
-	path  string
-	file  *os.File
-	buf   bytes.Buffer
-	inode uint64
-	pos   int64
+	path    string
+	file    *os.File
+	buf     bytes.Buffer
+	readBuf []byte // 32 KiB scratch buffer — reused across Tick calls
+	inode   uint64
+	pos     int64
 }
 
 // NewTailer opens path. If fromStart is true, reading begins at offset 0;
 // otherwise reading starts from EOF (the typical tail -f behavior).
 func NewTailer(path string, fromStart bool) (*Tailer, error) {
-	t := &Tailer{path: path}
+	t := &Tailer{
+		path:    path,
+		readBuf: make([]byte, 32*1024),
+	}
 	if err := t.open(fromStart); err != nil {
 		return nil, err
 	}
@@ -131,12 +135,11 @@ func (t *Tailer) readAvailable() ([]string, error) {
 		return nil, nil
 	}
 	var lines []string
-	buf := make([]byte, 32*1024)
 	for {
-		n, err := t.file.Read(buf)
+		n, err := t.file.Read(t.readBuf)
 		if n > 0 {
 			t.pos += int64(n)
-			t.buf.Write(buf[:n])
+			t.buf.Write(t.readBuf[:n])
 			for {
 				data := t.buf.Bytes()
 				i := bytes.IndexByte(data, '\n')
@@ -158,6 +161,8 @@ func (t *Tailer) readAvailable() ([]string, error) {
 		if err != nil {
 			return lines, err
 		}
+		// Refill on the next iteration. If we read a full buffer, loop and
+		// drain more; if we read less, the next Read will hit EOF cheaply.
 	}
 }
 

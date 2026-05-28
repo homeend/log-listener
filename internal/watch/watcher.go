@@ -48,8 +48,10 @@ type Watcher struct {
 }
 
 // New creates a Watcher. matcher may be nil; in that case new files are
-// ignored. pollEvery is the periodic safety-net interval (e.g. fsnotify can
-// occasionally miss events under load); use 0 to disable polling.
+// ignored. pollEvery is the periodic safety-net interval — on Linux
+// fsnotify reliably reports every Write, so this only catches the rare
+// missed event. A few seconds is plenty; anything under 1s burns CPU on
+// no-op stats. Use 0 to disable polling.
 func New(matcher NewFileMatcher, pollEvery time.Duration) (*Watcher, error) {
 	fw, err := fsnotify.NewWatcher()
 	if err != nil {

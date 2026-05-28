@@ -17,6 +17,28 @@ and this project adheres to phased delivery per `PLAN.md`.
 
 ## [Unreleased]
 
+### Performance — four hot-path fixes to keep the CPU quiet
+Reported symptom: 13 watched files at ~10–30 lines/sec was spinning up
+laptop fans. Root cause was mostly GC pressure from idle polling.
+
+- **`Tailer.readAvailable` no longer allocates 32 KiB per call.**
+  The read buffer now lives on the `Tailer` and is allocated once in
+  `NewTailer`. Benchmark `BenchmarkTailerIdleTick`: 32 KiB / 3 allocs →
+  272 B / 2 allocs (~120× less heap traffic). At 13 tailers × 2 polls
+  /sec that's 832 KiB/sec → 7 KiB/sec saved on the idle path alone.
+- **Default poll interval bumped 500 ms → 2 s.** The poll is only a
+  safety net for fsnotify dropping an event; Linux inotify is reliable
+  enough that 2 s wide is plenty. 4× fewer no-op `Stat`+`Read` syscalls
+  per second across all tailers.
+- **`SSEHub.Emit` skips `json.Marshal` when no clients are connected.**
+  Process configured with `--sse` but no browser tab attached used to
+  marshal every event for nobody — now it bails after a cheap
+  `len(clients) == 0` check.
+- **TUI `clipLine` fast-path at `horizScroll == 0`** — returns the
+  styled line as-is and lets the terminal wrap. Removes the
+  `stripANSI` regex from the common per-render hot path (~900
+  matches/sec at 30 visible lines × 30 events/sec).
+
 ### Pattern-based directory matching with runtime new-dir detection
 - `-d` and `directories: paths:` now accept glob patterns (`*`, `?`,
   `[abc]`) in any path segment — not just `-f`.

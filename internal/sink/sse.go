@@ -88,11 +88,21 @@ func (h *SSEHub) Close() error {
 
 // Emit broadcasts a JSON-serialized event to all connected clients. Slow
 // clients see drops (their buffered channel is full), never block the hub.
+// When zero clients are connected, the JSON marshal is skipped entirely —
+// useful for processes that run with SSE configured but no browser open.
 func (h *SSEHub) Emit(ev render.Event) {
+	h.mu.Lock()
+	if h.closed || len(h.clients) == 0 {
+		h.mu.Unlock()
+		return
+	}
+	h.mu.Unlock()
+
 	data, err := json.Marshal(ev)
 	if err != nil {
 		return
 	}
+
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	if h.closed {

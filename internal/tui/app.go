@@ -522,28 +522,18 @@ func (m *model) renderStream(rows int) string {
 }
 
 // clipLine applies horizontal scroll + width truncation to a single rendered
-// line. When horizScroll == 0 we keep the original lipgloss styling and just
-// truncate to m.width (using lipgloss-aware truncate so ANSI codes survive).
-// When horizScroll > 0 we strip ANSI, slice runewise, and emit plain text —
-// scrolling and colorized styling don't easily coexist with naive slicing.
+// line. At horizScroll == 0 we return the line as-is — the terminal wraps
+// over-wide lines (long-established log-tailer behaviour) and we avoid the
+// stripANSI regex on the hot path. When horizScroll > 0 we strip ANSI, slice
+// runewise, and emit plain text — scrolling and colorized styling don't
+// easily coexist with naive slicing.
 func (m *model) clipLine(line string) string {
-	width := m.width
-	if width <= 0 {
+	if m.horizScroll == 0 || m.width <= 0 {
 		return line
-	}
-	if m.horizScroll == 0 {
-		// Truncate to width without breaking ANSI. lipgloss is ANSI-aware
-		// when used through a Width-bound style; lipgloss's MaxWidth would
-		// be ideal but isn't available, so fall back to the simple path:
-		// if the plain rendering exceeds width, drop trailing runes.
-		if runeLen(stripANSI(line)) <= width {
-			return line
-		}
-		// Fall through to plain truncation.
 	}
 	plain := stripANSI(line)
 	plain = runeSliceLeft(plain, m.horizScroll)
-	plain = runeTruncate(plain, width)
+	plain = runeTruncate(plain, m.width)
 	return plain
 }
 
