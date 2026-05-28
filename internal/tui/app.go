@@ -63,33 +63,42 @@ func (a *App) Run() error {
 }
 
 // Push delivers a new rendered event to the TUI. Safe from any goroutine.
+// Calls after the program has exited are no-ops (Send to a stopped program
+// is internally a no-op in bubbletea, but the done check avoids the
+// allocation and the ambiguous semantics).
 func (a *App) Push(ev render.Event) {
 	a.mu.Lock()
-	defer a.mu.Unlock()
 	if a.done {
+		a.mu.Unlock()
 		return
 	}
-	a.prog.Send(EventMsg{Event: ev})
+	prog := a.prog
+	a.mu.Unlock()
+	prog.Send(EventMsg{Event: ev})
 }
 
 // SetFiles updates the file panel contents. Safe from any goroutine.
 func (a *App) SetFiles(files []FileEntry) {
 	a.mu.Lock()
-	defer a.mu.Unlock()
 	if a.done {
+		a.mu.Unlock()
 		return
 	}
-	a.prog.Send(FileListMsg{Files: files})
+	prog := a.prog
+	a.mu.Unlock()
+	prog.Send(FileListMsg{Files: files})
 }
 
 // Quit asks the TUI to exit. Safe from any goroutine.
 func (a *App) Quit() {
 	a.mu.Lock()
-	defer a.mu.Unlock()
 	if a.done {
+		a.mu.Unlock()
 		return
 	}
-	a.prog.Send(QuitMsg{})
+	prog := a.prog
+	a.mu.Unlock()
+	prog.Send(QuitMsg{})
 }
 
 // model is the bubbletea state. Exported only via App; tests construct it

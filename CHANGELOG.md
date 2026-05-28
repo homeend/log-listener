@@ -7,6 +7,12 @@ and this project adheres to phased delivery per `PLAN.md`.
 
 ## [Unreleased]
 
+### Phase 5 review fixes
+- `App.Push` / `App.SetFiles` / `App.Quit` now release the mutex before
+  calling `prog.Send()`. Previously a slow `Send` would hold the lock
+  long enough to serialize other Push calls. The mutex now only guards
+  the `done` check.
+
 ### Phase 5 — TUI
 - `internal/tui`: bubbletea-based interactive UI. Streaming log view with
   a bounded ring-buffer scrollback (default 10k, configurable via
