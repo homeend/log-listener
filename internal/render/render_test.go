@@ -184,9 +184,45 @@ func TestXMLRendererInvalidFallsBackToText(t *testing.T) {
 }
 
 func TestCaptureOutOfRange(t *testing.T) {
-	tpl, _ := ParseTemplate(`$5`)
+	tpl, _ := ParseTemplate(`pre-$5-post`)
 	parts := tpl.Execute([]string{"only", "one"})
-	if len(parts) != 0 && parts[0].Value.(string) != "" {
-		t.Fatalf("out-of-range capture should expand to empty: %+v", parts)
+	if len(parts) != 1 || parts[0].Type != "text" {
+		t.Fatalf("expected single text part: %+v", parts)
+	}
+	if parts[0].Value.(string) != "pre--post" {
+		t.Fatalf("out-of-range capture should expand to empty, got %q", parts[0].Value)
+	}
+}
+
+func TestPipelineRendererScopedByAppliesTo(t *testing.T) {
+	specs := []config.RendererSpec{
+		{
+			Name: "d1-only", LineRegex: `.*`, Template: `[d1]`,
+			AppliesTo: &config.AppliesTo{Groups: []string{"d1"}},
+		},
+		{
+			Name: "app-files-only", LineRegex: `.*`, Template: `[app]`,
+			AppliesTo: &config.AppliesTo{Paths: []string{"*.app.log"}},
+		},
+		{Name: "fallback", LineRegex: `.*`, Template: `[any]`},
+	}
+	p, err := NewPipeline(specs, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cases := []struct {
+		group, path, wantRenderer string
+	}{
+		{"d1", "/var/log/other.log", "d1-only"},      // group match wins
+		{"d2", "/var/log/x.app.log", "app-files-only"}, // path match wins
+		{"d2", "/var/log/other.log", "fallback"},     // neither
+	}
+	for _, tc := range cases {
+		t.Run(tc.group+"-"+tc.path, func(t *testing.T) {
+			ev, _ := p.Render(time.Now(), tc.group, tc.path, "anything")
+			if ev.Renderer != tc.wantRenderer {
+				t.Fatalf("got %q want %q", ev.Renderer, tc.wantRenderer)
+			}
+		})
 	}
 }

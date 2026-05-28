@@ -7,6 +7,16 @@ and this project adheres to phased delivery per `PLAN.md`.
 
 ## [Unreleased]
 
+### Phase 3 review fixes
+- `emit()` no longer adds a second newline when the template already ends
+  with `\n`. Output now has exactly one line break between the prefix line
+  and the first JSON/XML block.
+- `TestCaptureOutOfRange` was passing trivially because of a short-circuit
+  bug — fixed to actually assert that out-of-range captures expand to
+  empty string inside a literal context.
+- Added `TestPipelineRendererScopedByAppliesTo` covering group-only,
+  path-only, and fallback selection paths through the pipeline.
+
 ### Phase 3 — Renderer pipeline
 - `internal/render`: template DSL (`literals + $N + json($N) + xml($N)`),
   escapes (`\n`, `\t`, `\r`, `\\`, `$$`), out-of-range `$N` expands to

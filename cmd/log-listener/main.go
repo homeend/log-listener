@@ -164,7 +164,13 @@ func emit(w io.Writer, p *render.Pipeline, group, path, line string) {
 			blocks = append(blocks, part.Value.(string))
 		}
 	}
-	fmt.Fprintf(w, "[%s] %s: %s\n", ev.Group, filepath.Base(ev.File), textBuf.String())
+	text := textBuf.String()
+	fmt.Fprintf(w, "[%s] %s: %s", ev.Group, filepath.Base(ev.File), text)
+	// Ensure exactly one newline at end of prefix line, even if the template
+	// already supplied a trailing \n.
+	if !strings.HasSuffix(text, "\n") {
+		fmt.Fprintln(w)
+	}
 	for _, b := range blocks {
 		fmt.Fprintln(w, b)
 	}
