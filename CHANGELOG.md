@@ -7,6 +7,19 @@ and this project adheres to phased delivery per `PLAN.md`.
 
 ## [Unreleased]
 
+### Phase 3 — Renderer pipeline
+- `internal/render`: template DSL (`literals + $N + json($N) + xml($N)`),
+  escapes (`\n`, `\t`, `\r`, `\\`, `$$`), out-of-range `$N` expands to
+  empty.
+- `internal/render.Pipeline`: first-match-wins over compiled renderers,
+  `applies_to` semantics enforced as AND (`groups` ∧ `paths`), `paths`
+  matched against both full path and basename (`filepath.Match`).
+- Invalid JSON/XML inputs to `json(...)` / `xml(...)` fall back to a
+  text part so output is never lost.
+- `cmd/log-listener`: emits text parts on the prefix line, JSON
+  pretty-printed (2-space indent) and XML pretty-printed each on their
+  own lines below. Honors `drop_unmatched`.
+
 ### Phase 2 review fixes
 - YAML decoding is now strict (`yaml.Decoder.KnownFields(true)`) so typos in
   YAML keys produce errors instead of silently being ignored.

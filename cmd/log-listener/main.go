@@ -5,6 +5,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/fs"
@@ -17,6 +18,7 @@ import (
 
 	"log-listener/internal/config"
 	"log-listener/internal/discover"
+	"log-listener/internal/render"
 	"log-listener/internal/watch"
 )
 
@@ -39,22 +41,28 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
+	pipeline, err := render.NewPipeline(cfg.RendererSpecs, cfg.DropUnmatched)
+	if err != nil {
+		fmt.Fprintln(stderr, "log-listener:", err)
+		return 2
+	}
+
 	if cfg.Once {
-		if err := runOnce(assignments, stdout); err != nil {
+		if err := runOnce(assignments, pipeline, stdout); err != nil {
 			fmt.Fprintln(stderr, "log-listener:", err)
 			return 1
 		}
 		return 0
 	}
 
-	if err := runWatch(cfg, assignments, stdout, stderr); err != nil {
+	if err := runWatch(cfg, assignments, pipeline, stdout, stderr); err != nil {
 		fmt.Fprintln(stderr, "log-listener:", err)
 		return 1
 	}
 	return 0
 }
 
-func runOnce(assignments []discover.Assignment, stdout io.Writer) error {
+func runOnce(assignments []discover.Assignment, pipeline *render.Pipeline, stdout io.Writer) error {
 	for _, a := range assignments {
 		f, err := os.Open(a.Path)
 		if err != nil {
@@ -63,7 +71,7 @@ func runOnce(assignments []discover.Assignment, stdout io.Writer) error {
 		s := bufio.NewScanner(f)
 		s.Buffer(make([]byte, 64*1024), 16*1024*1024)
 		for s.Scan() {
-			fmt.Fprintln(stdout, format(a.GroupID, a.Path, s.Text()))
+			emit(stdout, pipeline, a.GroupID, a.Path, s.Text())
 		}
 		if err := s.Err(); err != nil {
 			f.Close()
@@ -74,7 +82,7 @@ func runOnce(assignments []discover.Assignment, stdout io.Writer) error {
 	return nil
 }
 
-func runWatch(cfg *config.Config, assignments []discover.Assignment, stdout, stderr io.Writer) error {
+func runWatch(cfg *config.Config, assignments []discover.Assignment, pipeline *render.Pipeline, stdout, stderr io.Writer) error {
 	matcher := makeNewFileMatcher(cfg)
 	w, err := watch.New(matcher, 500*time.Millisecond)
 	if err != nil {
@@ -112,7 +120,7 @@ func runWatch(cfg *config.Config, assignments []discover.Assignment, stdout, std
 	for {
 		select {
 		case ev := <-w.Events():
-			fmt.Fprintln(stdout, format(ev.Group, ev.Path, ev.Line))
+			emit(stdout, pipeline, ev.Group, ev.Path, ev.Line)
 		case e := <-w.Errors():
 			fmt.Fprintf(stderr, "log-listener: %v\n", e)
 		case <-ctx.Done():
@@ -120,7 +128,7 @@ func runWatch(cfg *config.Config, assignments []discover.Assignment, stdout, std
 			for {
 				select {
 				case ev := <-w.Events():
-					fmt.Fprintln(stdout, format(ev.Group, ev.Path, ev.Line))
+					emit(stdout, pipeline, ev.Group, ev.Path, ev.Line)
 				case e := <-w.Errors():
 					fmt.Fprintf(stderr, "log-listener: %v\n", e)
 				case <-drainDeadline:
@@ -131,8 +139,35 @@ func runWatch(cfg *config.Config, assignments []discover.Assignment, stdout, std
 	}
 }
 
-func format(group, path, line string) string {
-	return fmt.Sprintf("[%s] %s: %s", group, filepath.Base(path), line)
+// emit runs a raw line through the renderer pipeline and writes the result
+// to w. Format: "[<group>] <basename>: <text>" on the first line, followed by
+// any structured JSON/XML parts each on their own lines. Dropped lines (no
+// renderer matched + drop_unmatched) produce no output.
+func emit(w io.Writer, p *render.Pipeline, group, path, line string) {
+	ev, ok := p.Render(time.Now(), group, path, line)
+	if !ok {
+		return
+	}
+	var textBuf strings.Builder
+	var blocks []string
+	for _, part := range ev.Rendered {
+		switch part.Type {
+		case "text":
+			textBuf.WriteString(part.Value.(string))
+		case "json":
+			b, err := json.MarshalIndent(part.Value, "", "  ")
+			if err != nil {
+				continue
+			}
+			blocks = append(blocks, string(b))
+		case "xml":
+			blocks = append(blocks, part.Value.(string))
+		}
+	}
+	fmt.Fprintf(w, "[%s] %s: %s\n", ev.Group, filepath.Base(ev.File), textBuf.String())
+	for _, b := range blocks {
+		fmt.Fprintln(w, b)
+	}
 }
 
 func makeNewFileMatcher(cfg *config.Config) watch.NewFileMatcher {
