@@ -362,15 +362,29 @@ Hub behavior:
 Auto-selected when stdout is a TTY and `--no-tui` was not passed.
 `--once` mode never uses the TUI.
 
-| Key            | Action                                  |
-|----------------|-----------------------------------------|
-| `q` / Ctrl+C   | Quit.                                   |
-| Tab / Ctrl+I   | Toggle the "watched files" overlay.     |
-| Esc            | Close the files overlay.                |
-| ↑ / `k`        | Scroll up.                              |
-| ↓ / `j`        | Scroll down.                            |
-| `g`            | Jump to top of visible list.            |
-| `G`            | Jump to bottom (pin to live).           |
+| Key                 | Action                                     |
+|---------------------|--------------------------------------------|
+| `q` / Ctrl+C        | Quit.                                      |
+| Tab / Ctrl+I        | Toggle the "watched files" overlay.        |
+| Esc                 | Close the files overlay.                   |
+| ↑ / `k`             | Scroll one line up.                        |
+| ↓ / `j`             | Scroll one line down.                      |
+| Ctrl+↑ / Shift+↑    | Scroll up 10 lines.                        |
+| Ctrl+↓ / Shift+↓    | Scroll down 10 lines.                      |
+| PgUp / Ctrl+B       | Scroll up by one screen.                   |
+| PgDn / Ctrl+F / Spc | Scroll down by one screen.                 |
+| ← / `h`             | Pan view left 10 columns.                  |
+| → / `l`             | Pan view right 10 columns.                 |
+| Ctrl+← / Shift+←    | Pan view left 50 columns.                  |
+| Ctrl+→ / Shift+→    | Pan view right 50 columns.                 |
+| Home / `0`          | Jump back to column 0 (leftmost).          |
+| End / `$`           | Jump right to reveal the end of widest line.|
+| `g`                 | Jump to top of stream / files list.        |
+| `G`                 | Jump to bottom (pin to live) / list end.   |
+
+When you pan horizontally (`←` / `→`), the visible window is clipped from
+the left and ANSI styling is dropped for the scrolled portion — that's a
+tradeoff to keep the implementation simple and reliable.
 
 The stream view is a bounded ring buffer of pre-rendered display lines
 (default 10000, configurable via `tui.scrollback` in YAML). Older lines
@@ -470,6 +484,15 @@ payloads — both are tested.
   no built-in auth — don't expose the stream on a public interface.
 - **TUI tests are partial.** The model's state transitions are unit-tested
   but a real terminal is required to exercise the rendering paths.
+- **Startup delay in terminals that don't auto-answer OSC 11.** Bubbletea
+  v1.3 calls `lipgloss.HasDarkBackground()` from its own `init()`, which
+  blocks up to **termenv.OSCTimeout (5 s)** waiting for the terminal to
+  report its background color. In a real terminal (xterm, iTerm2,
+  Windows Terminal, etc.) this returns in milliseconds; under some pty
+  wrappers, certain IDE-embedded terminals, or tmux without passthrough,
+  it can take up to 5 s for `log-listener` to start up. After that one-
+  time delay everything (SSE, TUI, stdout) works normally. Removed in
+  bubbletea v2; track upstream for the fix.
 
 ---
 

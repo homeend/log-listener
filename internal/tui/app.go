@@ -6,27 +6,60 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
+	"unicode/utf8"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/muesli/termenv"
 
 	"log-listener/internal/render"
 )
 
-func init() {
-	// Force fixed terminal capabilities so lipgloss/termenv/bubbletea don't
-	// probe the terminal with OSC 11 (background color) and CSI 6n (cursor
-	// position) during init. Some terminals never reply (containers,
-	// IDE-embedded terminals, tmux configs without passthrough), which
-	// leaves bubbletea blocked before it ever draws a frame. Picking a
-	// profile and dark-background up-front sacrifices true-color but
-	// unblocks the TUI everywhere.
-	lipgloss.SetColorProfile(termenv.ANSI256)
-	lipgloss.SetHasDarkBackground(true)
+// ansiRE matches CSI / OSC escape sequences emitted by lipgloss. Good enough
+// for stripping styling when horizontal scroll is active — we don't need to
+// preserve colors in the scrolled view, just the underlying text.
+var ansiRE = regexp.MustCompile(`\x1b\[[0-9;]*[A-Za-z]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)`)
+
+func stripANSI(s string) string { return ansiRE.ReplaceAllString(s, "") }
+
+func runeLen(s string) int { return utf8.RuneCountInString(s) }
+
+// runeSliceLeft returns s with the first n runes dropped.
+func runeSliceLeft(s string, n int) string {
+	if n <= 0 {
+		return s
+	}
+	for i := range s {
+		if n == 0 {
+			return s[i:]
+		}
+		n--
+	}
+	return ""
 }
+
+// runeTruncate returns the first n runes of s.
+func runeTruncate(s string, n int) string {
+	if n <= 0 {
+		return ""
+	}
+	count := 0
+	for i := range s {
+		if count == n {
+			return s[:i]
+		}
+		count++
+	}
+	return s
+}
+
+// Note: an earlier version had init() calls into lipgloss.SetColorProfile
+// and SetHasDarkBackground. Removed — those weren't needed (the
+// tea.WithEnvironment hint below already pins the profile for bubbletea's
+// internal termenv) and Go runs package init synchronously before main,
+// so any blocking termenv probe at init time would delay SSE startup too.
 
 const defaultScrollback = 10000
 
@@ -75,9 +108,12 @@ func New(scrollback int, initialFiles []FileEntry) *App {
 		"CLICOLOR_FORCE=1",
 		"TERM=xterm-256color",
 	}
+	// Note: mouse capture is intentionally NOT enabled. With WithMouseCellMotion
+	// the terminal routes mouse events to the TUI and you lose normal text
+	// selection / copy-paste. The TUI is fully keyboard-driven (q, Tab/Ctrl+I,
+	// arrows, j/k, g/G), so we don't need mouse input.
 	prog := tea.NewProgram(m,
 		tea.WithAltScreen(),
-		tea.WithMouseCellMotion(),
 		tea.WithEnvironment(env),
 	)
 	return &App{prog: prog}
@@ -134,15 +170,22 @@ func (a *App) Quit() {
 // model is the bubbletea state. Exported only via App; tests construct it
 // directly via newModel.
 type model struct {
-	events     []string // pre-rendered lines for the stream
-	scrollback int
-	width      int
-	height     int
-	showFiles  bool
-	files      []FileEntry
-	filesScroll int
+	events       []string // pre-rendered lines for the stream
+	scrollback   int
+	width        int
+	height       int
+	showFiles    bool
+	files        []FileEntry
+	filesScroll  int
 	streamScroll int // 0 = pinned to bottom; positive = scrolled back N lines
+	horizScroll  int // 0 = pinned to left; positive = N columns clipped off the left
 }
+
+const (
+	horizStep      = 10 // columns moved per Left/Right keypress
+	horizFastStep  = 50 // columns moved per Ctrl+Left/Right
+	vertFastStep   = 10 // lines moved per Ctrl+Up/Down
+)
 
 func newModel(scrollback int) *model {
 	return &model{scrollback: scrollback}
@@ -207,6 +250,94 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else {
 				m.streamScroll = 0
 			}
+		case "pgup", "ctrl+b":
+			page := m.contentHeight()
+			if m.showFiles {
+				m.filesScroll -= page
+				if m.filesScroll < 0 {
+					m.filesScroll = 0
+				}
+			} else {
+				m.streamScroll += page
+				if m.streamScroll > len(m.events) {
+					m.streamScroll = len(m.events)
+				}
+			}
+		case "pgdown", "ctrl+f", " ":
+			page := m.contentHeight()
+			if m.showFiles {
+				m.filesScroll += page
+				if m.filesScroll > len(m.files)-1 {
+					m.filesScroll = len(m.files) - 1
+				}
+				if m.filesScroll < 0 {
+					m.filesScroll = 0
+				}
+			} else {
+				m.streamScroll -= page
+				if m.streamScroll < 0 {
+					m.streamScroll = 0
+				}
+			}
+		case "left", "h":
+			m.horizScroll -= horizStep
+			if m.horizScroll < 0 {
+				m.horizScroll = 0
+			}
+		case "right", "l":
+			m.horizScroll += horizStep
+		case "ctrl+left", "shift+left":
+			m.horizScroll -= horizFastStep
+			if m.horizScroll < 0 {
+				m.horizScroll = 0
+			}
+		case "ctrl+right", "shift+right":
+			m.horizScroll += horizFastStep
+		case "ctrl+up", "shift+up":
+			if m.showFiles {
+				m.filesScroll -= vertFastStep
+				if m.filesScroll < 0 {
+					m.filesScroll = 0
+				}
+			} else {
+				m.streamScroll += vertFastStep
+				if m.streamScroll > len(m.events) {
+					m.streamScroll = len(m.events)
+				}
+			}
+		case "ctrl+down", "shift+down":
+			if m.showFiles {
+				m.filesScroll += vertFastStep
+				if m.filesScroll > len(m.files)-1 {
+					m.filesScroll = len(m.files) - 1
+				}
+				if m.filesScroll < 0 {
+					m.filesScroll = 0
+				}
+			} else {
+				m.streamScroll -= vertFastStep
+				if m.streamScroll < 0 {
+					m.streamScroll = 0
+				}
+			}
+		case "home", "0":
+			m.horizScroll = 0
+		case "end", "$":
+			// "end" = jump right by a big amount; clamp at the widest line.
+			widest := 0
+			plainCache := make([]string, 0, len(m.events))
+			for _, ev := range m.events {
+				p := stripANSI(ev)
+				plainCache = append(plainCache, p)
+				if w := runeLen(p); w > widest {
+					widest = w
+				}
+			}
+			target := widest - m.width + 10
+			if target < 0 {
+				target = 0
+			}
+			m.horizScroll = target
 		}
 	case EventMsg:
 		m.appendEvent(msg.Event)
@@ -264,24 +395,30 @@ func renderEventLines(ev render.Event) []string {
 	return lines
 }
 
+// contentHeight returns the number of rows available for the body between
+// the header (1 row) and the footer (1 row).
+func (m *model) contentHeight() int {
+	h := m.height - 2
+	if h < 1 {
+		h = 1
+	}
+	return h
+}
+
 func (m *model) View() string {
 	if m.height == 0 {
 		return ""
 	}
-	header := headerBg.Width(m.width).Render(" log-listener — q quit · Ctrl+I files · ↑/↓ scroll ")
-	footerHeight := 1
-	contentHeight := m.height - 1 - footerHeight
-	if contentHeight < 1 {
-		contentHeight = 1
-	}
+	header := headerBg.Width(m.width).Render(" log-listener — q quit · Tab files · ↑/↓ scroll · ←/→ pan · PgUp/PgDn page ")
+	contentH := m.contentHeight()
 
-	body := m.renderStream(contentHeight)
+	body := m.renderStream(contentH)
 	if m.showFiles {
-		body = m.renderFiles(contentHeight)
+		body = m.renderFiles(contentH)
 	}
 
-	footer := dimStyle.Render(fmt.Sprintf(" events: %d · scroll: %d · files: %d ",
-		len(m.events), m.streamScroll, len(m.files)))
+	footer := dimStyle.Render(fmt.Sprintf(" events: %d · scroll: %d · col: %d · files: %d ",
+		len(m.events), m.streamScroll, m.horizScroll, len(m.files)))
 
 	return header + "\n" + body + "\n" + footer
 }
@@ -299,13 +436,43 @@ func (m *model) renderStream(rows int) string {
 		start = 0
 	}
 	visible := m.events[start:end]
-	out := strings.Join(visible, "\n")
+	rendered := make([]string, len(visible))
+	for i, line := range visible {
+		rendered[i] = m.clipLine(line)
+	}
+	out := strings.Join(rendered, "\n")
 	// pad to fill height
-	missing := rows - len(visible)
+	missing := rows - len(rendered)
 	if missing > 0 {
 		out += strings.Repeat("\n", missing)
 	}
 	return out
+}
+
+// clipLine applies horizontal scroll + width truncation to a single rendered
+// line. When horizScroll == 0 we keep the original lipgloss styling and just
+// truncate to m.width (using lipgloss-aware truncate so ANSI codes survive).
+// When horizScroll > 0 we strip ANSI, slice runewise, and emit plain text —
+// scrolling and colorized styling don't easily coexist with naive slicing.
+func (m *model) clipLine(line string) string {
+	width := m.width
+	if width <= 0 {
+		return line
+	}
+	if m.horizScroll == 0 {
+		// Truncate to width without breaking ANSI. lipgloss is ANSI-aware
+		// when used through a Width-bound style; lipgloss's MaxWidth would
+		// be ideal but isn't available, so fall back to the simple path:
+		// if the plain rendering exceeds width, drop trailing runes.
+		if runeLen(stripANSI(line)) <= width {
+			return line
+		}
+		// Fall through to plain truncation.
+	}
+	plain := stripANSI(line)
+	plain = runeSliceLeft(plain, m.horizScroll)
+	plain = runeTruncate(plain, width)
+	return plain
 }
 
 func (m *model) renderFiles(rows int) string {

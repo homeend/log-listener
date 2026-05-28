@@ -1,8 +1,11 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"io"
+	"net"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -109,6 +112,93 @@ func tail(s string, n int) string {
 		return s
 	}
 	return "..." + s[len(s)-n:]
+}
+
+// TestE2ETUIAlsoBroadcastsSSE asserts that when the TUI is active, the SSE
+// hub still receives and delivers events to clients (both sinks run in
+// parallel; regression here would re-introduce the deadlock symptom for
+// SSE consumers).
+func TestE2ETUIAlsoBroadcastsSSE(t *testing.T) {
+	bin := e2eBinary(t)
+	dir := t.TempDir()
+	path := filepath.Join(dir, "tui-sse.log")
+	if err := os.WriteFile(path, []byte("seed\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Pick a free localhost port for the SSE server.
+	lis, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	addr := lis.Addr().String()
+	lis.Close()
+
+	cmd := exec.Command(bin, "-f", path, "--no-color", "--sse", addr)
+	ptmx, err := pty.Start(cmd)
+	if err != nil {
+		t.Fatalf("pty.Start: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = cmd.Process.Kill()
+		_ = ptmx.Close()
+		_ = cmd.Wait()
+	})
+	pty.Setsize(ptmx, &pty.Winsize{Rows: 30, Cols: 120})
+	// Capture pty output (TUI render bytes + any stderr) so we can show it
+	// on failure and so the subprocess doesn't block on a full pty buffer.
+	var ptyBuf bytes.Buffer
+	var ptyMu sync.Mutex
+	go func() {
+		b := make([]byte, 8192)
+		for {
+			n, err := ptmx.Read(b)
+			if n > 0 {
+				ptyMu.Lock()
+				ptyBuf.Write(b[:n])
+				ptyMu.Unlock()
+			}
+			if err != nil {
+				return
+			}
+		}
+	}()
+
+	// Wait for SSE to listen.
+	sseURL := "http://" + addr + "/stream"
+	if err := waitForHTTP(sseURL, 5*time.Second); err != nil {
+		ptyMu.Lock()
+		dump := ptyBuf.String()
+		ptyMu.Unlock()
+		t.Fatalf("SSE server did not start in TUI mode: %v\n--- pty output ---\n%s",
+			err, tail(dump, 800))
+	}
+
+	req, _ := http.NewRequest("GET", sseURL, nil)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	time.Sleep(200 * time.Millisecond)
+	f, _ := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0o644)
+	marker := "TUI-SSE-MARKER-4444"
+	f.WriteString(marker + "\n")
+	f.Close()
+
+	r := bufio.NewReader(resp.Body)
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		line, err := r.ReadString('\n')
+		if err != nil {
+			t.Fatalf("sse read err: %v", err)
+		}
+		if strings.Contains(line, marker) {
+			return // pass
+		}
+	}
+	t.Fatalf("never received SSE event with %q while TUI was active", marker)
 }
 
 // drainBg starts a goroutine that copies r to a sink. Used when tests don't

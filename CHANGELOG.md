@@ -15,6 +15,22 @@ and this project adheres to phased delivery per `PLAN.md`.
 - README clarifies that `-extldflags "-static"` is Linux-only — on
   macOS the binary is CGO-free but not "fully static."
 
+## [Unreleased]
+
+### TUI keybindings + horizontal scroll
+- New bindings in the TUI:
+  - **PgUp / Ctrl+B**, **PgDn / Ctrl+F / Space** — scroll one screen.
+  - **← / h**, **→ / l** — pan view horizontally by 10 columns.
+  - **Home / 0** — jump to column 0.
+  - **End / $** — jump right to expose the widest line's tail.
+- Horizontal pan strips ANSI styling on the visible window (single-pass
+  regex strip) so scrolled long lines render as plain text without
+  corrupted escape sequences.
+- Documented the bubbletea-v1.3 startup delay (up to termenv.OSCTimeout
+  = 5 s) in terminals that don't auto-respond to OSC 11. This was the
+  root cause of "SSE isn't working" reports — SSE server starts only
+  after main() runs, which happens after that init probe times out.
+
 ## [0.1.0] — 2026-05-28
 
 First end-to-end release. Implements all six phases of `PLAN.md`. See

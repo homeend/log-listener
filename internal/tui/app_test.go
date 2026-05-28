@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -97,6 +98,148 @@ func TestModelViewShowsEventAfterUpdate(t *testing.T) {
 	}
 	if !strings.Contains(view, "abc.log") {
 		t.Fatalf("View() does not contain basename:\n%s", view)
+	}
+}
+
+func TestModelPageUpPageDown(t *testing.T) {
+	m := newModel(1000)
+	for i := 0; i < 200; i++ {
+		m.appendEvent(render.Event{
+			Group: "g", File: "/x.log",
+			Rendered: []render.Part{{Type: "text", Value: fmt.Sprintf("line %d", i)}},
+		})
+	}
+	// height 30 → contentHeight = 28
+	m2, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 30})
+	m = m2.(*model)
+	page := m.contentHeight()
+	if page <= 0 {
+		t.Fatalf("contentHeight=%d", page)
+	}
+
+	// PgUp moves back by page rows
+	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyPgUp})
+	m = m2.(*model)
+	if m.streamScroll != page {
+		t.Fatalf("after PgUp streamScroll=%d want %d", m.streamScroll, page)
+	}
+
+	// PgDn returns by page rows
+	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyPgDown})
+	m = m2.(*model)
+	if m.streamScroll != 0 {
+		t.Fatalf("after PgDn streamScroll=%d want 0", m.streamScroll)
+	}
+
+	// PgUp clamps at total event count
+	for i := 0; i < 100; i++ {
+		m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyPgUp})
+		m = m2.(*model)
+	}
+	if m.streamScroll > len(m.events) {
+		t.Fatalf("PgUp overshot: scroll=%d events=%d", m.streamScroll, len(m.events))
+	}
+}
+
+func TestModelHorizontalScroll(t *testing.T) {
+	m := newModel(100)
+	// A line wider than the viewport
+	long := strings.Repeat("abcdef-", 30) // 210 chars
+	m.appendEvent(render.Event{
+		Group: "g", File: "/x.log",
+		Rendered: []render.Part{{Type: "text", Value: long}},
+	})
+	m2, _ := m.Update(tea.WindowSizeMsg{Width: 40, Height: 10})
+	m = m2.(*model)
+
+	// At horizScroll = 0 the start of the prefixed line is visible
+	view := m.View()
+	if !strings.Contains(view, "[g]") {
+		t.Fatalf("expected '[g]' visible at horizScroll=0:\n%s", view)
+	}
+
+	// Right arrow shifts the view
+	for i := 0; i < 5; i++ {
+		m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyRight})
+		m = m2.(*model)
+	}
+	if m.horizScroll != 5*horizStep {
+		t.Fatalf("horizScroll after 5x Right = %d, want %d", m.horizScroll, 5*horizStep)
+	}
+
+	// After scrolling, the leading "[g] x.log:" prefix is no longer visible.
+	view = m.View()
+	if strings.Contains(view, "[g] x.log:") {
+		t.Fatalf("prefix should be scrolled off, but still visible:\n%s", view)
+	}
+	// We should still see SOME of the line body
+	if !strings.Contains(view, "abcdef-") {
+		t.Fatalf("expected line body still visible after horiz scroll:\n%s", view)
+	}
+
+	// Home/0 jumps back to column 0
+	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyHome})
+	m = m2.(*model)
+	if m.horizScroll != 0 {
+		t.Fatalf("Home should reset horizScroll, got %d", m.horizScroll)
+	}
+
+	// Left clamps at 0
+	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyLeft})
+	m = m2.(*model)
+	if m.horizScroll != 0 {
+		t.Fatalf("Left at column 0 must stay at 0, got %d", m.horizScroll)
+	}
+}
+
+func TestModelFastScrollKeys(t *testing.T) {
+	m := newModel(1000)
+	for i := 0; i < 200; i++ {
+		m.appendEvent(render.Event{
+			Group: "g", File: "/x.log",
+			Rendered: []render.Part{{Type: "text", Value: fmt.Sprintf("line %d", i)}},
+		})
+	}
+	m2, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 30})
+	m = m2.(*model)
+
+	// Ctrl+Right pans by horizFastStep, not horizStep
+	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyCtrlRight})
+	m = m2.(*model)
+	if m.horizScroll != horizFastStep {
+		t.Fatalf("Ctrl+Right: horizScroll=%d want %d", m.horizScroll, horizFastStep)
+	}
+
+	// Ctrl+Left rolls back by horizFastStep
+	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyCtrlLeft})
+	m = m2.(*model)
+	if m.horizScroll != 0 {
+		t.Fatalf("Ctrl+Left: horizScroll=%d want 0", m.horizScroll)
+	}
+
+	// Ctrl+Up scrolls vertically by vertFastStep
+	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyCtrlUp})
+	m = m2.(*model)
+	if m.streamScroll != vertFastStep {
+		t.Fatalf("Ctrl+Up: streamScroll=%d want %d", m.streamScroll, vertFastStep)
+	}
+
+	// Ctrl+Down rolls back
+	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyCtrlDown})
+	m = m2.(*model)
+	if m.streamScroll != 0 {
+		t.Fatalf("Ctrl+Down: streamScroll=%d want 0", m.streamScroll)
+	}
+}
+
+func TestStripANSIRoundtrip(t *testing.T) {
+	plain := "hello world"
+	styled := groupStyle.Render(plain)
+	if styled == plain {
+		t.Skip("lipgloss did not add ANSI (likely TERM=dumb)")
+	}
+	if stripANSI(styled) != plain {
+		t.Fatalf("stripANSI(%q) = %q, want %q", styled, stripANSI(styled), plain)
 	}
 }
 
