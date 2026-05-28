@@ -47,17 +47,15 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 
+	// Color is on only when (a) the user didn't pass --no-color AND (b) the
+	// output is a real TTY. Non-*os.File writers (e.g. a test bytes.Buffer)
+	// are treated as non-TTY.
 	useColor := !cfg.NoColor
-	// Auto-disable color when stdout isn't a TTY (piped). Tests pass a
-	// bytes.Buffer here which isn't an *os.File and stays plain.
-	if f, ok := stdout.(*os.File); ok {
-		if !sink.IsTTY(f) {
+	if useColor {
+		f, ok := stdout.(*os.File)
+		if !ok || !sink.IsTTY(f) {
 			useColor = false
 		}
-	} else if useColor && !cfg.NoColor {
-		// Non-file writer (typically a test buffer): plain output, but
-		// respect explicit --no-color too.
-		useColor = false
 	}
 	stdoutSink := sink.NewStdout(stdout, useColor)
 

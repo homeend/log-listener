@@ -7,6 +7,12 @@ and this project adheres to phased delivery per `PLAN.md`.
 
 ## [Unreleased]
 
+### Phase 4 review fixes
+- Simplified the color-detection block in `cmd/log-listener/main.go`:
+  one boolean (`useColor`) is set per the `--no-color` flag and then
+  forced off if stdout isn't a real TTY. The previous if/else-if had
+  a redundant `!cfg.NoColor` re-check.
+
 ### Phase 4 — Color stdout + SSE
 - `internal/sink/stdout.go`: colorized terminal output using bare ANSI SGR
   codes (no `fatih/color` dep). Color auto-disables when stdout isn't a
