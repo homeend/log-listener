@@ -1,0 +1,80 @@
+# log-listener config — tail GoLand 2026.1 logs.
+#
+# Two location conventions. Pick the one that matches your setup:
+#
+#   - Native Linux (Ubuntu, etc.):
+#       ~/.cache/JetBrains/GoLand2026.1/log/
+#
+#   - WSL2 reading the Windows-side install:
+#       /mnt/c/Users/<you>/AppData/Local/JetBrains/GoLand2026.1/log/
+#
+# Both forms are shown below; the Linux paths are active and the WSL ones
+# are commented. Swap as needed.
+#
+# Sources covered:
+#   1. log/acp/*.log
+#   2. log/idea.log  (with rotated companions idea.log.1, .2, …)
+#   3. log/open-telemetry-meters.*.json
+#
+# Important caveat for WSL2 + a native-Windows GoLand: WSL's inotify does
+# NOT see file changes made by Windows-side processes through /mnt/c. The
+# 500ms internal poll picks them up via stat(), but the 9P metadata cache
+# can lag. If new lines feel slow or absent in that setup, the cause is
+# the 9P boundary, not log-listener. Native-Linux paths are unaffected.
+
+directories:
+  # All *.log under log/acp/ — picks up new session files automatically.
+  - id: acp
+    paths:
+      - /home/homeend/.cache/JetBrains/GoLand2026.1/log/acp
+      # WSL alternative:
+      # - /mnt/c/Users/homee/AppData/Local/JetBrains/GoLand2026.1/log/acp
+    recursive: false
+    file_filter:
+      name_regex: '\.log$'
+
+  # idea.log (+ rotated siblings) and open-telemetry-meters.<ts>.json,
+  # both living at the top level of log/.
+  - id: goland
+    paths:
+      - /home/homeend/.cache/JetBrains/GoLand2026.1/log
+      # WSL alternative:
+      # - /mnt/c/Users/homee/AppData/Local/JetBrains/GoLand2026.1/log
+    recursive: false           # don't double-cover acp/
+    file_filter:
+      name_regex: '^(idea\.log(\.\d+)?|open-telemetry-meters\..+\.json)$'
+
+renderers:
+  # Pretty-print any line that's a standalone JSON object. Catches the
+  # NDJSON-style open-telemetry-meters snapshots. If a meters file ever
+  # holds one multi-line pretty-printed JSON value instead, individual
+  # lines won't match this regex and they'll fall through to raw output
+  # (drop_unmatched is false).
+  - name: json-line
+    line_regex: '^\s*(\{.*\})\s*$'
+    template: 'json($1)'
+    applies_to:
+      groups: [goland]
+      paths: ['open-telemetry-meters.*.json']
+
+  # idea.log entries sometimes end with a JSON object inside braces; peel
+  # it out for readability. Conservative: the renderer's json() falls
+  # back to text on parse failure, so false positives degrade safely.
+  - name: idea-trailing-json
+    line_regex: '^(.*?\s)(\{.+\})\s*$'
+    template: '$1\njson($2)'
+    applies_to:
+      groups: [goland, acp]
+      paths: ['*.log']
+
+output:
+  color: true
+  drop_unmatched: false
+  # Uncomment for the SSE broadcast (browser at http://127.0.0.1:8080/stream):
+  # sse:
+  #   enabled: true
+  #   addr: '127.0.0.1:8080'
+
+tui:
+  enabled: true
+  scrollback: 20000          # IDE logs are chatty; bigger buffer helps

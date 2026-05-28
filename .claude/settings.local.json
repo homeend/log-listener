@@ -16,7 +16,10 @@
       "Bash(git reset *)",
       "Bash(make build *)",
       "Bash(make build-static *)",
-      "Bash(make help *)"
+      "Bash(make help *)",
+      "Bash(mkdir -p /tmp/lltest)",
+      "Bash(rm -f /tmp/lltest/*.log)",
+      "Read(//tmp/**)"
     ]
   }
 }
