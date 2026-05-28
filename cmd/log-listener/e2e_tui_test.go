@@ -164,9 +164,12 @@ func TestE2ETUIAlsoBroadcastsSSE(t *testing.T) {
 		}
 	}()
 
-	// Wait for SSE to listen.
+	// Wait for SSE to listen. Under a pseudo-tty bubbletea's init blocks up
+	// to termenv.OSCTimeout (5s) waiting for an OSC 11 response that never
+	// comes, so main() — and therefore sseHub.Start() — starts only after
+	// that. We poll for ~10s to cover the worst case + slack.
 	sseURL := "http://" + addr + "/stream"
-	if err := waitForHTTP(sseURL, 5*time.Second); err != nil {
+	if err := waitForHTTP(sseURL, 10*time.Second); err != nil {
 		ptyMu.Lock()
 		dump := ptyBuf.String()
 		ptyMu.Unlock()
