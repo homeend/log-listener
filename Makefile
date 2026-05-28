@@ -1,18 +1,18 @@
 BINARY := log-listener
 PKG    := ./...
 
-.PHONY: build build-static test vet race cover clean run help
+.PHONY: build build-static test vet race cover clean demo help
 
 help:
 	@echo "Targets:"
 	@echo "  build         — local binary"
-	@echo "  build-static  — CGO_ENABLED=0 static binary (Linux first)"
+	@echo "  build-static  — CGO_ENABLED=0 static binary (Linux: fully static via -extldflags)"
 	@echo "  test          — go test"
 	@echo "  vet           — go vet"
 	@echo "  race          — go test -race"
 	@echo "  cover         — coverage summary"
 	@echo "  clean         — remove built binary"
-	@echo "  run           — build and run with example config"
+	@echo "  demo          — build and tail a tempdir of synthetic log files"
 
 build:
 	go build -o $(BINARY) ./cmd/log-listener
@@ -38,5 +38,8 @@ cover:
 clean:
 	rm -f $(BINARY)
 
-run: build
-	./$(BINARY) --config log-listener.example.yml --no-tui
+demo: build
+	@DIR=$$(mktemp -d); \
+	    echo "Demo dir: $$DIR (drop log lines into *.log there)"; \
+	    printf '2026-05-28 INFO {"hello":"world"}\n' > $$DIR/seed.log; \
+	    ./$(BINARY) -d $$DIR -r 'name:\.log$$' --no-tui

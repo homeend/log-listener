@@ -15,7 +15,8 @@
       "Bash(git ls-tree *)",
       "Bash(git reset *)",
       "Bash(make build *)",
-      "Bash(make build-static *)"
+      "Bash(make build-static *)",
+      "Bash(make help *)"
     ]
   }
 }

@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to phased delivery per `PLAN.md`.
 
+## [Unreleased]
+
+### Phase 6 review fixes
+- `Makefile` `run` target replaced with `demo`, which creates a tempdir
+  and seeds it with a JSON-tail line so `make demo` is a self-contained
+  smoke test (the old `run` pointed at `/var/log/app-a` which doesn't
+  exist on dev boxes).
+- README clarifies that `-extldflags "-static"` is Linux-only — on
+  macOS the binary is CGO-free but not "fully static."
+
 ## [0.1.0] — 2026-05-28
 
 First end-to-end release. Implements all six phases of `PLAN.md`. See

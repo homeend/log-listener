@@ -25,11 +25,14 @@ make build
 ./log-listener -d /var/log/myapp -r 'name:\.log$'
 ```
 
-Or build a fully-static binary:
+Or build a stripped binary:
 
 ```bash
 make build-static
 ```
+
+On Linux this is fully static (`-extldflags "-static"`); on macOS the flag
+is a no-op but the resulting binary is still CGO-free and reproducible.
 
 ## Quick start — CLI
 
@@ -181,11 +184,12 @@ command). SSE and the renderer pipeline still run.
 ## Development
 
 ```bash
-make test       # unit tests
-make vet        # go vet
-make race       # tests with -race
-make build      # local binary
-make build-static  # CGO_ENABLED=0 static binary
+make test          # unit tests
+make vet           # go vet
+make race          # tests with -race
+make build         # local binary
+make build-static  # CGO_ENABLED=0 stripped binary
+make demo          # tail a tempdir of synthetic logs (no setup required)
 ```
 
 See `PLAN.md` for the architecture and the per-phase commit history;
