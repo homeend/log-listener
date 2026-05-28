@@ -6,8 +6,6 @@
       "Bash(go env *)",
       "Bash(git add *)",
       "Bash(git -c user.email=code.drill.eu@gmail.com -c user.name=homeend commit -m ' *)",
-      "Bash(git commit *)",
-      "Bash(git * commit *)",
       "Bash(go test *)",
       "Bash(go get *)",
       "Bash(go build *)",
@@ -15,7 +13,9 @@
       "Bash(git status *)",
       "Bash(git rm *)",
       "Bash(git ls-tree *)",
-      "Bash(git reset *)"
+      "Bash(git reset *)",
+      "Bash(make build *)",
+      "Bash(make build-static *)"
     ]
   }
 }

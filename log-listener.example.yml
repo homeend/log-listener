@@ -1,0 +1,62 @@
+# Example log-listener configuration.
+#
+# Resolution order:
+#   1. --config <path>
+#   2. ./log-listener.yml
+#   3. ~/.log-listener.yml
+#
+# CLI flags override the values here.
+
+# ----- which files to watch ------------------------------------------------
+
+directories:
+  - id: default                # corresponds to -d / -r on the CLI
+    paths:
+      - /var/log/app-a
+      - /var/log/app-b
+    recursive: true
+    file_filter:
+      name_regex: '\.log$'
+      exclude_regex: 'archive|\.gz$'
+      younger: 24h             # any of: ISO date, ISO datetime, 30s/15m/1h/2d/1w
+
+  - id: errors                 # corresponds to -d1 / -r1 etc. (numbered ids)
+    paths:
+      - /var/log/special
+    file_filter:
+      name_regex: 'panic-.*\.log'
+
+files:
+  - id: default                # corresponds to -f
+    paths:
+      - /tmp/output-*.log      # glob expansion is applied
+  - id: 1                      # corresponds to -f1
+    paths:
+      - /var/log/system.log
+
+# Applied to every directory group above. CLI -R wins entirely if present.
+global_file_filter:
+  younger: 7d
+
+# ----- how to render matched lines ----------------------------------------
+
+renderers:
+  - name: app-json
+    line_regex: '(\d{4}-\d{2}-\d{2}) \[(\w{4,5})\] (\{.*\})'
+    template: '$1 $2\njson($3)'
+    applies_to:
+      groups: [errors]         # only files assigned to the "errors" group
+      paths: ['*.app.log']     # AND filename glob (both must match)
+
+# ----- output destinations ------------------------------------------------
+
+output:
+  color: true                  # ignored when stdout isn't a TTY
+  drop_unmatched: false        # true → discard lines no renderer matched
+  sse:
+    enabled: true
+    addr: '127.0.0.1:8080'     # SSE clients consume GET /stream
+
+tui:
+  enabled: true                # ignored when stdout isn't a TTY
+  scrollback: 10000            # bounded ring buffer of display lines

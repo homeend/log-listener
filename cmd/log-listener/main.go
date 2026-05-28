@@ -1,5 +1,8 @@
 // Command log-listener tails configured log files and directories.
-// Phase 1 surface: raw line emission on stdout, no renderers, no TUI, no SSE.
+// Output destinations (auto-selected): colorized stdout when piped or with
+// --no-tui, an interactive TUI when stdout is a TTY, and an optional SSE
+// broadcast on http://<addr>/stream (enabled by --sse or output.sse in YAML).
+// See README.md for the full reference and PLAN.md for the architecture.
 package main
 
 import (

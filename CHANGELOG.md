@@ -5,7 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to phased delivery per `PLAN.md`.
 
-## [Unreleased]
+## [0.1.0] — 2026-05-28
+
+First end-to-end release. Implements all six phases of `PLAN.md`. See
+the per-phase entries below for details.
+
+### Phase 6 — Polish
+- `README.md`: usage, CLI reference, YAML schema, renderer DSL, SSE
+  consumer example, TUI shortcuts.
+- `log-listener.example.yml`: annotated example config covering every
+  YAML key.
+- `Makefile` with `build`, `build-static` (CGO_ENABLED=0, stripped),
+  `test`, `vet`, `race`, `cover`, `clean`, `run` targets.
+- `cmd/log-listener` top-of-file doc comment refreshed (no longer
+  claims "Phase 1 surface").
+- `CLAUDE.md` rewritten with the full module map and architecture so
+  future Claude Code sessions can start productively.
 
 ### Phase 5 review fixes
 - `App.Push` / `App.SetFiles` / `App.Quit` now release the mutex before
