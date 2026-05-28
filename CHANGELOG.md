@@ -17,6 +17,23 @@ and this project adheres to phased delivery per `PLAN.md`.
 
 ## [Unreleased]
 
+### TUI tail mode + browse mode
+- Replaced the offset-from-end `streamScroll` with a proper tail/browse
+  state machine: `tailMode bool` + `streamTop int` (absolute index).
+  When the user scrolls up, the TUI leaves tail mode and **locks the
+  viewport at the absolute lines they're looking at**. New incoming
+  events are still collected but do not shift the screen. Pressing
+  **End** / `G` re-sticks to the tail; scrolling down past the bottom
+  also re-sticks automatically.
+- **Home / `g`** now jumps to the FIRST (oldest) line — it used to be
+  the horizontal column-0 reset. Column 0 reset is now `0` only.
+- **End / `G`** jumps to the latest line and re-enters tail mode.
+- Footer status shows `tail` when pinned, or `@<top>/<total>` while
+  browsing, so the mode is always visible.
+- Scrollback ring buffer eviction now decrements `streamTop` so the
+  browsing user's anchor stays valid even when oldest events get
+  trimmed.
+
 ### TUI keybindings + horizontal scroll
 - New bindings in the TUI:
   - **PgUp / Ctrl+B**, **PgDn / Ctrl+F / Space** — scroll one screen.

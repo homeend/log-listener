@@ -109,35 +109,138 @@ func TestModelPageUpPageDown(t *testing.T) {
 			Rendered: []render.Part{{Type: "text", Value: fmt.Sprintf("line %d", i)}},
 		})
 	}
-	// height 30 → contentHeight = 28
 	m2, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 30})
 	m = m2.(*model)
 	page := m.contentHeight()
 	if page <= 0 {
 		t.Fatalf("contentHeight=%d", page)
 	}
+	if !m.tailMode {
+		t.Fatal("initially must be in tail mode")
+	}
 
-	// PgUp moves back by page rows
+	// PgUp leaves tail mode and shifts the viewport up by one page.
 	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyPgUp})
 	m = m2.(*model)
-	if m.streamScroll != page {
-		t.Fatalf("after PgUp streamScroll=%d want %d", m.streamScroll, page)
+	if m.tailMode {
+		t.Fatal("PgUp should unstick from tail")
+	}
+	// streamTop should be (bottom of view = events - page) - page.
+	wantTop := len(m.events) - 2*page
+	if m.streamTop != wantTop {
+		t.Fatalf("after PgUp streamTop=%d want %d", m.streamTop, wantTop)
 	}
 
-	// PgDn returns by page rows
+	// PgDn re-sticks once the bottom catches up.
 	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyPgDown})
 	m = m2.(*model)
-	if m.streamScroll != 0 {
-		t.Fatalf("after PgDn streamScroll=%d want 0", m.streamScroll)
+	if !m.tailMode {
+		t.Fatal("PgDn should re-stick at the bottom")
 	}
 
-	// PgUp clamps at total event count
+	// Scrolling up far past the start clamps at 0, never below.
 	for i := 0; i < 100; i++ {
 		m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyPgUp})
 		m = m2.(*model)
 	}
-	if m.streamScroll > len(m.events) {
-		t.Fatalf("PgUp overshot: scroll=%d events=%d", m.streamScroll, len(m.events))
+	if m.streamTop != 0 {
+		t.Fatalf("PgUp past start: streamTop=%d want 0", m.streamTop)
+	}
+}
+
+func TestModelTailModeStaysOnAppend(t *testing.T) {
+	m := newModel(1000)
+	for i := 0; i < 100; i++ {
+		m.appendEvent(render.Event{
+			Group: "g", File: "/x.log",
+			Rendered: []render.Part{{Type: "text", Value: fmt.Sprintf("line %d", i)}},
+		})
+	}
+	m2, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 10})
+	m = m2.(*model)
+
+	// Scroll up — leave tail mode and lock viewport at an absolute position.
+	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyUp})
+	m = m2.(*model)
+	if m.tailMode {
+		t.Fatal("Up arrow should unstick from tail")
+	}
+	lockedTop := m.streamTop
+
+	// New events arriving must NOT shift the user's view.
+	for i := 100; i < 150; i++ {
+		m.appendEvent(render.Event{
+			Group: "g", File: "/x.log",
+			Rendered: []render.Part{{Type: "text", Value: fmt.Sprintf("line %d", i)}},
+		})
+	}
+	if m.streamTop != lockedTop {
+		t.Fatalf("streamTop drifted during append: got %d, want %d", m.streamTop, lockedTop)
+	}
+	if m.tailMode {
+		t.Fatal("appends must not re-stick tailMode automatically")
+	}
+
+	// End re-sticks regardless of where streamTop sat.
+	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnd})
+	m = m2.(*model)
+	if !m.tailMode {
+		t.Fatal("End should re-stick to tail")
+	}
+}
+
+func TestModelHomeJumpsToOldest(t *testing.T) {
+	m := newModel(1000)
+	for i := 0; i < 50; i++ {
+		m.appendEvent(render.Event{
+			Group: "g", File: "/x.log",
+			Rendered: []render.Part{{Type: "text", Value: fmt.Sprintf("line %d", i)}},
+		})
+	}
+	m2, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 10})
+	m = m2.(*model)
+	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyHome})
+	m = m2.(*model)
+	if m.tailMode {
+		t.Fatal("Home should leave tail mode")
+	}
+	if m.streamTop != 0 {
+		t.Fatalf("Home streamTop=%d want 0", m.streamTop)
+	}
+	// The View should contain the FIRST line (line 0), not line 49.
+	view := m.View()
+	if !strings.Contains(view, "line 0") {
+		t.Fatalf("Home View must show line 0:\n%s", view)
+	}
+}
+
+func TestModelScrollbackTrimAdjustsStreamTop(t *testing.T) {
+	// Small scrollback, user locked at top, then enough events to trim past
+	// streamTop. We must NOT crash and streamTop must stay valid (>= 0).
+	m := newModel(20)
+	m2, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 10})
+	m = m2.(*model)
+	for i := 0; i < 10; i++ {
+		m.appendEvent(render.Event{
+			Group: "g", File: "/x.log",
+			Rendered: []render.Part{{Type: "text", Value: fmt.Sprintf("ev %d", i)}},
+		})
+	}
+	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyHome})
+	m = m2.(*model)
+
+	// Append far past scrollback — old events evicted.
+	for i := 10; i < 200; i++ {
+		m.appendEvent(render.Event{
+			Group: "g", File: "/x.log",
+			Rendered: []render.Part{{Type: "text", Value: fmt.Sprintf("ev %d", i)}},
+		})
+	}
+	if m.streamTop < 0 || m.streamTop >= len(m.events) {
+		t.Fatalf("streamTop=%d out of range (events=%d)", m.streamTop, len(m.events))
+	}
+	if m.tailMode {
+		t.Fatal("eviction must not silently re-stick to tail")
 	}
 }
 
@@ -177,11 +280,11 @@ func TestModelHorizontalScroll(t *testing.T) {
 		t.Fatalf("expected line body still visible after horiz scroll:\n%s", view)
 	}
 
-	// Home/0 jumps back to column 0
-	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyHome})
+	// Horizontal column reset is on "0" now that Home means "first line".
+	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'0'}})
 	m = m2.(*model)
 	if m.horizScroll != 0 {
-		t.Fatalf("Home should reset horizScroll, got %d", m.horizScroll)
+		t.Fatalf("'0' should reset horizScroll, got %d", m.horizScroll)
 	}
 
 	// Left clamps at 0
@@ -217,18 +320,24 @@ func TestModelFastScrollKeys(t *testing.T) {
 		t.Fatalf("Ctrl+Left: horizScroll=%d want 0", m.horizScroll)
 	}
 
-	// Ctrl+Up scrolls vertically by vertFastStep
+	// Ctrl+Up unsticks tail mode and shifts viewport up by vertFastStep.
 	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyCtrlUp})
 	m = m2.(*model)
-	if m.streamScroll != vertFastStep {
-		t.Fatalf("Ctrl+Up: streamScroll=%d want %d", m.streamScroll, vertFastStep)
+	if m.tailMode {
+		t.Fatal("Ctrl+Up should unstick from tail")
+	}
+	wantTop := len(m.events) - m.contentHeight() - vertFastStep
+	if m.streamTop != wantTop {
+		t.Fatalf("Ctrl+Up: streamTop=%d want %d", m.streamTop, wantTop)
 	}
 
-	// Ctrl+Down rolls back
-	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyCtrlDown})
-	m = m2.(*model)
-	if m.streamScroll != 0 {
-		t.Fatalf("Ctrl+Down: streamScroll=%d want 0", m.streamScroll)
+	// Ctrl+Down moves down by vertFastStep; when the bottom catches up, re-stick.
+	for i := 0; i < 20; i++ {
+		m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyCtrlDown})
+		m = m2.(*model)
+	}
+	if !m.tailMode {
+		t.Fatal("repeated Ctrl+Down must eventually re-stick to tail")
 	}
 }
 

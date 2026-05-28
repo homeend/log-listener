@@ -170,15 +170,27 @@ func (a *App) Quit() {
 // model is the bubbletea state. Exported only via App; tests construct it
 // directly via newModel.
 type model struct {
-	events       []string // pre-rendered lines for the stream
-	scrollback   int
-	width        int
-	height       int
-	showFiles    bool
-	files        []FileEntry
-	filesScroll  int
-	streamScroll int // 0 = pinned to bottom; positive = scrolled back N lines
-	horizScroll  int // 0 = pinned to left; positive = N columns clipped off the left
+	events      []string // pre-rendered lines for the stream
+	scrollback  int
+	width       int
+	height      int
+	showFiles   bool
+	files       []FileEntry
+	filesScroll int
+
+	// Vertical position in the stream.
+	//   tailMode == true  : viewport pinned to the bottom; new events visible
+	//                       as they arrive. This is the default.
+	//   tailMode == false : viewport locked at absolute index streamTop;
+	//                       new events arrive but do NOT shift the view —
+	//                       the user is browsing.
+	// When the bottom catches up to streamTop (the user scrolls down past
+	// the latest event), tailMode flips back to true automatically.
+	tailMode  bool
+	streamTop int // absolute index of the first visible row when !tailMode
+
+	// Horizontal pan offset (columns clipped off the left).
+	horizScroll int
 }
 
 const (
@@ -188,7 +200,34 @@ const (
 )
 
 func newModel(scrollback int) *model {
-	return &model{scrollback: scrollback}
+	return &model{scrollback: scrollback, tailMode: true}
+}
+
+// unstickFromTail flips out of tail mode while keeping the visible window
+// where it currently is — so the very next render shows exactly the same
+// lines as before, but new appends no longer scroll the view.
+func (m *model) unstickFromTail() {
+	if !m.tailMode {
+		return
+	}
+	m.tailMode = false
+	m.streamTop = len(m.events) - m.contentHeight()
+	if m.streamTop < 0 {
+		m.streamTop = 0
+	}
+}
+
+// maybeReStick re-pins to the tail if streamTop has run off the bottom of
+// the buffer (or past it). Call after any downward scroll.
+func (m *model) maybeReStick() {
+	maxTop := len(m.events) - m.contentHeight()
+	if m.streamTop >= maxTop {
+		m.streamTop = maxTop
+		if m.streamTop < 0 {
+			m.streamTop = 0
+		}
+		m.tailMode = true
+	}
 }
 
 func (m *model) Init() tea.Cmd { return nil }
@@ -219,37 +258,30 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.showFiles {
 				m.showFiles = false
 			}
+		// Vertical: one row
 		case "up", "k":
 			if m.showFiles {
 				if m.filesScroll > 0 {
 					m.filesScroll--
 				}
 			} else {
-				m.streamScroll++
+				m.unstickFromTail()
+				m.streamTop--
+				if m.streamTop < 0 {
+					m.streamTop = 0
+				}
 			}
 		case "down", "j":
 			if m.showFiles {
 				if m.filesScroll < len(m.files)-1 {
 					m.filesScroll++
 				}
-			} else if m.streamScroll > 0 {
-				m.streamScroll--
+			} else if !m.tailMode {
+				m.streamTop++
+				m.maybeReStick()
 			}
-		case "g":
-			if m.showFiles {
-				m.filesScroll = 0
-			} else {
-				m.streamScroll = len(m.events)
-			}
-		case "G":
-			if m.showFiles {
-				m.filesScroll = len(m.files) - 1
-				if m.filesScroll < 0 {
-					m.filesScroll = 0
-				}
-			} else {
-				m.streamScroll = 0
-			}
+
+		// Vertical: one page
 		case "pgup", "ctrl+b":
 			page := m.contentHeight()
 			if m.showFiles {
@@ -258,9 +290,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.filesScroll = 0
 				}
 			} else {
-				m.streamScroll += page
-				if m.streamScroll > len(m.events) {
-					m.streamScroll = len(m.events)
+				m.unstickFromTail()
+				m.streamTop -= page
+				if m.streamTop < 0 {
+					m.streamTop = 0
 				}
 			}
 		case "pgdown", "ctrl+f", " ":
@@ -273,12 +306,58 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.filesScroll < 0 {
 					m.filesScroll = 0
 				}
+			} else if !m.tailMode {
+				m.streamTop += page
+				m.maybeReStick()
+			}
+
+		// Vertical: fast (Ctrl/Shift)
+		case "ctrl+up", "shift+up":
+			if m.showFiles {
+				m.filesScroll -= vertFastStep
+				if m.filesScroll < 0 {
+					m.filesScroll = 0
+				}
 			} else {
-				m.streamScroll -= page
-				if m.streamScroll < 0 {
-					m.streamScroll = 0
+				m.unstickFromTail()
+				m.streamTop -= vertFastStep
+				if m.streamTop < 0 {
+					m.streamTop = 0
 				}
 			}
+		case "ctrl+down", "shift+down":
+			if m.showFiles {
+				m.filesScroll += vertFastStep
+				if m.filesScroll > len(m.files)-1 {
+					m.filesScroll = len(m.files) - 1
+				}
+				if m.filesScroll < 0 {
+					m.filesScroll = 0
+				}
+			} else if !m.tailMode {
+				m.streamTop += vertFastStep
+				m.maybeReStick()
+			}
+
+		// Jump to extremes — Home/g = first line (oldest); End/G = tail.
+		case "home", "g":
+			if m.showFiles {
+				m.filesScroll = 0
+			} else {
+				m.tailMode = false
+				m.streamTop = 0
+			}
+		case "end", "G":
+			if m.showFiles {
+				m.filesScroll = len(m.files) - 1
+				if m.filesScroll < 0 {
+					m.filesScroll = 0
+				}
+			} else {
+				m.tailMode = true // re-stick to the latest, even when new events arrive
+			}
+
+		// Horizontal pan
 		case "left", "h":
 			m.horizScroll -= horizStep
 			if m.horizScroll < 0 {
@@ -293,43 +372,12 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case "ctrl+right", "shift+right":
 			m.horizScroll += horizFastStep
-		case "ctrl+up", "shift+up":
-			if m.showFiles {
-				m.filesScroll -= vertFastStep
-				if m.filesScroll < 0 {
-					m.filesScroll = 0
-				}
-			} else {
-				m.streamScroll += vertFastStep
-				if m.streamScroll > len(m.events) {
-					m.streamScroll = len(m.events)
-				}
-			}
-		case "ctrl+down", "shift+down":
-			if m.showFiles {
-				m.filesScroll += vertFastStep
-				if m.filesScroll > len(m.files)-1 {
-					m.filesScroll = len(m.files) - 1
-				}
-				if m.filesScroll < 0 {
-					m.filesScroll = 0
-				}
-			} else {
-				m.streamScroll -= vertFastStep
-				if m.streamScroll < 0 {
-					m.streamScroll = 0
-				}
-			}
-		case "home", "0":
+		case "0":
 			m.horizScroll = 0
-		case "end", "$":
-			// "end" = jump right by a big amount; clamp at the widest line.
+		case "$":
 			widest := 0
-			plainCache := make([]string, 0, len(m.events))
 			for _, ev := range m.events {
-				p := stripANSI(ev)
-				plainCache = append(plainCache, p)
-				if w := runeLen(p); w > widest {
+				if w := runeLen(stripANSI(ev)); w > widest {
 					widest = w
 				}
 			}
@@ -356,9 +404,18 @@ func (m *model) appendEvent(ev render.Event) {
 	for _, line := range renderEventLines(ev) {
 		m.events = append(m.events, line)
 	}
-	// trim ring buffer
+	// trim ring buffer; when the user is browsing (!tailMode) we must drag
+	// streamTop down by the same amount so the absolute lines they're
+	// looking at stay anchored.
 	if len(m.events) > m.scrollback {
-		m.events = m.events[len(m.events)-m.scrollback:]
+		drop := len(m.events) - m.scrollback
+		m.events = m.events[drop:]
+		if !m.tailMode {
+			m.streamTop -= drop
+			if m.streamTop < 0 {
+				m.streamTop = 0
+			}
+		}
 	}
 }
 
@@ -417,8 +474,12 @@ func (m *model) View() string {
 		body = m.renderFiles(contentH)
 	}
 
-	footer := dimStyle.Render(fmt.Sprintf(" events: %d · scroll: %d · col: %d · files: %d ",
-		len(m.events), m.streamScroll, m.horizScroll, len(m.files)))
+	pos := "tail"
+	if !m.tailMode {
+		pos = fmt.Sprintf("@%d/%d", m.streamTop, len(m.events))
+	}
+	footer := dimStyle.Render(fmt.Sprintf(" events: %d · %s · col: %d · files: %d ",
+		len(m.events), pos, m.horizScroll, len(m.files)))
 
 	return header + "\n" + body + "\n" + footer
 }
@@ -427,13 +488,25 @@ func (m *model) renderStream(rows int) string {
 	if len(m.events) == 0 {
 		return strings.Repeat("\n", rows-1)
 	}
-	end := len(m.events) - m.streamScroll
-	if end < 0 {
-		end = 0
-	}
-	start := end - rows
-	if start < 0 {
-		start = 0
+	var start, end int
+	if m.tailMode {
+		end = len(m.events)
+		start = end - rows
+		if start < 0 {
+			start = 0
+		}
+	} else {
+		start = m.streamTop
+		if start < 0 {
+			start = 0
+		}
+		if start > len(m.events) {
+			start = len(m.events)
+		}
+		end = start + rows
+		if end > len(m.events) {
+			end = len(m.events)
+		}
 	}
 	visible := m.events[start:end]
 	rendered := make([]string, len(visible))
@@ -441,7 +514,6 @@ func (m *model) renderStream(rows int) string {
 		rendered[i] = m.clipLine(line)
 	}
 	out := strings.Join(rendered, "\n")
-	// pad to fill height
 	missing := rows - len(rendered)
 	if missing > 0 {
 		out += strings.Repeat("\n", missing)

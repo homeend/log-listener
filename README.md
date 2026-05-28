@@ -362,25 +362,40 @@ Hub behavior:
 Auto-selected when stdout is a TTY and `--no-tui` was not passed.
 `--once` mode never uses the TUI.
 
-| Key                 | Action                                     |
-|---------------------|--------------------------------------------|
-| `q` / Ctrl+C        | Quit.                                      |
-| Tab / Ctrl+I        | Toggle the "watched files" overlay.        |
-| Esc                 | Close the files overlay.                   |
-| ↑ / `k`             | Scroll one line up.                        |
-| ↓ / `j`             | Scroll one line down.                      |
-| Ctrl+↑ / Shift+↑    | Scroll up 10 lines.                        |
-| Ctrl+↓ / Shift+↓    | Scroll down 10 lines.                      |
-| PgUp / Ctrl+B       | Scroll up by one screen.                   |
-| PgDn / Ctrl+F / Spc | Scroll down by one screen.                 |
-| ← / `h`             | Pan view left 10 columns.                  |
-| → / `l`             | Pan view right 10 columns.                 |
-| Ctrl+← / Shift+←    | Pan view left 50 columns.                  |
-| Ctrl+→ / Shift+→    | Pan view right 50 columns.                 |
-| Home / `0`          | Jump back to column 0 (leftmost).          |
-| End / `$`           | Jump right to reveal the end of widest line.|
-| `g`                 | Jump to top of stream / files list.        |
-| `G`                 | Jump to bottom (pin to live) / list end.   |
+### Tail mode vs browsing
+
+On launch the TUI is in **tail mode**: the viewport is pinned to the
+bottom and new events appear as they arrive. The moment you start
+scrolling up (Up, PgUp, Ctrl+Up, Shift+Up, Home, `g`), you leave tail
+mode and the viewport is **locked at the absolute position you're
+looking at** — new events continue to be collected but the screen does
+not move. Press **End** (or `G`) to re-stick to the latest. Scrolling
+down past the bottom also re-sticks automatically.
+
+The status footer shows `tail` when pinned, or `@<top>/<total>` while
+browsing, so you can see at a glance whether the view is live.
+
+### Keybindings
+
+| Key                 | Action                                                |
+|---------------------|-------------------------------------------------------|
+| `q` / Ctrl+C        | Quit.                                                 |
+| Tab / Ctrl+I        | Toggle the "watched files" overlay.                   |
+| Esc                 | Close the files overlay.                              |
+| ↑ / `k`             | Scroll one line up (unsticks tail).                   |
+| ↓ / `j`             | Scroll one line down.                                 |
+| Ctrl+↑ / Shift+↑    | Scroll up 10 lines.                                   |
+| Ctrl+↓ / Shift+↓    | Scroll down 10 lines.                                 |
+| PgUp / Ctrl+B       | Scroll up by one screen.                              |
+| PgDn / Ctrl+F / Spc | Scroll down by one screen.                            |
+| **Home** / `g`      | **Jump to the first (oldest) line.**                  |
+| **End** / `G`       | **Jump to the latest line and re-stick to tail mode.**|
+| ← / `h`             | Pan view left 10 columns.                             |
+| → / `l`             | Pan view right 10 columns.                            |
+| Ctrl+← / Shift+←    | Pan view left 50 columns.                             |
+| Ctrl+→ / Shift+→    | Pan view right 50 columns.                            |
+| `0`                 | Jump back to column 0 (leftmost).                     |
+| `$`                 | Jump right to reveal the end of the widest line.      |
 
 When you pan horizontally (`←` / `→`), the visible window is clipped from
 the left and ANSI styling is dropped for the scrolled portion — that's a
