@@ -12,7 +12,6 @@ coverage.html
 # IDE / tooling
 .idea/
 .vscode/
-.claude/
 
 # OS
 .DS_Store
