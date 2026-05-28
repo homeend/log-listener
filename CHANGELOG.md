@@ -7,6 +7,15 @@ and this project adheres to phased delivery per `PLAN.md`.
 
 ## [Unreleased]
 
+### Phase 2 review fixes
+- YAML decoding is now strict (`yaml.Decoder.KnownFields(true)`) so typos in
+  YAML keys produce errors instead of silently being ignored.
+- Duplicate group ids inside YAML (`directories`/`files`) are now an error.
+- `output.sse.enabled: true` without an explicit `addr` defaults to
+  `127.0.0.1:8080` per PLAN.md.
+- Removed dead `cliExplicit["global_filter"]` write; merge already
+  branches on `GlobalFilter == nil`.
+
 ### Phase 2 — YAML config + merge
 - `internal/config/yaml.go`: full YAML schema (directories, files,
   global_file_filter, renderers, output, tui) with `gopkg.in/yaml.v3`.

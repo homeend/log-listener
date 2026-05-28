@@ -86,7 +86,9 @@ func ParseArgs(args []string, now time.Time) (*Config, error) {
 			if err := applyRules(&cfg.GlobalFilter, vals, now); err != nil {
 				return nil, fmt.Errorf("-R: %w", err)
 			}
-			cfg.cliExplicit["global_filter"] = true
+			// CLI-presence detection for the global filter is via the
+			// "GlobalFilter != nil" check in mergeYAMLInto; no cliExplicit
+			// entry needed here.
 			i = next
 		case flagRE.MatchString(a):
 			m := flagRE.FindStringSubmatch(a)

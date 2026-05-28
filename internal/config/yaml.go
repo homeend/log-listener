@@ -1,6 +1,7 @@
 package config
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -161,7 +162,9 @@ func readYAMLFile(path string) (*yamlConfig, error) {
 	if len(data) == 0 {
 		return &yc, nil
 	}
-	if err := yaml.Unmarshal(data, &yc); err != nil {
+	dec := yaml.NewDecoder(bytes.NewReader(data))
+	dec.KnownFields(true) // strict: unknown YAML keys are an error so typos surface
+	if err := dec.Decode(&yc); err != nil {
 		return nil, err
 	}
 	return &yc, nil
@@ -184,11 +187,16 @@ func mergeYAMLInto(cfg *Config, yc *yamlConfig, now time.Time) error {
 	}
 
 	// directories — append YAML groups whose (kind=dir, id) isn't already CLI
+	yamlDirSeen := map[string]struct{}{}
 	for _, ydg := range yc.Directories {
 		id := ydg.ID
 		if id == "" {
 			id = "default"
 		}
+		if _, dup := yamlDirSeen[id]; dup {
+			return fmt.Errorf("directories: duplicate id %q", id)
+		}
+		yamlDirSeen[id] = struct{}{}
 		if _, exists := cfg.indexDir[id]; exists {
 			continue // CLI wins
 		}
@@ -212,11 +220,16 @@ func mergeYAMLInto(cfg *Config, yc *yamlConfig, now time.Time) error {
 	}
 
 	// files — same pattern
+	yamlFileSeen := map[string]struct{}{}
 	for _, yfg := range yc.Files {
 		id := yfg.ID
 		if id == "" {
 			id = "default"
 		}
+		if _, dup := yamlFileSeen[id]; dup {
+			return fmt.Errorf("files: duplicate id %q", id)
+		}
+		yamlFileSeen[id] = struct{}{}
 		if _, exists := cfg.indexFile[id]; exists {
 			continue
 		}
@@ -257,10 +270,14 @@ func mergeYAMLInto(cfg *Config, yc *yamlConfig, now time.Time) error {
 			cfg.DropUnmatched = *o.DropUnmatched
 		}
 		if o.SSE != nil && !cfg.cliExplicit["sse_addr"] {
-			if o.SSE.Enabled != nil && !*o.SSE.Enabled {
+			switch {
+			case o.SSE.Enabled != nil && !*o.SSE.Enabled:
 				cfg.SSEAddr = ""
-			} else if o.SSE.Addr != "" {
+			case o.SSE.Addr != "":
 				cfg.SSEAddr = o.SSE.Addr
+			case o.SSE.Enabled != nil && *o.SSE.Enabled:
+				// enabled: true without addr → default localhost binding
+				cfg.SSEAddr = "127.0.0.1:8080"
 			}
 		}
 	}

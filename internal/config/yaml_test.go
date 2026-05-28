@@ -226,6 +226,56 @@ func TestLoadBadYAML(t *testing.T) {
 	}
 }
 
+func TestLoadYAMLStrictUnknownKey(t *testing.T) {
+	dir := t.TempDir()
+	yml := writeYAML(t, dir, "log.yml", `
+directorys:        # typo: should be "directories"
+  - id: default
+    paths: [/foo]
+`)
+	homeStub := func() (string, error) { return dir, nil }
+	_, err := loadWithFS([]string{"--config", yml}, refNow, homeStub)
+	if err == nil {
+		t.Fatal("expected strict-mode error for unknown YAML key")
+	}
+}
+
+func TestLoadYAMLDuplicateIDs(t *testing.T) {
+	dir := t.TempDir()
+	yml := writeYAML(t, dir, "log.yml", `
+directories:
+  - id: foo
+    paths: [/a]
+  - id: foo
+    paths: [/b]
+`)
+	homeStub := func() (string, error) { return dir, nil }
+	_, err := loadWithFS([]string{"--config", yml}, refNow, homeStub)
+	if err == nil {
+		t.Fatal("expected duplicate-id error")
+	}
+}
+
+func TestLoadYAMLSSEEnabledDefaultsAddr(t *testing.T) {
+	dir := t.TempDir()
+	yml := writeYAML(t, dir, "log.yml", `
+directories:
+  - id: default
+    paths: [/foo]
+output:
+  sse:
+    enabled: true
+`)
+	homeStub := func() (string, error) { return dir, nil }
+	cfg, err := loadWithFS([]string{"--config", yml}, refNow, homeStub)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.SSEAddr != "127.0.0.1:8080" {
+		t.Fatalf("want default localhost addr, got %q", cfg.SSEAddr)
+	}
+}
+
 func TestLoadYAMLInvalidRegex(t *testing.T) {
 	dir := t.TempDir()
 	yml := writeYAML(t, dir, "log.yml", `
