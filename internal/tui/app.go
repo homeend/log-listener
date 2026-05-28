@@ -69,6 +69,19 @@ type FileEntry struct {
 	Group string
 }
 
+// displayLine is one rendered row in the streaming view. The styled prefix
+// (`[group] basename:`) is built at View() time so column toggles and
+// group enable/disable flip instantly without rebuilding the cache.
+//
+// isBlock=true lines are continuation rows from JSON/XML pretty-prints —
+// they never carry a prefix and always render with their pre-styled body.
+type displayLine struct {
+	group   string // unstyled — used for filtering and prefix render
+	file    string // basename, unstyled
+	body    string // post-prefix content (plain for heads, dim-styled for blocks)
+	isBlock bool
+}
+
 // EventMsg pushes a rendered event into the TUI.
 type EventMsg struct{ Event render.Event }
 
@@ -88,17 +101,23 @@ type App struct {
 	done bool
 }
 
-// New creates an App with the given scrollback size and an initial set of
-// "watched files" shown in the Ctrl+I overlay. scrollback <= 0 uses the
-// default (10000). The initial files list must be passed here (not via
-// SetFiles before Run) because bubbletea's internal msgs channel is
-// unbuffered — calling Send before Run deadlocks the main goroutine.
-func New(scrollback int, initialFiles []FileEntry) *App {
+// New creates an App with the given scrollback size, an initial set of
+// "watched files" (shown in the Ctrl+I overlay), and the ordered list of
+// group IDs (shown in the Ctrl+G panel, addressable via digit keys 1-9).
+// scrollback <= 0 uses the default (10000). Files and groups must be
+// passed here, not via SetFiles before Run, because bubbletea's internal
+// msgs channel is unbuffered — Send before Run deadlocks the main
+// goroutine.
+func New(scrollback int, initialFiles []FileEntry, groupIDs []string) *App {
 	if scrollback <= 0 {
 		scrollback = defaultScrollback
 	}
 	m := newModel(scrollback)
 	m.files = append(m.files, initialFiles...)
+	m.groupOrder = append(m.groupOrder, groupIDs...)
+	for _, gid := range groupIDs {
+		m.groupEnabled[gid] = true
+	}
 	// tea.WithEnvironment hands a controlled env to bubbletea's internal
 	// termenv.Output. With COLORTERM=truecolor termenv accepts the
 	// profile from env and skips the OSC 11 / CSI 6n probes that hang
@@ -170,7 +189,7 @@ func (a *App) Quit() {
 // model is the bubbletea state. Exported only via App; tests construct it
 // directly via newModel.
 type model struct {
-	events      []string // pre-rendered lines for the stream
+	events      []displayLine // each event becomes 1 head + N block lines
 	scrollback  int
 	width       int
 	height      int
@@ -191,6 +210,18 @@ type model struct {
 
 	// Horizontal pan offset (columns clipped off the left).
 	horizScroll int
+
+	// Column visibility — toggled with Ctrl+P (group) and Ctrl+L (file).
+	showGroup bool
+	showFile  bool
+
+	// Group enable/disable — toggled with digit keys 1-9 (mapped to the
+	// first 9 entries of groupOrder). A disabled group's events stay in
+	// m.events but are skipped during the renderStream window walk.
+	groupOrder      []string
+	groupEnabled    map[string]bool
+	showGroupsPanel bool
+	groupsScroll    int
 }
 
 const (
@@ -200,32 +231,52 @@ const (
 )
 
 func newModel(scrollback int) *model {
-	return &model{scrollback: scrollback, tailMode: true}
+	return &model{
+		scrollback:   scrollback,
+		tailMode:     true,
+		showGroup:    true,
+		showFile:     true,
+		groupEnabled: map[string]bool{},
+	}
 }
 
 // unstickFromTail flips out of tail mode while keeping the visible window
 // where it currently is — so the very next render shows exactly the same
-// lines as before, but new appends no longer scroll the view.
+// lines as before, but new appends no longer scroll the view. The anchor
+// is the absolute index of the first visible event (computed by walking
+// backward through ENABLED events for one contentHeight worth).
 func (m *model) unstickFromTail() {
 	if !m.tailMode {
 		return
 	}
 	m.tailMode = false
-	m.streamTop = len(m.events) - m.contentHeight()
+	rows := m.contentHeight()
+	count := 0
+	idx := len(m.events) - 1
+	for ; idx >= 0 && count < rows; idx-- {
+		if m.lineEnabled(m.events[idx]) {
+			count++
+		}
+	}
+	m.streamTop = idx + 1
 	if m.streamTop < 0 {
 		m.streamTop = 0
 	}
 }
 
-// maybeReStick re-pins to the tail if streamTop has run off the bottom of
-// the buffer (or past it). Call after any downward scroll.
+// maybeReStick re-pins to the tail if the browse window has caught up
+// with the latest enabled event. Call after any downward scroll.
 func (m *model) maybeReStick() {
-	maxTop := len(m.events) - m.contentHeight()
-	if m.streamTop >= maxTop {
-		m.streamTop = maxTop
-		if m.streamTop < 0 {
-			m.streamTop = 0
+	// Count enabled events from streamTop onward; if that fits in one
+	// content-height window, we're effectively at the tail.
+	rows := m.contentHeight()
+	enabled := 0
+	for i := m.streamTop; i < len(m.events); i++ {
+		if m.lineEnabled(m.events[i]) {
+			enabled++
 		}
+	}
+	if enabled <= rows {
 		m.tailMode = true
 	}
 }
@@ -253,10 +304,32 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// usually surfaces it as "tab". Accept both so the binding
 			// works regardless of terminal handling.
 			m.showFiles = !m.showFiles
+			if m.showFiles {
+				m.showGroupsPanel = false
+			}
 			m.filesScroll = 0
+		case "ctrl+g":
+			m.showGroupsPanel = !m.showGroupsPanel
+			if m.showGroupsPanel {
+				m.showFiles = false
+			}
+			m.groupsScroll = 0
 		case "esc":
 			if m.showFiles {
 				m.showFiles = false
+			}
+			if m.showGroupsPanel {
+				m.showGroupsPanel = false
+			}
+		case "ctrl+p":
+			m.showGroup = !m.showGroup
+		case "ctrl+l":
+			m.showFile = !m.showFile
+		case "1", "2", "3", "4", "5", "6", "7", "8", "9":
+			idx := int(msg.String()[0] - '1')
+			if idx < len(m.groupOrder) {
+				gid := m.groupOrder[idx]
+				m.groupEnabled[gid] = !m.groupEnabled[gid]
 			}
 		// Vertical: one row
 		case "up", "k":
@@ -376,8 +449,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.horizScroll = 0
 		case "$":
 			widest := 0
-			for _, ev := range m.events {
-				if w := runeLen(stripANSI(ev)); w > widest {
+			for _, dl := range m.events {
+				w := runeLen(stripANSI(m.renderDisplayLine(dl)))
+				if w > widest {
 					widest = w
 				}
 			}
@@ -401,8 +475,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *model) appendEvent(ev render.Event) {
-	for _, line := range renderEventLines(ev) {
-		m.events = append(m.events, line)
+	for _, dl := range decomposeEvent(ev) {
+		m.events = append(m.events, dl)
 	}
 	// trim ring buffer; when the user is browsing (!tailMode) we must drag
 	// streamTop down by the same amount so the absolute lines they're
@@ -419,10 +493,12 @@ func (m *model) appendEvent(ev render.Event) {
 	}
 }
 
-// renderEventLines flattens a render.Event into one or more display lines.
-// The first line is the "[<group>] <basename>: <text>" header; JSON/XML
-// blocks follow on their own lines.
-func renderEventLines(ev render.Event) []string {
+// decomposeEvent splits one render.Event into the per-line display rows
+// used by the model. Each event becomes a single head row carrying the
+// plain text body, plus zero-or-more pre-dim-styled block rows for
+// JSON/XML pretty-prints. The styled prefix is NOT baked in here so
+// column toggles take effect without rebuilding the cache.
+func decomposeEvent(ev render.Event) []displayLine {
 	var textBuf strings.Builder
 	var blocks []string
 	for _, p := range ev.Rendered {
@@ -438,18 +514,53 @@ func renderEventLines(ev render.Event) []string {
 			blocks = append(blocks, p.Value.(string))
 		}
 	}
-	prefix := fmt.Sprintf("%s %s: ",
-		groupStyle.Render("["+ev.Group+"]"),
-		fileStyle.Render(filepath.Base(ev.File)))
+	base := filepath.Base(ev.File)
 	text := strings.TrimRight(textBuf.String(), "\n")
-	first := prefix + text
-	lines := []string{first}
+	out := []displayLine{{group: ev.Group, file: base, body: text}}
 	for _, b := range blocks {
 		for _, ln := range strings.Split(b, "\n") {
-			lines = append(lines, dimStyle.Render(ln))
+			out = append(out, displayLine{
+				group:   ev.Group,
+				file:    base,
+				body:    dimStyle.Render(ln),
+				isBlock: true,
+			})
 		}
 	}
-	return lines
+	return out
+}
+
+// renderDisplayLine assembles one terminal row from a displayLine using
+// the model's current column toggles. Block lines never carry a prefix.
+func (m *model) renderDisplayLine(dl displayLine) string {
+	if dl.isBlock {
+		return dl.body
+	}
+	var sb strings.Builder
+	if m.showGroup {
+		sb.WriteString(groupStyle.Render("[" + dl.group + "]"))
+		sb.WriteByte(' ')
+	}
+	if m.showFile {
+		sb.WriteString(fileStyle.Render(dl.file))
+		sb.WriteString(": ")
+	}
+	sb.WriteString(dl.body)
+	return sb.String()
+}
+
+// lineEnabled reports whether dl should appear in the stream window
+// given the current per-group toggles. Block lines inherit their head's
+// group, so they're filtered consistently.
+func (m *model) lineEnabled(dl displayLine) bool {
+	if dl.group == "" {
+		return true
+	}
+	enabled, known := m.groupEnabled[dl.group]
+	if !known {
+		return true // unknown groups (shouldn't happen) default to visible
+	}
+	return enabled
 }
 
 // contentHeight returns the number of rows available for the body between
@@ -466,52 +577,145 @@ func (m *model) View() string {
 	if m.height == 0 {
 		return ""
 	}
-	header := headerBg.Width(m.width).Render(" log-listener — q quit · Tab files · ↑/↓ scroll · ←/→ pan · PgUp/PgDn page ")
+	header := headerBg.Width(m.width).Render(" log-listener — q quit · Tab files · Ctrl+G groups · 1-9 toggle · Ctrl+P/L cols ")
 	contentH := m.contentHeight()
 
-	body := m.renderStream(contentH)
-	if m.showFiles {
+	var body string
+	switch {
+	case m.showGroupsPanel:
+		body = m.renderGroupsPanel(contentH)
+	case m.showFiles:
 		body = m.renderFiles(contentH)
+	default:
+		body = m.renderStream(contentH)
 	}
 
 	pos := "tail"
 	if !m.tailMode {
 		pos = fmt.Sprintf("@%d/%d", m.streamTop, len(m.events))
 	}
-	footer := dimStyle.Render(fmt.Sprintf(" events: %d · %s · col: %d · files: %d ",
-		len(m.events), pos, m.horizScroll, len(m.files)))
+	cols := ""
+	if !m.showGroup {
+		cols += " -G"
+	}
+	if !m.showFile {
+		cols += " -F"
+	}
+	disabled := m.disabledGroupCount()
+	groupStat := fmt.Sprintf("groups: %d", len(m.groupOrder))
+	if disabled > 0 {
+		groupStat += fmt.Sprintf(" (%d off)", disabled)
+	}
+	footer := dimStyle.Render(fmt.Sprintf(" events: %d · %s · col: %d%s · %s · files: %d ",
+		len(m.events), pos, m.horizScroll, cols, groupStat, len(m.files)))
 
 	return header + "\n" + body + "\n" + footer
+}
+
+func (m *model) disabledGroupCount() int {
+	n := 0
+	for _, gid := range m.groupOrder {
+		if !m.groupEnabled[gid] {
+			n++
+		}
+	}
+	return n
+}
+
+func (m *model) renderGroupsPanel(rows int) string {
+	var b strings.Builder
+	b.WriteString(headerBg.Width(m.width).Render(" Groups (Ctrl+G or Esc to close · 1-9 to toggle) "))
+	b.WriteString("\n")
+	if len(m.groupOrder) == 0 {
+		b.WriteString(dimStyle.Render("  (no groups defined)"))
+		b.WriteString(strings.Repeat("\n", rows-2))
+		return b.String()
+	}
+	// Count files per group from m.files.
+	counts := map[string]int{}
+	for _, f := range m.files {
+		counts[f.Group]++
+	}
+	avail := rows - 1
+	start := m.groupsScroll
+	if start > len(m.groupOrder)-avail {
+		start = len(m.groupOrder) - avail
+	}
+	if start < 0 {
+		start = 0
+	}
+	end := start + avail
+	if end > len(m.groupOrder) {
+		end = len(m.groupOrder)
+	}
+	for i := start; i < end; i++ {
+		gid := m.groupOrder[i]
+		mark := "OFF"
+		if m.groupEnabled[gid] {
+			mark = "ON "
+		}
+		key := "[ ]"
+		if i < 9 {
+			key = fmt.Sprintf("[%d]", i+1)
+		}
+		row := fmt.Sprintf("  %s  %s  %s  (%d file%s)",
+			key, mark, groupStyle.Render(gid),
+			counts[gid], pluralS(counts[gid]))
+		b.WriteString(row)
+		b.WriteString("\n")
+	}
+	for i := end - start; i < avail; i++ {
+		b.WriteString("\n")
+	}
+	return b.String()
+}
+
+func pluralS(n int) string {
+	if n == 1 {
+		return ""
+	}
+	return "s"
+}
+
+// collectVisible returns up to rows enabled lines in display order. In
+// tail mode we walk backward from the latest event; in browse mode we
+// walk forward from streamTop. Disabled-group lines are skipped, so a
+// run of hidden events doesn't leave a gap.
+func (m *model) collectVisible(rows int) []displayLine {
+	if rows <= 0 || len(m.events) == 0 {
+		return nil
+	}
+	out := make([]displayLine, 0, rows)
+	if m.tailMode {
+		for i := len(m.events) - 1; i >= 0 && len(out) < rows; i-- {
+			if !m.lineEnabled(m.events[i]) {
+				continue
+			}
+			out = append(out, m.events[i])
+		}
+		// reverse (we collected newest→oldest)
+		for i, j := 0, len(out)-1; i < j; i, j = i+1, j-1 {
+			out[i], out[j] = out[j], out[i]
+		}
+		return out
+	}
+	for i := m.streamTop; i < len(m.events) && len(out) < rows; i++ {
+		if !m.lineEnabled(m.events[i]) {
+			continue
+		}
+		out = append(out, m.events[i])
+	}
+	return out
 }
 
 func (m *model) renderStream(rows int) string {
 	if len(m.events) == 0 {
 		return strings.Repeat("\n", rows-1)
 	}
-	var start, end int
-	if m.tailMode {
-		end = len(m.events)
-		start = end - rows
-		if start < 0 {
-			start = 0
-		}
-	} else {
-		start = m.streamTop
-		if start < 0 {
-			start = 0
-		}
-		if start > len(m.events) {
-			start = len(m.events)
-		}
-		end = start + rows
-		if end > len(m.events) {
-			end = len(m.events)
-		}
-	}
-	visible := m.events[start:end]
+	visible := m.collectVisible(rows)
 	rendered := make([]string, len(visible))
-	for i, line := range visible {
-		rendered[i] = m.clipLine(line)
+	for i, dl := range visible {
+		rendered[i] = m.clipLine(m.renderDisplayLine(dl))
 	}
 	out := strings.Join(rendered, "\n")
 	missing := rows - len(rendered)

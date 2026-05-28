@@ -218,15 +218,19 @@ func runWatchTUI(cfg *config.Config, assignments []discover.Assignment, pipeline
 		}
 	}
 
-	// Initial file list — pass through tui.New so the model is seeded
-	// before bubbletea starts. Calling SetFiles before Run would deadlock:
-	// bubbletea's msgs channel is unbuffered and Run hasn't started
-	// reading from it yet.
+	// Initial file list and ordered group IDs — passed through tui.New
+	// so the model is seeded before bubbletea starts. Calling SetFiles
+	// before Run would deadlock: bubbletea's msgs channel is unbuffered
+	// and Run hasn't started reading from it yet.
 	initial := make([]tui.FileEntry, 0, len(assignments))
 	for _, a := range assignments {
 		initial = append(initial, tui.FileEntry{Path: a.Path, Group: a.GroupID})
 	}
-	app := tui.New(cfg.TUIScrollback, initial)
+	groupIDs := make([]string, 0, len(cfg.Groups))
+	for _, g := range cfg.Groups {
+		groupIDs = append(groupIDs, g.ID)
+	}
+	app := tui.New(cfg.TUIScrollback, initial, groupIDs)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

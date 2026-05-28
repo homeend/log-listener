@@ -384,6 +384,26 @@ Hub behavior:
 Auto-selected when stdout is a TTY and `--no-tui` was not passed.
 `--once` mode never uses the TUI.
 
+### Per-group toggling and prefix columns
+
+The TUI footer shows the current state: `events: 1234 · tail · col: 0 ·
+groups: 3 (1 off) · files: 14`. Disabled-group event count goes up but
+those events are hidden from the stream view (the watcher is still
+tailing them, and stdout / SSE consumers still see them — filtering is
+TUI-only).
+
+Open the **Ctrl+G** "groups" panel to see all defined groups, their
+enable state (`ON` / `OFF`), the digit key that toggles each, and a
+count of files currently assigned to each. Digit keys `1`–`9` toggle
+groups directly from the stream view too; only the first nine groups
+are keyboard-addressable, the rest stay always-on.
+
+**Ctrl+P** hides/shows the `[group]` prefix column, **Ctrl+L** hides/
+shows the `basename:` column. With both off you get just the log body —
+useful when you only care about content. Toggles are instant; the
+scrollback isn't rebuilt (the prefix is composed at render time, so the
+toggle has near-zero overhead per event).
+
 ### Tail mode vs browsing
 
 On launch the TUI is in **tail mode**: the viewport is pinned to the
@@ -403,7 +423,11 @@ browsing, so you can see at a glance whether the view is live.
 |---------------------|-------------------------------------------------------|
 | `q` / Ctrl+C        | Quit.                                                 |
 | Tab / Ctrl+I        | Toggle the "watched files" overlay.                   |
-| Esc                 | Close the files overlay.                              |
+| **Ctrl+G**          | **Toggle the "groups" overlay (enable/disable list).**|
+| Esc                 | Close any open overlay.                               |
+| **Ctrl+P**          | **Toggle the `[group]` prefix column.**               |
+| **Ctrl+L**          | **Toggle the `basename:` prefix column.**             |
+| **`1` … `9`**       | **Toggle the N-th group on/off in the stream.**       |
 | ↑ / `k`             | Scroll one line up (unsticks tail).                   |
 | ↓ / `j`             | Scroll one line down.                                 |
 | Ctrl+↑ / Shift+↑    | Scroll up 10 lines.                                   |

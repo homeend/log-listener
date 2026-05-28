@@ -10,6 +10,163 @@ import (
 	"log-listener/internal/render"
 )
 
+func TestModelToggleGroupColumn(t *testing.T) {
+	m := newModel(100)
+	m.groupOrder = []string{"acp"}
+	m.groupEnabled["acp"] = true
+	m.appendEvent(render.Event{
+		Group: "acp", File: "/var/log/a.log",
+		Rendered: []render.Part{{Type: "text", Value: "MARK-COL"}},
+	})
+	m2, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 30})
+	m = m2.(*model)
+
+	view := m.View()
+	if !strings.Contains(view, "[acp]") {
+		t.Fatalf("expected '[acp]' prefix in default view, got:\n%s", view)
+	}
+	// Ctrl+P hides the group column.
+	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyCtrlP})
+	m = m2.(*model)
+	view = m.View()
+	if strings.Contains(view, "[acp]") {
+		t.Fatalf("'[acp]' should be hidden after Ctrl+P:\n%s", view)
+	}
+	if !strings.Contains(view, "a.log") {
+		t.Fatalf("file column should still show:\n%s", view)
+	}
+	if !strings.Contains(view, "MARK-COL") {
+		t.Fatalf("body must still render:\n%s", view)
+	}
+	// Toggle back on.
+	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyCtrlP})
+	m = m2.(*model)
+	if !strings.Contains(m.View(), "[acp]") {
+		t.Fatal("Ctrl+P should re-show the group column")
+	}
+}
+
+func TestModelToggleFileColumn(t *testing.T) {
+	m := newModel(100)
+	m.groupOrder = []string{"acp"}
+	m.groupEnabled["acp"] = true
+	m.appendEvent(render.Event{
+		Group: "acp", File: "/var/log/uniqfile.log",
+		Rendered: []render.Part{{Type: "text", Value: "BODY-X"}},
+	})
+	m2, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 30})
+	m = m2.(*model)
+	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyCtrlL})
+	m = m2.(*model)
+	view := m.View()
+	if strings.Contains(view, "uniqfile.log") {
+		t.Fatalf("file column should be hidden after Ctrl+L:\n%s", view)
+	}
+	if !strings.Contains(view, "[acp]") {
+		t.Fatalf("group column should still show:\n%s", view)
+	}
+	if !strings.Contains(view, "BODY-X") {
+		t.Fatalf("body must still render:\n%s", view)
+	}
+}
+
+func TestModelToggleGroupByDigit(t *testing.T) {
+	m := newModel(100)
+	m.groupOrder = []string{"acp", "goland"}
+	m.groupEnabled["acp"] = true
+	m.groupEnabled["goland"] = true
+	m.appendEvent(render.Event{Group: "acp", File: "/a.log",
+		Rendered: []render.Part{{Type: "text", Value: "FROM-ACP"}}})
+	m.appendEvent(render.Event{Group: "goland", File: "/g.log",
+		Rendered: []render.Part{{Type: "text", Value: "FROM-GOLAND"}}})
+	m2, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 30})
+	m = m2.(*model)
+
+	// Disable group 1 (acp). FROM-ACP must disappear.
+	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'1'}})
+	m = m2.(*model)
+	view := m.View()
+	if strings.Contains(view, "FROM-ACP") {
+		t.Fatalf("FROM-ACP should be filtered after disabling group 1:\n%s", view)
+	}
+	if !strings.Contains(view, "FROM-GOLAND") {
+		t.Fatalf("FROM-GOLAND must still show:\n%s", view)
+	}
+	// Re-enable.
+	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'1'}})
+	m = m2.(*model)
+	if !strings.Contains(m.View(), "FROM-ACP") {
+		t.Fatal("FROM-ACP must reappear after re-enabling group 1")
+	}
+}
+
+func TestModelGroupsPanel(t *testing.T) {
+	m := newModel(100)
+	m.groupOrder = []string{"acp", "goland"}
+	m.groupEnabled["acp"] = true
+	m.groupEnabled["goland"] = true
+	m.files = []FileEntry{
+		{Path: "/a/x.log", Group: "acp"},
+		{Path: "/a/y.log", Group: "acp"},
+		{Path: "/g/z.log", Group: "goland"},
+	}
+	m2, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 30})
+	m = m2.(*model)
+
+	// Ctrl+G opens the panel.
+	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyCtrlG})
+	m = m2.(*model)
+	if !m.showGroupsPanel {
+		t.Fatal("Ctrl+G must open the groups panel")
+	}
+	view := m.View()
+	if !strings.Contains(view, "[1]") || !strings.Contains(view, "[2]") {
+		t.Fatalf("panel must list both groups with digit keys:\n%s", view)
+	}
+	if !strings.Contains(view, "ON") {
+		t.Fatalf("enabled groups must show ON marker:\n%s", view)
+	}
+	if !strings.Contains(view, "2 files") {
+		t.Fatalf("acp file count must show:\n%s", view)
+	}
+	// Disable group 2 from inside the panel — toggle reflected next render.
+	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'2'}})
+	m = m2.(*model)
+	if !strings.Contains(m.View(), "OFF") {
+		t.Fatal("panel must show OFF after toggling a group off")
+	}
+	// Esc closes.
+	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	m = m2.(*model)
+	if m.showGroupsPanel {
+		t.Fatal("Esc must close the groups panel")
+	}
+}
+
+func TestModelTailWalkSkipsDisabledGroups(t *testing.T) {
+	m := newModel(1000)
+	m.groupOrder = []string{"a", "b"}
+	m.groupEnabled["a"] = true
+	m.groupEnabled["b"] = false // b starts disabled
+	for i := 0; i < 50; i++ {
+		gid := "a"
+		if i%2 == 0 {
+			gid = "b"
+		}
+		m.appendEvent(render.Event{Group: gid, File: "/x.log",
+			Rendered: []render.Part{{Type: "text", Value: fmt.Sprintf("%s-line-%d", gid, i)}}})
+	}
+	m2, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 10})
+	m = m2.(*model)
+	view := m.View()
+	if strings.Contains(view, "b-line") {
+		t.Fatalf("b group is disabled; no b-line should appear:\n%s", view)
+	}
+	if !strings.Contains(view, "a-line") {
+		t.Fatalf("a-line must be visible:\n%s", view)
+	}
+}
+
 func TestModelAppendEventBoundedScrollback(t *testing.T) {
 	m := newModel(3)
 	for i := 0; i < 10; i++ {
@@ -65,7 +222,7 @@ func TestNewSeedsInitialFiles(t *testing.T) {
 	app := New(100, []FileEntry{
 		{Path: "/a.log", Group: "g1"},
 		{Path: "/b.log", Group: "g2"},
-	})
+	}, []string{"g1", "g2"})
 	// Reach into the model via reflection-free fast path: the underlying
 	// *model isn't exposed, but if seeding worked, app.prog's initial
 	// model has files preset. We can't easily inspect that without
@@ -352,7 +509,7 @@ func TestStripANSIRoundtrip(t *testing.T) {
 	}
 }
 
-func TestRenderEventLines(t *testing.T) {
+func TestDecomposeAndRenderDisplayLine(t *testing.T) {
 	ev := render.Event{
 		Group: "d1", File: "/var/log/a.log",
 		Rendered: []render.Part{
@@ -360,14 +517,31 @@ func TestRenderEventLines(t *testing.T) {
 			{Type: "json", Value: map[string]interface{}{"k": "v"}},
 		},
 	}
-	lines := renderEventLines(ev)
-	if len(lines) < 2 {
-		t.Fatalf("expected >=2 lines, got %d: %+v", len(lines), lines)
+	dls := decomposeEvent(ev)
+	if len(dls) < 2 {
+		t.Fatalf("expected >=2 displayLines, got %d: %+v", len(dls), dls)
 	}
-	if !strings.Contains(lines[0], "a.log") {
-		t.Fatalf("missing basename: %s", lines[0])
+	if dls[0].isBlock {
+		t.Fatal("first line should be a head, not a block")
 	}
-	joined := strings.Join(lines, "\n")
+	if dls[0].group != "d1" || dls[0].file != "a.log" {
+		t.Fatalf("head metadata: %+v", dls[0])
+	}
+	if !dls[1].isBlock {
+		t.Fatal("subsequent JSON lines should be blocks")
+	}
+
+	m := newModel(100)
+	m.showGroup = true
+	m.showFile = true
+	rendered := []string{}
+	for _, dl := range dls {
+		rendered = append(rendered, m.renderDisplayLine(dl))
+	}
+	if !strings.Contains(rendered[0], "a.log") {
+		t.Fatalf("missing basename in head row: %q", rendered[0])
+	}
+	joined := strings.Join(rendered, "\n")
 	if !strings.Contains(joined, `"k": "v"`) {
 		t.Fatalf("json missing in output: %s", joined)
 	}

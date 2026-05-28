@@ -17,6 +17,30 @@ and this project adheres to phased delivery per `PLAN.md`.
 
 ## [Unreleased]
 
+### TUI: per-group toggling, column hide/show, groups panel
+- Digit keys `1`–`9` toggle the N-th declared group on/off in the
+  stream view. Disabled groups' events stay in scrollback (and are
+  still emitted to stdout / SSE — filtering is TUI-only), but are
+  skipped while painting. Toggle again to re-show them in their
+  original positions.
+- **Ctrl+P** toggles the `[group]` prefix column; **Ctrl+L** toggles
+  the `basename:` column. Both default on; either or both can be off.
+  Toggles are instant — the prefix is composed at render time, the
+  pre-rendered scrollback never rebuilds.
+- **Ctrl+G** opens a new "Groups" overlay (mirrors Tab/Ctrl+I "Files"):
+  lists every defined group with its digit key, `ON`/`OFF` state, and
+  count of files currently assigned. Esc closes either overlay; opening
+  one closes the other.
+- Footer status now reports `groups: N (M off)` and `-G`/`-F` markers
+  when columns are hidden.
+
+Internals: `m.events` is now `[]displayLine` (group + file + body +
+isBlock), built from `render.Event` via the new `decomposeEvent`. The
+styled prefix is added on the fly in `renderDisplayLine`. The visible-
+window walk skips disabled-group lines so a long run of hidden events
+doesn't leave gaps. `tui.New` gained a `groupIDs []string` argument,
+passed from `cfg.Groups` in `cmd/log-listener/main.go`.
+
 ### Performance — four hot-path fixes to keep the CPU quiet
 Reported symptom: 13 watched files at ~10–30 lines/sec was spinning up
 laptop fans. Root cause was mostly GC pressure from idle polling.
