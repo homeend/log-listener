@@ -95,15 +95,17 @@ func runWatch(cfg *config.Config, assignments []discover.Assignment, stdout, std
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	sigCh := make(chan os.Signal, 2)
+	sigCh := make(chan os.Signal, 4)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		<-sigCh
 		cancel()
-		select {
-		case <-sigCh:
+		// Any subsequent signal hard-exits, no matter how long shutdown
+		// takes. The handler must keep listening forever — otherwise
+		// signal.Notify suppresses the default SIGINT handler and the
+		// process becomes unkillable via Ctrl+C.
+		for range sigCh {
 			os.Exit(130)
-		case <-time.After(2 * time.Second):
 		}
 	}()
 
@@ -119,6 +121,8 @@ func runWatch(cfg *config.Config, assignments []discover.Assignment, stdout, std
 				select {
 				case ev := <-w.Events():
 					fmt.Fprintln(stdout, format(ev.Group, ev.Path, ev.Line))
+				case e := <-w.Errors():
+					fmt.Fprintf(stderr, "log-listener: %v\n", e)
 				case <-drainDeadline:
 					return nil
 				}

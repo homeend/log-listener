@@ -196,10 +196,39 @@ func (w *Watcher) handleFsEvent(ev fsnotify.Event) {
 }
 
 func (w *Watcher) tickAll() {
+	// Snapshot under the lock so a slow consumer on w.events doesn't stall
+	// Add/WatchDir/Close while we're ticking.
+	type pair struct {
+		path string
+		t    *Tailer
+	}
 	w.mu.Lock()
-	defer w.mu.Unlock()
+	snap := make([]pair, 0, len(w.tailers))
 	for path, t := range w.tailers {
-		w.tickLocked(path, t)
+		snap = append(snap, pair{path, t})
+	}
+	w.mu.Unlock()
+	for _, p := range snap {
+		w.tickOne(p.path, p.t)
+	}
+}
+
+// tickOne is the unlocked version of tickLocked used by tickAll's snapshot
+// iteration. It must not be called concurrently for the same Tailer.
+func (w *Watcher) tickOne(path string, t *Tailer) {
+	lines, _, err := t.Tick()
+	if err != nil {
+		w.pushErr(err)
+	}
+	w.mu.Lock()
+	gid := w.groups[path]
+	w.mu.Unlock()
+	for _, l := range lines {
+		select {
+		case w.events <- Event{Path: path, Group: gid, Line: l}:
+		case <-w.done:
+			return
+		}
 	}
 }
 

@@ -7,6 +7,18 @@ and this project adheres to phased delivery per `PLAN.md`.
 
 ## [Unreleased]
 
+### Phase 1 review fixes
+- `cmd/log-listener`: signal handler now keeps listening for SIGINT
+  indefinitely so a second Ctrl+C always hard-exits (previously the
+  goroutine returned after 2s, leaving the process unkillable via Ctrl+C
+  since `signal.Notify` had suppressed the default handler).
+- `cmd/log-listener`: shutdown drain loop now also reads from
+  `Watcher.Errors()` so late errors aren't dropped.
+- `internal/watch`: `tickAll` snapshots the tailer map under the lock and
+  ticks outside the lock, so a slow consumer on `Events()` can no longer
+  stall `Add`/`WatchDir`/`Close`.
+- Workflow: `PLAN.md` now documents the review-after-each-phase loop.
+
 ### Phase 1 — Core CLI + raw tailing
 - `internal/timeparse`: parses ISO 8601 dates and relative durations
   (`30s`, `15m`, `1h`, `2d`, `1w`) into a `time.Time` anchor.

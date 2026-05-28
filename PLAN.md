@@ -195,17 +195,19 @@ Config file resolution order: `--config <path>` → `./log-listener.yml` →
 
 ## Per-phase workflow
 
-Each phase ends with:
+Each phase ends with two commits:
 
-1. **Tests written** covering basic functionality of the modules touched
-   (table-driven `_test.go` files alongside source).
-2. **`go test ./...` passes** — no skipped or failing tests.
-3. **`go vet ./...` passes**.
-4. **Single git commit** scoped to that phase, with a message like
-   `phase N: <short description>`.
+1. **Implementation commit** (`phase N: <short description>`):
+   - Tests covering basic functionality of the modules touched
+     (table-driven `_test.go` files alongside source).
+   - `go test ./...`, `go vet ./...`, `go test -race ./...` all green.
+2. **Review-fix commit** (`phase N review fixes`):
+   - Run the `code-review` skill against the implementation commit.
+   - Apply any fixes triggered by the review.
+   - Re-run tests + vet; both must still be green.
+   - Commit fixes (may be empty if review finds nothing — then skip).
 
-If a phase introduces a public-ish API (e.g., the renderer DSL), include at
-least one test that exercises the full happy path of that API.
+Only after both commits is the phase complete and the next phase starts.
 
 ## Phased delivery
 
