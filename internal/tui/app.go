@@ -227,6 +227,21 @@ type model struct {
 	groupEnabled    map[string]bool
 	showGroupsPanel bool
 	groupsScroll    int
+
+	// Search state.
+	//   searchInput == true : user is typing the query after "/"
+	//   searchQuery         : characters typed so far (display + commit source)
+	//   searchTerm          : committed lowercase substring; empty = inactive
+	//   searchHit           : absolute index into m.events of the current hit
+	//                         (-1 when no hit is current)
+	//   wrapPrompt          : 'n' or 'p' when "wrap around?" is pending;
+	//                         0 otherwise. The matching y answer wraps from
+	//                         the opposite end of the buffer.
+	searchInput bool
+	searchQuery string
+	searchTerm  string
+	searchHit   int
+	wrapPrompt  rune
 }
 
 const (
@@ -242,6 +257,7 @@ func newModel(scrollback int) *model {
 		showGroup:    true,
 		showFile:     true,
 		groupEnabled: map[string]bool{},
+		searchHit:    -1,
 	}
 }
 
@@ -293,6 +309,11 @@ var (
 	fileStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("4")) // blue
 	dimStyle   = lipgloss.NewStyle().Faint(true)
 	headerBg   = lipgloss.NewStyle().Background(lipgloss.Color("8")).Foreground(lipgloss.Color("15"))
+	// Search match styles. matchStyle highlights every visible occurrence;
+	// currentMatchStyle marks the row holding the active hit so n/p
+	// navigation is visually unambiguous.
+	matchStyle        = lipgloss.NewStyle().Background(lipgloss.Color("11")).Foreground(lipgloss.Color("0"))  // yellow bg, black fg
+	currentMatchStyle = lipgloss.NewStyle().Background(lipgloss.Color("9")).Foreground(lipgloss.Color("15")) // red bg, white fg
 )
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -301,6 +322,15 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyMsg:
+		// Modal key paths take priority — search input swallows almost
+		// everything, and a pending wrap prompt swallows y/n/Esc before
+		// the normal dispatcher sees them.
+		if m.searchInput {
+			return m.handleSearchInputKey(msg), nil
+		}
+		if m.wrapPrompt != 0 {
+			return m.handleWrapPromptKey(msg), nil
+		}
 		switch msg.String() {
 		case "ctrl+c", "q":
 			return m, tea.Quit
@@ -326,6 +356,18 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.showGroupsPanel {
 				m.showGroupsPanel = false
 			}
+			// Esc with no overlay open clears any active search results
+			// — term goes away, highlights vanish, hit pointer resets.
+			if !m.showFiles && !m.showGroupsPanel && m.searchTerm != "" {
+				m.clearSearch()
+			}
+		case "/":
+			m.searchInput = true
+			m.searchQuery = ""
+		case "n":
+			m.searchNext()
+		case "p":
+			m.searchPrev()
 		case "ctrl+p":
 			m.showGroup = !m.showGroup
 		case "ctrl+l":
@@ -552,12 +594,52 @@ func decomposeEvent(ev render.Event) []displayLine {
 // the model's current column toggles. Block lines never carry a prefix.
 // Returns the styled string AND its visual width (runes) so clipLine can
 // pad to terminal width without re-stripping ANSI.
+//
+// This variant takes no event index — it cannot apply the "current hit"
+// background — and is used by the `$` widest-line walk and tests.
 func (m *model) renderDisplayLine(dl displayLine) (string, int) {
+	return m.renderDisplayLineCore(dl, false)
+}
+
+// renderDisplayLineAt is the on-screen variant that knows the line's
+// absolute index, so it can apply the active-hit background when the
+// row holds the current search hit. Falls through to the plain core
+// when no search is active.
+func (m *model) renderDisplayLineAt(idx int) (string, int) {
+	dl := m.events[idx]
+	isCurrent := m.searchTerm != "" && idx == m.searchHit
+	return m.renderDisplayLineCore(dl, isCurrent)
+}
+
+func (m *model) renderDisplayLineCore(dl displayLine, isCurrent bool) (string, int) {
+	body := dl.body
+	bodyWidth := dl.bodyWidth
+	// When a search term is active, swap out the body for one with
+	// highlighted matches. Block lines carry pre-styled ANSI so we
+	// strip first; head lines are plain text already.
+	if m.searchTerm != "" {
+		plain := body
+		if dl.isBlock {
+			plain = stripANSI(body)
+		}
+		style := matchStyle.Render
+		if isCurrent {
+			style = currentMatchStyle.Render
+		}
+		newBody, newW := highlightMatches(plain, m.searchTerm, style)
+		if newW != bodyWidth || newBody != plain {
+			body = newBody
+			bodyWidth = newW
+		} else if dl.isBlock {
+			// No match in a block: keep the original dim styling.
+			body = dl.body
+		}
+	}
 	if dl.isBlock {
-		return dl.body, dl.bodyWidth
+		return body, bodyWidth
 	}
 	var sb strings.Builder
-	visW := dl.bodyWidth
+	visW := bodyWidth
 	if m.showGroup {
 		sb.WriteString(groupStyle.Render("[" + dl.group + "]"))
 		sb.WriteByte(' ')
@@ -568,7 +650,7 @@ func (m *model) renderDisplayLine(dl displayLine) (string, int) {
 		sb.WriteString(": ")
 		visW += runeLen(dl.file) + 2 // ": "
 	}
-	sb.WriteString(dl.body)
+	sb.WriteString(body)
 	return sb.String(), visW
 }
 
@@ -600,7 +682,7 @@ func (m *model) View() string {
 	if m.height == 0 {
 		return ""
 	}
-	header := headerBg.Width(m.width).Render(" log-listener — q quit · Tab files · Ctrl+G groups · 1-9 toggle · Ctrl+P/L cols · Ctrl+R clear ")
+	header := headerBg.Width(m.width).Render(" log-listener — q quit · Tab files · Ctrl+G groups · 1-9 toggle · Ctrl+P/L cols · Ctrl+R clear · / search · n/p next/prev ")
 	contentH := m.contentHeight()
 
 	var body string
@@ -613,6 +695,29 @@ func (m *model) View() string {
 		body = m.renderStream(contentH)
 	}
 
+	footer := m.renderFooter()
+	return header + "\n" + body + "\n" + footer
+}
+
+// renderFooter assembles the bottom status line. Three modes, in
+// priority order:
+//
+//  1. Search input active ("/") — show "/<typed>_" so the user can see
+//     what's being typed.
+//  2. Wrap prompt pending — show "No more hits — wrap to top|bottom? (y/n)".
+//  3. Normal — events / position / column / group / file counters,
+//     plus a "/term" suffix when a committed search term is active.
+func (m *model) renderFooter() string {
+	if m.searchInput {
+		return headerBg.Width(m.width).Render(" /" + m.searchQuery + "_")
+	}
+	if m.wrapPrompt != 0 {
+		text := " No more hits — wrap to top? (y/n) "
+		if m.wrapPrompt == 'p' {
+			text = " No more hits — wrap to bottom? (y/n) "
+		}
+		return headerBg.Width(m.width).Render(text)
+	}
 	pos := "tail"
 	if !m.tailMode {
 		pos = fmt.Sprintf("@%d/%d", m.streamTop, len(m.events))
@@ -629,10 +734,12 @@ func (m *model) View() string {
 	if disabled > 0 {
 		groupStat += fmt.Sprintf(" (%d off)", disabled)
 	}
-	footer := dimStyle.Width(m.width).Render(fmt.Sprintf(" events: %d · %s · col: %d%s · %s · files: %d ",
-		len(m.events), pos, m.horizScroll, cols, groupStat, len(m.files)))
-
-	return header + "\n" + body + "\n" + footer
+	search := ""
+	if m.searchTerm != "" {
+		search = fmt.Sprintf(" · /%s", m.searchQuery)
+	}
+	return dimStyle.Width(m.width).Render(fmt.Sprintf(" events: %d · %s · col: %d%s · %s · files: %d%s ",
+		len(m.events), pos, m.horizScroll, cols, groupStat, len(m.files), search))
 }
 
 func (m *model) disabledGroupCount() int {
@@ -712,21 +819,21 @@ func pluralS(n int) string {
 	return "s"
 }
 
-// collectVisible returns up to rows enabled lines in display order. In
-// tail mode we walk backward from the latest event; in browse mode we
-// walk forward from streamTop. Disabled-group lines are skipped, so a
-// run of hidden events doesn't leave a gap.
-func (m *model) collectVisible(rows int) []displayLine {
+// collectVisible returns up to rows absolute event indices in display
+// order. In tail mode we walk backward from the latest event; in
+// browse mode we walk forward from streamTop. Disabled-group lines
+// are skipped, so a run of hidden events doesn't leave a gap.
+func (m *model) collectVisible(rows int) []int {
 	if rows <= 0 || len(m.events) == 0 {
 		return nil
 	}
-	out := make([]displayLine, 0, rows)
+	out := make([]int, 0, rows)
 	if m.tailMode {
 		for i := len(m.events) - 1; i >= 0 && len(out) < rows; i-- {
 			if !m.lineEnabled(m.events[i]) {
 				continue
 			}
-			out = append(out, m.events[i])
+			out = append(out, i)
 		}
 		// reverse (we collected newest→oldest)
 		for i, j := 0, len(out)-1; i < j; i, j = i+1, j-1 {
@@ -738,7 +845,7 @@ func (m *model) collectVisible(rows int) []displayLine {
 		if !m.lineEnabled(m.events[i]) {
 			continue
 		}
-		out = append(out, m.events[i])
+		out = append(out, i)
 	}
 	return out
 }
@@ -749,8 +856,8 @@ func (m *model) renderStream(rows int) string {
 	}
 	visible := m.collectVisible(rows)
 	rendered := make([]string, 0, rows)
-	for _, dl := range visible {
-		styled, visW := m.renderDisplayLine(dl)
+	for _, idx := range visible {
+		styled, visW := m.renderDisplayLineAt(idx)
 		rendered = append(rendered, m.clipLine(styled, visW))
 	}
 	missing := rows - len(rendered)

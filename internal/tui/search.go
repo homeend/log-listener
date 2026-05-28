@@ -1,0 +1,245 @@
+package tui
+
+import (
+	"strings"
+
+	tea "github.com/charmbracelet/bubbletea"
+)
+
+// clearSearch wipes any active search state — term, hit pointer, and
+// any pending wrap prompt — so highlights vanish on the next render.
+func (m *model) clearSearch() {
+	m.searchTerm = ""
+	m.searchQuery = ""
+	m.searchHit = -1
+	m.wrapPrompt = 0
+}
+
+// commitSearch turns the typed query into the active term and jumps to
+// the first hit. The first hit is searched from the current viewport
+// origin: in tail mode that's "from the end", in browse mode that's
+// "from streamTop forward". If there's no hit anywhere in the buffer,
+// the term stays committed (so n/p can prompt for wrap) but no jump
+// happens.
+func (m *model) commitSearch() {
+	q := strings.TrimSpace(m.searchQuery)
+	if q == "" {
+		m.clearSearch()
+		return
+	}
+	m.searchTerm = strings.ToLower(q)
+	start := m.streamTop
+	if m.tailMode {
+		start = len(m.events) - 1
+		// In tail mode walk backward — most-recent match is what the
+		// user expects to land on first.
+		hit := m.findHit(start, -1)
+		if hit >= 0 {
+			m.jumpToHit(hit)
+			return
+		}
+		// Nothing earlier — try the buffer forward from the top as a
+		// fallback so a brand-new search that misses below the tail
+		// still surfaces older matches without an explicit wrap.
+		hit = m.findHit(0, +1)
+		if hit >= 0 {
+			m.jumpToHit(hit)
+		}
+		return
+	}
+	hit := m.findHit(start, +1)
+	if hit >= 0 {
+		m.jumpToHit(hit)
+		return
+	}
+	// Fallback: search before the cursor.
+	hit = m.findHit(start-1, -1)
+	if hit >= 0 {
+		m.jumpToHit(hit)
+	}
+}
+
+// searchNext advances to the next hit after the current one. If no
+// hit exists between cursor+1 and end, sets wrapPrompt='n'.
+func (m *model) searchNext() {
+	if m.searchTerm == "" || len(m.events) == 0 {
+		return
+	}
+	from := m.searchHit + 1
+	if m.searchHit < 0 {
+		from = m.streamTop
+	}
+	hit := m.findHit(from, +1)
+	if hit >= 0 {
+		m.jumpToHit(hit)
+		return
+	}
+	m.wrapPrompt = 'n'
+}
+
+// searchPrev steps to the previous hit before the current one. If no
+// hit exists between cursor-1 and start, sets wrapPrompt='p'.
+func (m *model) searchPrev() {
+	if m.searchTerm == "" || len(m.events) == 0 {
+		return
+	}
+	from := m.searchHit - 1
+	if m.searchHit < 0 {
+		from = m.streamTop
+	}
+	if from < 0 {
+		m.wrapPrompt = 'p'
+		return
+	}
+	hit := m.findHit(from, -1)
+	if hit >= 0 {
+		m.jumpToHit(hit)
+		return
+	}
+	m.wrapPrompt = 'p'
+}
+
+// handleSearchInputKey processes a single key while the search input
+// line is active. Returns the (possibly same) model — there are no
+// commands to issue from this path.
+func (m *model) handleSearchInputKey(msg tea.KeyMsg) tea.Model {
+	switch msg.Type {
+	case tea.KeyEsc, tea.KeyCtrlC:
+		m.searchInput = false
+		m.searchQuery = ""
+		return m
+	case tea.KeyEnter:
+		m.searchInput = false
+		m.commitSearch()
+		return m
+	case tea.KeyBackspace, tea.KeyDelete:
+		if n := len(m.searchQuery); n > 0 {
+			// Trim by rune so multibyte chars don't leave dangling bytes.
+			r := []rune(m.searchQuery)
+			m.searchQuery = string(r[:len(r)-1])
+		}
+		return m
+	case tea.KeyRunes, tea.KeySpace:
+		if msg.Type == tea.KeySpace {
+			m.searchQuery += " "
+		} else {
+			m.searchQuery += string(msg.Runes)
+		}
+		return m
+	}
+	return m
+}
+
+// handleWrapPromptKey processes the y/n answer for the wrap-around
+// prompt. y wraps from the opposite end; n/Esc dismisses without
+// moving.
+func (m *model) handleWrapPromptKey(msg tea.KeyMsg) tea.Model {
+	dir := m.wrapPrompt
+	switch msg.String() {
+	case "y", "Y":
+		m.wrapPrompt = 0
+		var hit int
+		if dir == 'n' {
+			hit = m.findHit(0, +1)
+		} else {
+			hit = m.findHit(len(m.events)-1, -1)
+		}
+		if hit >= 0 {
+			m.jumpToHit(hit)
+		}
+		return m
+	case "n", "N", "esc":
+		m.wrapPrompt = 0
+		return m
+	}
+	return m
+}
+
+// findHit returns the absolute index of the next event matching
+// m.searchTerm, walking from `start` in direction `dir` (+1 forward,
+// -1 backward). Returns -1 if no match exists in that range.
+//
+// Only enabled groups are considered: a hit hidden behind a disabled
+// group toggle would jump the viewport to nothing, which is worse than
+// reporting "no match".
+//
+// Both heads and block (JSON/XML) lines are searched — the user sees
+// them both in the stream so they should both be reachable.
+func (m *model) findHit(start, dir int) int {
+	if m.searchTerm == "" || len(m.events) == 0 {
+		return -1
+	}
+	if dir == 0 {
+		dir = 1
+	}
+	if start < 0 {
+		start = 0
+	}
+	if start >= len(m.events) {
+		start = len(m.events) - 1
+	}
+	for i := start; i >= 0 && i < len(m.events); i += dir {
+		ev := m.events[i]
+		if !m.lineEnabled(ev) {
+			continue
+		}
+		// Body for blocks is dim-styled; the search term is plain text,
+		// so strip ANSI before matching to keep results consistent
+		// across head and block lines.
+		hay := ev.body
+		if ev.isBlock {
+			hay = stripANSI(hay)
+		}
+		if strings.Contains(strings.ToLower(hay), m.searchTerm) {
+			return i
+		}
+	}
+	return -1
+}
+
+// jumpToHit centers the viewport on the given event index (clamped at
+// buffer bounds) and exits tail mode. The hit index becomes the active
+// one used by n/p.
+func (m *model) jumpToHit(idx int) {
+	if idx < 0 || idx >= len(m.events) {
+		return
+	}
+	m.searchHit = idx
+	m.tailMode = false
+	rows := m.contentHeight()
+	top := idx - rows/2
+	if top < 0 {
+		top = 0
+	}
+	if top > len(m.events)-1 {
+		top = len(m.events) - 1
+	}
+	m.streamTop = top
+}
+
+// highlightMatches wraps every case-insensitive occurrence of term in
+// body with the supplied style. Returns the styled string and the
+// total visual width (unstyled rune count, identical to the original
+// body's width since ANSI is zero-width). Callers handle the
+// edge cases of empty term / no match by skipping the call.
+func highlightMatches(body, term string, style func(strs ...string) string) (string, int) {
+	if term == "" || body == "" {
+		return body, runeLen(body)
+	}
+	lower := strings.ToLower(body)
+	tl := strings.ToLower(term)
+	var sb strings.Builder
+	for {
+		i := strings.Index(lower, tl)
+		if i < 0 {
+			sb.WriteString(body)
+			break
+		}
+		sb.WriteString(body[:i])
+		sb.WriteString(style(body[i : i+len(tl)]))
+		body = body[i+len(tl):]
+		lower = lower[i+len(tl):]
+	}
+	out := sb.String()
+	return out, runeLen(stripANSI(out))
+}

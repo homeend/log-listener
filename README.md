@@ -404,6 +404,28 @@ useful when you only care about content. Toggles are instant; the
 scrollback isn't rebuilt (the prefix is composed at render time, so the
 toggle has near-zero overhead per event).
 
+### Search
+
+Press **`/`** to enter search mode. Type the term — the footer shows
+what's being typed — and press **Enter** to find the first hit, or
+**Esc** to cancel. The match is case-insensitive substring matching
+(no regex), runs against the rendered line body, and respects the
+group enable/disable toggles (hits in disabled groups are skipped).
+
+Once committed, every visible occurrence is highlighted with a yellow
+background; the **current hit** is marked with a brighter red
+background. The viewport jumps to (and centers) the current hit row.
+
+Use **`n`** to walk forward through hits and **`p`** to walk
+backward. When there are no further hits in the requested direction,
+the footer asks `No more hits — wrap to top/bottom? (y/n)`. Press
+**y** to wrap, **n** or **Esc** to dismiss without moving.
+
+Press **Esc** with no overlay open to clear the active search (term
+goes away, highlights vanish). Pressing **End** / **G** to return to
+tail mode keeps the search term active, so the next **n** continues
+walking forward.
+
 ### Tail mode vs browsing
 
 On launch the TUI is in **tail mode**: the viewport is pinned to the
@@ -429,6 +451,9 @@ browsing, so you can see at a glance whether the view is live.
 | **Ctrl+L**          | **Toggle the `basename:` prefix column.**             |
 | **`1` … `9`**       | **Toggle the N-th group on/off in the stream.**       |
 | **Ctrl+R**          | **Clear the TUI scrollback (watcher / SSE keep running).** |
+| **`/`**             | **Start a search. Type the term, Enter to find, Esc to cancel.** |
+| **`n`**             | **Jump to the next hit (prompts to wrap if none below).** |
+| **`p`**             | **Jump to the previous hit (prompts to wrap if none above).** |
 | ↑ / `k`             | Scroll one line up (unsticks tail).                   |
 | ↓ / `j`             | Scroll one line down.                                 |
 | Ctrl+↑ / Shift+↑    | Scroll up 10 lines.                                   |

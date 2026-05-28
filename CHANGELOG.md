@@ -17,6 +17,31 @@ and this project adheres to phased delivery per `PLAN.md`.
 
 ## [Unreleased]
 
+### TUI: in-line search (`/`, `n`, `p`)
+- **`/`** opens a search prompt at the bottom of the screen. Type the
+  term (case-insensitive substring), press **Enter** to commit, or
+  **Esc** to cancel. The footer mirrors what's being typed.
+- After commit, the viewport jumps to (and centers) the first hit and
+  exits tail mode. Every visible match is highlighted (yellow bg); the
+  active hit gets a brighter style (red bg) so n/p navigation is
+  unambiguous.
+- **`n`** advances to the next hit; **`p`** steps back. When no hit
+  exists in the requested direction, the footer asks "wrap to
+  top/bottom? (y/n)" — **y** wraps, **n** / **Esc** dismisses without
+  moving.
+- Search respects group toggles (hits in disabled groups are skipped),
+  searches block lines (JSON/XML pretty-prints) in addition to head
+  lines, and stays case-insensitive throughout.
+- **Esc** with no overlay open clears the active search.
+
+Internals: new `search.go` file with `findHit`, `jumpToHit`,
+`commitSearch`, `searchNext`, `searchPrev`, and `highlightMatches`.
+`Model.Update` gained two modal pre-dispatch branches
+(`handleSearchInputKey`, `handleWrapPromptKey`) that run before the
+normal key switch so search-input keys and the y/n prompt can't be
+intercepted by other bindings. `collectVisible` now returns absolute
+event indices so the renderer can tell which row holds the active hit.
+
 ### TUI: Ctrl+R clears the scrollback
 - New keybinding: **Ctrl+R** empties the TUI's in-memory event list,
   resets `streamTop` / `horizScroll`, and re-enters tail mode. The
