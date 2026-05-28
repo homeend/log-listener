@@ -330,6 +330,14 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.showGroup = !m.showGroup
 		case "ctrl+l":
 			m.showFile = !m.showFile
+		case "ctrl+r":
+			// Clear the TUI's scrollback. The watcher / sinks / SSE hub
+			// keep running; only the in-memory view is reset. Re-enter
+			// tail mode so the next event appears immediately at the top.
+			m.events = nil
+			m.streamTop = 0
+			m.tailMode = true
+			m.horizScroll = 0
 		case "1", "2", "3", "4", "5", "6", "7", "8", "9":
 			idx := int(msg.String()[0] - '1')
 			if idx < len(m.groupOrder) {
@@ -592,7 +600,7 @@ func (m *model) View() string {
 	if m.height == 0 {
 		return ""
 	}
-	header := headerBg.Width(m.width).Render(" log-listener — q quit · Tab files · Ctrl+G groups · 1-9 toggle · Ctrl+P/L cols ")
+	header := headerBg.Width(m.width).Render(" log-listener — q quit · Tab files · Ctrl+G groups · 1-9 toggle · Ctrl+P/L cols · Ctrl+R clear ")
 	contentH := m.contentHeight()
 
 	var body string

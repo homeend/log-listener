@@ -428,6 +428,7 @@ browsing, so you can see at a glance whether the view is live.
 | **Ctrl+P**          | **Toggle the `[group]` prefix column.**               |
 | **Ctrl+L**          | **Toggle the `basename:` prefix column.**             |
 | **`1` … `9`**       | **Toggle the N-th group on/off in the stream.**       |
+| **Ctrl+R**          | **Clear the TUI scrollback (watcher / SSE keep running).** |
 | ↑ / `k`             | Scroll one line up (unsticks tail).                   |
 | ↓ / `j`             | Scroll one line down.                                 |
 | Ctrl+↑ / Shift+↑    | Scroll up 10 lines.                                   |

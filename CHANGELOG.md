@@ -17,6 +17,13 @@ and this project adheres to phased delivery per `PLAN.md`.
 
 ## [Unreleased]
 
+### TUI: Ctrl+R clears the scrollback
+- New keybinding: **Ctrl+R** empties the TUI's in-memory event list,
+  resets `streamTop` / `horizScroll`, and re-enters tail mode. The
+  watcher, stdout sink, and SSE hub keep running — this only resets
+  the viewer's view of history. Useful when you want a clean screen
+  before triggering a specific action you're debugging.
+
 ### TUI: per-group toggling, column hide/show, groups panel
 - Digit keys `1`–`9` toggle the N-th declared group on/off in the
   stream view. Disabled groups' events stay in scrollback (and are

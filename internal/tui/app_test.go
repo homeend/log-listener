@@ -551,6 +551,53 @@ func TestDecomposeAndRenderDisplayLine(t *testing.T) {
 	}
 }
 
+func TestModelClearSession(t *testing.T) {
+	m := newModel(100)
+	m.groupOrder = []string{"g"}
+	m.groupEnabled["g"] = true
+	for i := 0; i < 20; i++ {
+		m.appendEvent(render.Event{Group: "g", File: "/x.log",
+			Rendered: []render.Part{{Type: "text", Value: fmt.Sprintf("pre-clear-%d", i)}}})
+	}
+	m2, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 12})
+	m = m2.(*model)
+	// Browse mode + horizontal scroll, so we can verify they reset.
+	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyUp})
+	m = m2.(*model)
+	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyRight})
+	m = m2.(*model)
+	if m.tailMode {
+		t.Fatal("setup: expected tailMode=false after Up")
+	}
+	if m.horizScroll == 0 {
+		t.Fatal("setup: expected horizScroll>0 after Right")
+	}
+
+	// Ctrl+R clears everything.
+	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyCtrlR})
+	m = m2.(*model)
+	if len(m.events) != 0 {
+		t.Fatalf("Ctrl+R should empty events, got %d", len(m.events))
+	}
+	if !m.tailMode {
+		t.Fatal("Ctrl+R should re-enter tail mode")
+	}
+	if m.streamTop != 0 || m.horizScroll != 0 {
+		t.Fatalf("scroll state not reset: streamTop=%d horizScroll=%d", m.streamTop, m.horizScroll)
+	}
+	// View should not contain any pre-clear lines.
+	if strings.Contains(m.View(), "pre-clear") {
+		t.Fatal("View still shows pre-clear lines after Ctrl+R")
+	}
+
+	// A new event after clear must render normally.
+	m.appendEvent(render.Event{Group: "g", File: "/x.log",
+		Rendered: []render.Part{{Type: "text", Value: "post-clear-line"}}})
+	if !strings.Contains(m.View(), "post-clear-line") {
+		t.Fatalf("post-clear event not visible:\n%s", m.View())
+	}
+}
+
 // TestModelStreamRowsPadToWidth nails down the ghost-row fix: every line
 // renderStream emits — content rows AND blank fillers — must be exactly
 // m.width terminal columns wide (visible width via stripANSI), so when
