@@ -27,7 +27,7 @@ func main() {
 
 // run is the testable entry point. Returns the process exit code.
 func run(args []string, stdout, stderr io.Writer) int {
-	cfg, err := config.ParseArgs(args, time.Now())
+	cfg, err := config.Load(args, time.Now())
 	if err != nil {
 		fmt.Fprintln(stderr, "log-listener:", err)
 		return 2

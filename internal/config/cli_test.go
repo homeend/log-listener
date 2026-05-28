@@ -115,7 +115,6 @@ func TestParseArgsErrors(t *testing.T) {
 		name string
 		args []string
 	}{
-		{"no groups", []string{}},
 		{"empty -d", []string{"-d"}},
 		{"unknown flag", []string{"-d", "/a", "--bogus"}},
 		{"bad rule token", []string{"-d", "/a", "-r", "nokeyvalue"}},
@@ -123,13 +122,33 @@ func TestParseArgsErrors(t *testing.T) {
 		{"bad regex", []string{"-d", "/a", "-r", "name:["}},
 		{"bad time", []string{"-d", "/a", "-r", "older:nope"}},
 		{"missing sse value", []string{"-d", "/a", "--sse"}},
-		{"-r without -d (no paths)", []string{"-r1", "name:.log"}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := ParseArgs(tc.args, refNow)
 			if err == nil {
 				t.Fatal("want error, got nil")
+			}
+		})
+	}
+}
+
+func TestValidateErrors(t *testing.T) {
+	cases := []struct {
+		name string
+		args []string
+	}{
+		{"no groups", []string{}},
+		{"-r without -d (no paths)", []string{"-r1", "name:.log"}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg, err := ParseArgs(tc.args, refNow)
+			if err != nil {
+				t.Fatalf("ParseArgs unexpected error: %v", err)
+			}
+			if err := cfg.Validate(); err == nil {
+				t.Fatal("Validate: want error, got nil")
 			}
 		})
 	}

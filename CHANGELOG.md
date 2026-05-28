@@ -7,6 +7,24 @@ and this project adheres to phased delivery per `PLAN.md`.
 
 ## [Unreleased]
 
+### Phase 2 — YAML config + merge
+- `internal/config/yaml.go`: full YAML schema (directories, files,
+  global_file_filter, renderers, output, tui) with `gopkg.in/yaml.v3`.
+- `internal/config.Load`: resolves YAML path (`--config` > `./log-listener.yml`
+  > `~/.log-listener.yml`), parses it, merges into the CLI Config with
+  CLI-precedence semantics, and validates the result.
+- `Config.Validate`: extracted from the old `validate()` so CLI parsing no
+  longer fails on "no groups" — that check now runs after the YAML merge.
+- `Config.cliExplicit`: tracks which scalar fields the CLI set so YAML
+  doesn't clobber them. Group merge: same `(kind, id)` → CLI wins; YAML
+  groups with unique IDs are appended in YAML declaration order.
+- `Config` gains `DropUnmatched`, `TUIScrollback`, and `RendererSpecs`
+  fields. `RendererSpecs` is only carried through for now; Phase 3 will
+  compile them into the rendering pipeline.
+- `cmd/log-listener/main.go`: now calls `config.Load` instead of
+  `config.ParseArgs` directly.
+- Adds dependency: `gopkg.in/yaml.v3 v3.0.1`.
+
 ### Phase 1 review fixes
 - `cmd/log-listener`: signal handler now keeps listening for SIGINT
   indefinitely so a second Ctrl+C always hard-exits (previously the

@@ -12,8 +12,8 @@ import (
 	"log-listener/internal/timeparse"
 )
 
-// Config is the parsed CLI invocation (Phase 1 surface only).
-// Groups is the unified list of directory and file groups in CLI declaration
+// Config is the merged CLI + YAML configuration.
+// Groups is the unified list of directory and file groups in declaration
 // order — this is the order Assign and the renderer-pipeline (later phases)
 // use for first-match-wins semantics.
 type Config struct {
@@ -26,14 +26,21 @@ type Config struct {
 	SSEAddr    string
 	ConfigFile string
 
-	indexDir  map[string]int
-	indexFile map[string]int
+	// Populated only via YAML in Phase 2; CLI has no flags for them yet.
+	DropUnmatched bool
+	TUIScrollback int // 0 = use the default (10000); set by tui.scrollback in YAML
+	RendererSpecs []RendererSpec
+
+	indexDir    map[string]int
+	indexFile   map[string]int
+	cliExplicit map[string]bool // tracks which scalar fields CLI set, so YAML merge skips them
 }
 
 func newConfig() *Config {
 	return &Config{
-		indexDir:  map[string]int{},
-		indexFile: map[string]int{},
+		indexDir:    map[string]int{},
+		indexFile:   map[string]int{},
+		cliExplicit: map[string]bool{},
 	}
 }
 
@@ -56,12 +63,15 @@ func ParseArgs(args []string, now time.Time) (*Config, error) {
 			i = next
 		case a == "--once":
 			cfg.Once = true
+			cfg.cliExplicit["once"] = true
 			i++
 		case a == "--no-tui":
 			cfg.NoTUI = true
+			cfg.cliExplicit["no_tui"] = true
 			i++
 		case a == "--no-color":
 			cfg.NoColor = true
+			cfg.cliExplicit["no_color"] = true
 			i++
 		case a == "--sse":
 			v, next, err := requireValue(args, i, "--sse")
@@ -69,12 +79,14 @@ func ParseArgs(args []string, now time.Time) (*Config, error) {
 				return nil, err
 			}
 			cfg.SSEAddr = v
+			cfg.cliExplicit["sse_addr"] = true
 			i = next
 		case a == "-R":
 			vals, next := slurpValues(args, i+1)
 			if err := applyRules(&cfg.GlobalFilter, vals, now); err != nil {
 				return nil, fmt.Errorf("-R: %w", err)
 			}
+			cfg.cliExplicit["global_filter"] = true
 			i = next
 		case flagRE.MatchString(a):
 			m := flagRE.FindStringSubmatch(a)
@@ -106,9 +118,6 @@ func ParseArgs(args []string, now time.Time) (*Config, error) {
 		default:
 			return nil, fmt.Errorf("unknown flag or stray arg: %q", a)
 		}
-	}
-	if err := cfg.validate(); err != nil {
-		return nil, err
 	}
 	return cfg, nil
 }
@@ -151,7 +160,8 @@ func (c *Config) ensureFileGroup(id string) *discover.Group {
 	return g
 }
 
-func (c *Config) validate() error {
+// Validate checks structural completeness. Call after CLI + YAML merge.
+func (c *Config) Validate() error {
 	if len(c.Groups) == 0 {
 		return fmt.Errorf("no directories (-d) or files (-f) given")
 	}

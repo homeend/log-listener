@@ -1,0 +1,318 @@
+package config
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"regexp"
+	"time"
+
+	"gopkg.in/yaml.v3"
+
+	"log-listener/internal/discover"
+	"log-listener/internal/timeparse"
+)
+
+// RendererSpec is the renderer definition as loaded from YAML. Phase 3 will
+// compile these into the actual rendering pipeline; for now they are carried
+// through so Load() is forward-compatible with Phase 3.
+type RendererSpec struct {
+	Name      string
+	LineRegex string
+	Template  string
+	AppliesTo *AppliesTo
+}
+
+// AppliesTo is the renderer scope filter; semantics: a renderer applies to
+// a file if (Groups is empty OR file's group is in Groups) AND
+//
+//	(Paths is empty OR file matches some glob in Paths).
+type AppliesTo struct {
+	Groups []string
+	Paths  []string
+}
+
+type yamlConfig struct {
+	Directories      []yamlDirGroup  `yaml:"directories"`
+	Files            []yamlFileGroup `yaml:"files"`
+	GlobalFileFilter *yamlFilter     `yaml:"global_file_filter"`
+	Renderers        []yamlRenderer  `yaml:"renderers"`
+	Output           *yamlOutput     `yaml:"output"`
+	TUI              *yamlTUI        `yaml:"tui"`
+}
+
+type yamlDirGroup struct {
+	ID         string      `yaml:"id"`
+	Paths      []string    `yaml:"paths"`
+	Recursive  *bool       `yaml:"recursive"`
+	FileFilter *yamlFilter `yaml:"file_filter"`
+}
+
+type yamlFileGroup struct {
+	ID    string   `yaml:"id"`
+	Paths []string `yaml:"paths"`
+}
+
+type yamlFilter struct {
+	NameRegex    string `yaml:"name_regex"`
+	ExcludeRegex string `yaml:"exclude_regex"`
+	Older        string `yaml:"older"`
+	Younger      string `yaml:"younger"`
+}
+
+type yamlRenderer struct {
+	Name      string         `yaml:"name"`
+	LineRegex string         `yaml:"line_regex"`
+	Template  string         `yaml:"template"`
+	AppliesTo *yamlAppliesTo `yaml:"applies_to"`
+}
+
+type yamlAppliesTo struct {
+	Groups []string `yaml:"groups"`
+	Paths  []string `yaml:"paths"`
+}
+
+type yamlOutput struct {
+	Color         *bool    `yaml:"color"`
+	DropUnmatched *bool    `yaml:"drop_unmatched"`
+	SSE           *yamlSSE `yaml:"sse"`
+}
+
+type yamlSSE struct {
+	Enabled *bool  `yaml:"enabled"`
+	Addr    string `yaml:"addr"`
+}
+
+type yamlTUI struct {
+	Enabled    *bool `yaml:"enabled"`
+	Scrollback *int  `yaml:"scrollback"`
+}
+
+// Load parses CLI args, resolves the YAML config (if any), and merges them
+// with CLI taking precedence over YAML. Resolution order for the YAML path:
+// args' --config, then ./log-listener.yml, then ~/.log-listener.yml.
+func Load(args []string, now time.Time) (*Config, error) {
+	return loadWithFS(args, now, defaultHomeDir)
+}
+
+// loadWithFS is the testable variant; homeDir is injectable.
+func loadWithFS(args []string, now time.Time, homeDir func() (string, error)) (*Config, error) {
+	cfg, err := ParseArgs(args, now)
+	if err != nil {
+		return nil, err
+	}
+
+	yamlPath, err := resolveYAMLPath(cfg.ConfigFile, homeDir)
+	if err != nil {
+		return nil, err
+	}
+	if yamlPath == "" {
+		if err := cfg.Validate(); err != nil {
+			return nil, err
+		}
+		return cfg, nil
+	}
+
+	yc, err := readYAMLFile(yamlPath)
+	if err != nil {
+		return nil, fmt.Errorf("config: %s: %w", yamlPath, err)
+	}
+	if err := mergeYAMLInto(cfg, yc, now); err != nil {
+		return nil, fmt.Errorf("config: %s: %w", yamlPath, err)
+	}
+	if err := cfg.Validate(); err != nil {
+		return nil, err
+	}
+	return cfg, nil
+}
+
+func defaultHomeDir() (string, error) { return os.UserHomeDir() }
+
+// resolveYAMLPath returns the YAML path to load, or "" if none should be
+// loaded. An explicit --config that does not exist is an error; the default
+// fallback paths silently skip when missing.
+func resolveYAMLPath(explicit string, homeDir func() (string, error)) (string, error) {
+	if explicit != "" {
+		if _, err := os.Stat(explicit); err != nil {
+			return "", fmt.Errorf("config: %s: %w", explicit, err)
+		}
+		return explicit, nil
+	}
+	if _, err := os.Stat("log-listener.yml"); err == nil {
+		return "log-listener.yml", nil
+	}
+	home, err := homeDir()
+	if err != nil || home == "" {
+		return "", nil
+	}
+	candidate := filepath.Join(home, ".log-listener.yml")
+	if _, err := os.Stat(candidate); err == nil {
+		return candidate, nil
+	}
+	return "", nil
+}
+
+func readYAMLFile(path string) (*yamlConfig, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	var yc yamlConfig
+	if len(data) == 0 {
+		return &yc, nil
+	}
+	if err := yaml.Unmarshal(data, &yc); err != nil {
+		return nil, err
+	}
+	return &yc, nil
+}
+
+// mergeYAMLInto applies yc to cfg with CLI-precedence semantics:
+//   - scalar fields: applied only if CLI didn't set them explicitly
+//   - groups: CLI-supplied (kind, id) groups win entirely; YAML-only groups
+//     are appended in YAML declaration order (after CLI groups for that kind)
+//   - global_file_filter: applied only if CLI didn't supply -R (any token)
+//   - renderers: always taken from YAML (CLI has no renderer flags)
+func mergeYAMLInto(cfg *Config, yc *yamlConfig, now time.Time) error {
+	// global_file_filter — CLI -R wins entirely if present
+	if cfg.GlobalFilter == nil && yc.GlobalFileFilter != nil {
+		gf, err := yamlFilterToDiscover(yc.GlobalFileFilter, now)
+		if err != nil {
+			return fmt.Errorf("global_file_filter: %w", err)
+		}
+		cfg.GlobalFilter = gf
+	}
+
+	// directories — append YAML groups whose (kind=dir, id) isn't already CLI
+	for _, ydg := range yc.Directories {
+		id := ydg.ID
+		if id == "" {
+			id = "default"
+		}
+		if _, exists := cfg.indexDir[id]; exists {
+			continue // CLI wins
+		}
+		filter, err := yamlFilterToDiscover(ydg.FileFilter, now)
+		if err != nil {
+			return fmt.Errorf("directories[%s]: %w", id, err)
+		}
+		recursive := true
+		if ydg.Recursive != nil {
+			recursive = *ydg.Recursive
+		}
+		g := &discover.Group{
+			ID:        id,
+			Kind:      discover.GroupDir,
+			Paths:     append([]string(nil), ydg.Paths...),
+			Recursive: recursive,
+			Filter:    filter,
+		}
+		cfg.indexDir[id] = len(cfg.Groups)
+		cfg.Groups = append(cfg.Groups, g)
+	}
+
+	// files — same pattern
+	for _, yfg := range yc.Files {
+		id := yfg.ID
+		if id == "" {
+			id = "default"
+		}
+		if _, exists := cfg.indexFile[id]; exists {
+			continue
+		}
+		g := &discover.Group{
+			ID:    id,
+			Kind:  discover.GroupFile,
+			Paths: append([]string(nil), yfg.Paths...),
+		}
+		cfg.indexFile[id] = len(cfg.Groups)
+		cfg.Groups = append(cfg.Groups, g)
+	}
+
+	// renderers — Phase 2 just carries these through
+	for _, yr := range yc.Renderers {
+		spec := RendererSpec{
+			Name:      yr.Name,
+			LineRegex: yr.LineRegex,
+			Template:  yr.Template,
+		}
+		if yr.AppliesTo != nil {
+			spec.AppliesTo = &AppliesTo{
+				Groups: append([]string(nil), yr.AppliesTo.Groups...),
+				Paths:  append([]string(nil), yr.AppliesTo.Paths...),
+			}
+		}
+		cfg.RendererSpecs = append(cfg.RendererSpecs, spec)
+	}
+
+	// output
+	if yc.Output != nil {
+		o := yc.Output
+		if o.Color != nil && !cfg.cliExplicit["no_color"] {
+			if !*o.Color {
+				cfg.NoColor = true
+			}
+		}
+		if o.DropUnmatched != nil && !cfg.cliExplicit["drop_unmatched"] {
+			cfg.DropUnmatched = *o.DropUnmatched
+		}
+		if o.SSE != nil && !cfg.cliExplicit["sse_addr"] {
+			if o.SSE.Enabled != nil && !*o.SSE.Enabled {
+				cfg.SSEAddr = ""
+			} else if o.SSE.Addr != "" {
+				cfg.SSEAddr = o.SSE.Addr
+			}
+		}
+	}
+
+	// tui
+	if yc.TUI != nil {
+		t := yc.TUI
+		if t.Enabled != nil && !cfg.cliExplicit["no_tui"] {
+			if !*t.Enabled {
+				cfg.NoTUI = true
+			}
+		}
+		if t.Scrollback != nil && !cfg.cliExplicit["tui_scrollback"] {
+			cfg.TUIScrollback = *t.Scrollback
+		}
+	}
+
+	return nil
+}
+
+func yamlFilterToDiscover(yf *yamlFilter, now time.Time) (*discover.FileFilter, error) {
+	if yf == nil {
+		return nil, nil
+	}
+	f := &discover.FileFilter{}
+	if yf.NameRegex != "" {
+		re, err := regexp.Compile(yf.NameRegex)
+		if err != nil {
+			return nil, fmt.Errorf("name_regex: %w", err)
+		}
+		f.NameRegex = re
+	}
+	if yf.ExcludeRegex != "" {
+		re, err := regexp.Compile(yf.ExcludeRegex)
+		if err != nil {
+			return nil, fmt.Errorf("exclude_regex: %w", err)
+		}
+		f.ExcludeRegex = re
+	}
+	if yf.Older != "" {
+		t, err := timeparse.Parse(yf.Older, now)
+		if err != nil {
+			return nil, fmt.Errorf("older: %w", err)
+		}
+		f.Older = t
+	}
+	if yf.Younger != "" {
+		t, err := timeparse.Parse(yf.Younger, now)
+		if err != nil {
+			return nil, fmt.Errorf("younger: %w", err)
+		}
+		f.Younger = t
+	}
+	return f, nil
+}
