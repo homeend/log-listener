@@ -452,6 +452,20 @@ name. The footer status line shows `rend: N (M off)`.
 Only the first 9 renderers are keyboard-addressable; beyond that they
 stay always-on (use `disabled:` or `off:` in YAML to start one disabled).
 
+### Collapsing multiline entries
+
+Press **`m`** to switch the stream view into **collapsed** mode: any
+row whose body starts with whitespace (Python tracebacks, indented
+log continuations, etc.) is hidden, and the row above it gets a dim
+`[...]` suffix to signal there's more. JSON/XML pretty-print blocks
+also collapse — the head that triggered the renderer keeps showing,
+the block lines vanish behind the marker.
+
+Press `m` again to expand. The toggle is TUI-only; stdout and SSE
+consumers always see the full content. Search and group filtering
+respect the collapsed state — a hit inside a hidden continuation is
+not surfaced, mirroring how a hit in a disabled group isn't surfaced.
+
 ### Search
 
 Press **`/`** to enter search mode. Type the term — the footer shows
@@ -517,6 +531,7 @@ browsing, so you can see at a glance whether the view is live.
 | `0`                 | Jump back to column 0 (leftmost).                     |
 | **`Ctrl+E`**        | **Toggle the "renderers" overlay.**                   |
 | **`!` `@` `#` `$` `%` `^` `&` `*` `(`** | **Toggle renderer 1–9 on/off (shifted digits).** |
+| **`m`**             | **Collapse multiline entries to one line + `[...]`.** |
 
 When you pan horizontally (`←` / `→`), the visible window is clipped from
 the left and ANSI styling is dropped for the scrolled portion — that's a

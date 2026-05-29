@@ -17,6 +17,19 @@ and this project adheres to phased delivery per `PLAN.md`.
 
 ## [Unreleased]
 
+### TUI: collapse multiline entries with `m`
+- New keybinding **`m`** toggles a "collapsed multiline" view: any
+  row whose body starts with whitespace (Python tracebacks, indented
+  continuations) is hidden, and the preceding head row gets a dim
+  `[...]` suffix to flag the hidden content. JSON/XML pretty-print
+  blocks collapse the same way — head row stays, block rows vanish
+  behind the marker.
+- The collapse extends `lineEnabled`, so the existing tail/browse,
+  group-filter, and search paths automatically respect it (a hit in
+  a hidden continuation is not surfaced — mirrors disabled-group
+  behavior).
+- TUI-only; stdout and SSE consumers continue to receive full content.
+
 ### Runtime renderer toggles + YAML `disabled` / `off`
 - **Renderer toggles** — `!` `@` `#` `$` `%` `^` `&` `*` `(` (shifted
   digits 1–9) toggle renderers on/off in the TUI, mirroring the

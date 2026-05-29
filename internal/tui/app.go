@@ -301,6 +301,14 @@ type model struct {
 	renderersScroll    int
 	setRendererEnabled func(idx int, on bool) // pipeline-side flip
 	renderFn           RenderFunc             // re-render a single source
+
+	// collapseMultiline hides continuation rows in the stream view —
+	// a line whose body starts with whitespace, or any pretty-printed
+	// JSON/XML block row. Heads with hidden continuations get a "[...]"
+	// suffix appended at render time so the user can tell more exists.
+	// Toggled with the `m` key. TUI-only; stdout/SSE still emit full
+	// content.
+	collapseMultiline bool
 }
 
 // RenderFunc runs a single (group, file, raw) tuple through the
@@ -597,6 +605,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.toggleRenderer(7)
 		case "(":
 			m.toggleRenderer(8)
+		case "m":
+			// Collapse multiline entries (continuation rows hidden behind
+			// a "[...]" marker on the head). Toggles repeatedly.
+			m.collapseMultiline = !m.collapseMultiline
 		case "ctrl+e":
 			m.showRenderersPanel = !m.showRenderersPanel
 			if m.showRenderersPanel {
@@ -772,11 +784,20 @@ func (m *model) renderDisplayLine(dl displayLine) (string, int) {
 
 // renderDisplayLineAt is the on-screen variant that knows the line's
 // absolute index, so it can apply the active-hit background when the
-// row holds the current search hit. Falls through to the plain core
-// when no search is active.
+// row holds the current search hit and append the "[...]" suffix when
+// collapsed-multiline mode is hiding continuation rows after this one.
+// Falls through to the plain core otherwise.
 func (m *model) renderDisplayLineAt(idx int) (string, int) {
 	dl := m.lines[idx]
 	isCurrent := m.searchTerm != "" && idx == m.searchHit
+	if m.collapseMultiline && idx+1 < len(m.lines) && isContinuation(m.lines[idx+1]) {
+		// Mutate the local copy so the marker shows on this row only.
+		// dimStyle wraps the marker in ANSI; runeLen on the unstyled
+		// text yields the correct visible width.
+		const marker = " [...]"
+		dl.body = dl.body + dimStyle.Render(marker)
+		dl.bodyWidth += runeLen(marker)
+	}
 	return m.renderDisplayLineCore(dl, isCurrent)
 }
 
@@ -824,9 +845,13 @@ func (m *model) renderDisplayLineCore(dl displayLine, isCurrent bool) (string, i
 }
 
 // lineEnabled reports whether dl should appear in the stream window
-// given the current per-group toggles. Block lines inherit their head's
-// group, so they're filtered consistently.
+// given the current per-group toggles AND the multiline-collapse
+// toggle. Block lines inherit their head's group, so they're filtered
+// consistently.
 func (m *model) lineEnabled(dl displayLine) bool {
+	if m.collapseMultiline && isContinuation(dl) {
+		return false
+	}
 	if dl.group == "" {
 		return true
 	}
@@ -835,6 +860,22 @@ func (m *model) lineEnabled(dl displayLine) bool {
 		return true // unknown groups (shouldn't happen) default to visible
 	}
 	return enabled
+}
+
+// isContinuation reports whether dl looks like a follow-on row of a
+// multiline log entry — either a JSON/XML pretty-print block row, or
+// a line whose body starts with whitespace (the convention Python
+// tracebacks and many other multi-line log formats use). Empty bodies
+// don't count.
+func isContinuation(dl displayLine) bool {
+	if dl.isBlock {
+		return true
+	}
+	if len(dl.body) == 0 {
+		return false
+	}
+	first := dl.body[0]
+	return first == ' ' || first == '\t'
 }
 
 // contentHeight returns the number of rows available for the body between
@@ -851,7 +892,7 @@ func (m *model) View() string {
 	if m.height == 0 {
 		return ""
 	}
-	header := headerBg.Width(m.width).Render(" log-listener — q quit · Tab files · Ctrl+G groups · Ctrl+E rend · 1-9 grp · !-( rend · Ctrl+P/L cols · Ctrl+R clear · / search · n/p ")
+	header := headerBg.Width(m.width).Render(" log-listener — q quit · Tab files · Ctrl+G groups · Ctrl+E rend · 1-9 grp · m collapse · Ctrl+P/L cols · Ctrl+R clear · / search · n/p ")
 	contentH := m.contentHeight()
 
 	var body string
