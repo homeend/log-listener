@@ -31,3 +31,52 @@ func ParseFile(data []byte) (*File, error) {
 	}
 	return &f, nil
 }
+
+// MergeFiles returns existing with any groups/renderers from gen that are not
+// already present (by id / name) appended. Existing entries are never modified
+// or removed; Output/TUI from gen are applied only when existing has none.
+// Lossless for user files: every loader-recognized field lives on File.
+func MergeFiles(existing, gen *File) *File {
+	out := *existing // shallow copy of header; slices are appended below
+
+	dirIDs := map[string]bool{}
+	for _, d := range out.Directories {
+		dirIDs[d.ID] = true
+	}
+	for _, d := range gen.Directories {
+		if !dirIDs[d.ID] {
+			out.Directories = append(out.Directories, d)
+			dirIDs[d.ID] = true
+		}
+	}
+
+	fileIDs := map[string]bool{}
+	for _, f := range out.Files {
+		fileIDs[f.ID] = true
+	}
+	for _, f := range gen.Files {
+		if !fileIDs[f.ID] {
+			out.Files = append(out.Files, f)
+			fileIDs[f.ID] = true
+		}
+	}
+
+	rendNames := map[string]bool{}
+	for _, r := range out.Renderers {
+		rendNames[r.Name] = true
+	}
+	for _, r := range gen.Renderers {
+		if !rendNames[r.Name] {
+			out.Renderers = append(out.Renderers, r)
+			rendNames[r.Name] = true
+		}
+	}
+
+	if out.Output == nil {
+		out.Output = gen.Output
+	}
+	if out.TUI == nil {
+		out.TUI = gen.TUI
+	}
+	return &out
+}
