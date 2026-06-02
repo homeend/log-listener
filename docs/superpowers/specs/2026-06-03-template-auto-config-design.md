@@ -211,9 +211,10 @@ $ log-listener init goland junie
 - **Remote URL:** a build-time constant pointing at GitHub raw
   `catalog/catalog.yml` on the repo's default branch. (Exact `owner/repo`
   filled in at implementation.)
-- **Cache:** `~/.cache/log-listener/catalog.yml` (XDG-respecting).
-- **Selection:** compare integer `version`; use whichever is higher (remote
-  cached for next time).
+- **Selection:** compare integer `version`; use whichever is higher. No on-disk
+  cache — the bottled catalog is always a valid floor, so a stale cache would
+  add a failure mode without adding value. Each run re-fetches (cheap, ~1 small
+  HTTPS GET, 5s timeout) only when online mode is active.
 - **Failure handling:** *any* network error, HTTP non-200, or parse failure
   silently falls back to the embedded bottled catalog. `init` never hard-fails
   because the network is down.
@@ -228,7 +229,7 @@ $ log-listener init goland junie
 | Package | Role |
 |---------|------|
 | `internal/catalog` | Catalog schema types; embedded bottled catalog (`go:embed`); fragment composition; OS/token expansion; probe-and-pick resolution → produces a config document. |
-| `internal/catalog` (remote, behind an interface) | Fetch remote catalog, version-compare, cache. Network isolated behind a `Fetcher` interface for testing. |
+| `internal/catalog` (remote, behind an interface) | Fetch remote catalog, version-compare, fall back to bottled. Network isolated behind a `Fetcher` interface for testing. |
 | `cmd/log-listener` `init` subcommand | Arg parsing; online prompt; resolve; marshal YAML; write/merge file or stdout. |
 | `internal/config` *(small refactor)* | Export the YAML schema structs so loader and emitter share one source of truth (no schema drift between read and write). |
 
@@ -236,7 +237,7 @@ $ log-listener init goland junie
 
 ```
 init goland junie
-  → choose catalog source (online prompt → remote-or-bottled Fetcher)
+  → choose catalog source (online prompt → higher-version of remote/bottled, no cache)
   → expand bundles + validate names
   → per app: compose use:fragments + inline sources + renderers
   → expand tokens for current OS, probe-and-pick locations

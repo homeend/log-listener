@@ -1094,6 +1094,19 @@ func TestBundledResolvesEveryAppOnEveryOS(t *testing.T) {
 	if c.Bundles["jetbrains"] == nil {
 		t.Error("expected a 'jetbrains' bundle")
 	}
+
+	// Guard against a source being silently dropped on an OS that lacks a
+	// dir key: goland (jetbrains-base main + inline acp) must emit exactly two
+	// groups on every OS. A dropped source would show up here.
+	for _, os := range []string{"linux", "darwin", "windows"} {
+		f, err := c.Resolve([]string{"goland"}, env(os))
+		if err != nil {
+			t.Fatalf("Resolve(goland, %s): %v", os, err)
+		}
+		if len(f.Directories) != 2 {
+			t.Errorf("goland/%s: got %d groups, want 2 (a source was dropped?)", os, len(f.Directories))
+		}
+	}
 }
 ```
 
@@ -1305,6 +1318,23 @@ func TestInitForceMerge(t *testing.T) {
 		t.Errorf("merge dropped an entry:\n%s", s)
 	}
 }
+
+func TestPromptOverwriteMapsReplies(t *testing.T) {
+	cases := map[string]string{
+		"o\n": "overwrite", "overwrite\n": "overwrite",
+		"m\n": "merge", "merge\n": "merge",
+		"c\n": "cancel", "\n": "cancel", "x\n": "cancel",
+	}
+	for reply, want := range cases {
+		var w bytes.Buffer
+		if got := promptOverwrite(&w, strings.NewReader(reply), "x.yml"); got != want {
+			t.Errorf("promptOverwrite(%q) = %q, want %q", reply, got, want)
+		}
+		if !strings.Contains(w.String(), "[o]verwrite") {
+			t.Errorf("prompt text missing for reply %q: %q", reply, w.String())
+		}
+	}
+}
 ```
 
 - [ ] **Step 2: Run to verify it fails**
@@ -1318,11 +1348,10 @@ Expected: FAIL — `undefined: runInit`.
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
-	"runtime"
 	"strings"
 
 	"log-listener/internal/catalog"
@@ -1403,18 +1432,33 @@ func runInit(args []string, stdout, stderr io.Writer) int {
 
 	final := gen
 	if existingData, err := os.ReadFile(outPath); err == nil {
-		// file exists
-		if !force {
-			fmt.Fprintf(stderr, "log-listener init: %s exists; pass --force (with optional --merge) to write\n", outPath)
+		// File exists — decide overwrite / merge / cancel.
+		// Flags win; otherwise prompt on a TTY; otherwise refuse (non-interactive).
+		action := ""
+		switch {
+		case force && merge:
+			action = "merge"
+		case force:
+			action = "overwrite"
+		case isTTY(os.Stdin):
+			action = promptOverwrite(stdout, os.Stdin, outPath)
+		default:
+			fmt.Fprintf(stderr, "log-listener init: %s exists; pass --force (optionally --merge), or run in a terminal\n", outPath)
 			return 1
 		}
-		if merge {
+		switch action {
+		case "cancel":
+			fmt.Fprintln(stdout, "cancelled")
+			return 0
+		case "merge":
 			existing, err := config.ParseFile(existingData)
 			if err != nil {
 				fmt.Fprintln(stderr, "log-listener init: cannot parse existing file:", err)
 				return 1
 			}
 			final = config.MergeFiles(existing, gen)
+		case "overwrite":
+			final = gen
 		}
 	}
 
@@ -1443,8 +1487,30 @@ func printList(w io.Writer, cat *catalog.Catalog) {
 	}
 }
 
-var _ = filepath.Join // retained for future path normalization
-var _ = runtime.GOOS
+// isTTY reports whether f is an interactive terminal (used to decide prompting).
+func isTTY(f *os.File) bool {
+	fi, err := f.Stat()
+	if err != nil {
+		return false
+	}
+	return fi.Mode()&os.ModeCharDevice != 0
+}
+
+// promptOverwrite asks the spec §6 question and maps the reply to an action.
+// Reader-injectable (not tied to a real TTY) so it is unit-testable.
+// Returns "overwrite", "merge", or "cancel" (default/empty/unknown -> cancel).
+func promptOverwrite(w io.Writer, r io.Reader, path string) string {
+	fmt.Fprintf(w, "%s exists. [o]verwrite / [m]erge / [c]ancel? ", path)
+	line, _ := bufio.NewReader(r).ReadString('\n')
+	switch strings.ToLower(strings.TrimSpace(line)) {
+	case "o", "overwrite":
+		return "overwrite"
+	case "m", "merge":
+		return "merge"
+	default:
+		return "cancel"
+	}
+}
 ```
 
 - [ ] **Step 4: Add `catalog.DefaultEnv`**
@@ -1481,7 +1547,7 @@ func DefaultEnv() Env {
 }
 ```
 
-(Adjust the `resolve.go` import block to include `os` and `path/filepath`; remove the placeholder `var _ =` lines from `init.go` if `filepath`/`runtime` end up unused — run `go build ./cmd/log-listener/` and let the compiler guide you.)
+(Adjust the `resolve.go` import block to include `os` and `path/filepath`. `init.go` does not import `filepath`/`runtime` — `DefaultEnv` in `resolve.go` owns those. Run `go build ./cmd/log-listener/ ./internal/catalog/` to confirm imports balance.)
 
 - [ ] **Step 5: Run + commit**
 
@@ -1627,8 +1693,6 @@ package catalog
 import (
 	"io"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strconv"
 	"time"
 )
@@ -1670,7 +1734,9 @@ type httpError struct{ code int }
 func (e *httpError) Error() string { return "catalog fetch: HTTP " + strconv.Itoa(e.code) }
 
 // Select returns whichever of bundled or the fetched remote catalog has the
-// higher version. ANY fetch/parse failure silently yields bundled.
+// higher version. ANY fetch/parse failure silently yields bundled, which is the
+// designed offline fallback (spec §7). No on-disk cache: bundled is always a
+// valid floor, so a stale cache would add a failure mode without adding value.
 func Select(bundled *Catalog, f Fetcher) *Catalog {
 	data, err := f.Fetch()
 	if err != nil {
@@ -1681,31 +1747,12 @@ func Select(bundled *Catalog, f Fetcher) *Catalog {
 		return bundled
 	}
 	if remote.Version > bundled.Version {
-		cacheWrite(data) // best-effort
 		return remote
 	}
 	return bundled
 }
 
 func itoa(n int) string { return strconv.Itoa(n) }
-
-// cacheDir / cacheWrite persist the chosen remote for offline reuse.
-func cacheDir() string {
-	base, err := os.UserCacheDir()
-	if err != nil {
-		return ""
-	}
-	return filepath.Join(base, "log-listener")
-}
-
-func cacheWrite(data []byte) {
-	dir := cacheDir()
-	if dir == "" {
-		return
-	}
-	_ = os.MkdirAll(dir, 0o755)
-	_ = os.WriteFile(filepath.Join(dir, "catalog.yml"), data, 0o644)
-}
 ```
 
 - [ ] **Step 4: Run + commit**
@@ -1798,24 +1845,14 @@ Replace the `cat, err := catalog.Bundled()` block and the `_ = offline/_ = onlin
 	}
 ```
 
-Add helpers to `init.go`:
+Add the online-check prompt helper to `init.go` (`isTTY` already exists from Task 8 — do **not** redefine it):
 
 ```go
-func isTTY(f *os.File) bool {
-	fi, err := f.Stat()
-	if err != nil {
-		return false
-	}
-	return fi.Mode()&os.ModeCharDevice != 0
-}
-
 func promptYesNo(w io.Writer, r io.Reader, q string) bool {
 	fmt.Fprintf(w, "%s [Y/n] ", q)
-	buf := make([]byte, 1)
-	if _, err := r.Read(buf); err != nil {
-		return false
-	}
-	return buf[0] != 'n' && buf[0] != 'N'
+	line, _ := bufio.NewReader(r).ReadString('\n')
+	s := strings.ToLower(strings.TrimSpace(line))
+	return s != "n" && s != "no"
 }
 ```
 
@@ -1890,7 +1927,8 @@ git commit -m "docs: document the init template command"
 
 ## Self-Review notes (for the executor)
 
-- **Spec coverage:** three axes → Task 1 schema (`locations` list + per-OS `dir` map + top-level `version`); fragments/composition → Tasks 1,6; probe-and-pick → Task 6; group-id uniqueness + renderer dedup → Task 6; renderers+defaults emitted → Task 6; `init` UX incl. `-o`, overwrite/merge, non-TTY → Tasks 8,11; online update + bottled fallback → Tasks 10,11; testing strategy → every task is TDD; the spec's "promote schema" refinement (kept as shared structs + a round-trip guard) → Task 3.
-- **Known deviation from spec wording:** the spec said "promote the loader structs and reuse for emit." This plan does exactly that (Task 3 exports the loader structs and the emitter reuses them) and adds a round-trip test as the anti-drift guard. No separate emit schema.
+- **Spec coverage:** three axes → Task 1 schema (`locations` list + per-OS `dir` map + top-level `version`); fragments/composition → Tasks 1,6; probe-and-pick → Task 6; group-id uniqueness + renderer dedup → Task 6; renderers+defaults emitted → Task 6; `init` UX — `-o`/`-o -` (Task 8), **interactive `[o]verwrite/[m]erge/[c]ancel` prompt** (Task 8, `promptOverwrite`, unit-tested), flag-driven `--force`/`--merge` (Task 8), non-TTY refusal (Task 8), online prompt + `--online`/`--offline` (Task 11); online update + bottled fallback → Tasks 10,11; testing strategy → every task is TDD; the spec's "promote schema" refinement → Task 3.
+- **Spec §7 cache:** the design originally named an on-disk cache; the plan drops it (Task 10) because the bottled catalog is always a valid floor — a stale cache adds a failure mode without value. Spec §7/§8 updated to match.
+- **Deviation from spec wording:** the spec said "promote the loader structs and reuse for emit." This plan does exactly that (Task 3 exports the loader structs and the emitter reuses them) and adds a round-trip test as the anti-drift guard. No separate emit schema.
 - **Placeholder left intentionally:** `CatalogURL`'s `OWNER` (Task 10) — the real GitHub owner/repo, the one external unknown noted in spec §11. Fill before release; tests never hit the network (fakes only).
-- **Type consistency:** `Env{OS,Home,Getenv,Exists}`, `Resolve`, `emitSource`, `groupID`, `config.File/DirGroup/Filter/Renderer/Output/TUI`, `MergeFiles`, `Select`, `Fetcher`, `initFetcher` are used consistently across tasks.
+- **Type consistency:** `Env{OS,Home,Getenv,Exists}`, `Resolve`, `emitSource`, `groupID`, `config.File/DirGroup/Filter/Renderer/Output/TUI`, `MergeFiles`, `Select`, `Fetcher`, `initFetcher`, `isTTY`, `promptOverwrite`, `promptYesNo` are used consistently across tasks.
