@@ -143,6 +143,17 @@ func TestInitForceOverwrite(t *testing.T) {
 	}
 }
 
+func TestRunDispatchesInit(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := run([]string{"init", "goland", "-o", "-", "--offline"}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "directories:") {
+		t.Errorf("init not dispatched:\n%s", stdout.String())
+	}
+}
+
 func TestInitList(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := runInit([]string{"--list"}, strings.NewReader(""), false, &stdout, &stderr)

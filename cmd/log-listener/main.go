@@ -35,6 +35,10 @@ func main() {
 
 // run is the testable entry point. Returns the process exit code.
 func run(args []string, stdout, stderr io.Writer) int {
+	if len(args) > 0 && args[0] == "init" {
+		return runInit(args[1:], os.Stdin, sink.IsTTY(os.Stdin), stdout, stderr)
+	}
+
 	cfg, err := config.Load(args, time.Now())
 	if err != nil {
 		fmt.Fprintln(stderr, "log-listener:", err)
