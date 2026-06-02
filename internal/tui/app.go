@@ -97,6 +97,15 @@ type FileListMsg struct{ Files []FileEntry }
 // don't have to know about tea.Quit).
 type QuitMsg struct{}
 
+// ReloadMsg replaces the renderer/group/file panels after a live config
+// reload. Toggle state is reset to the supplied StartOff defaults and existing
+// scrollback is re-rendered under the new renderers.
+type ReloadMsg struct {
+	Groups    []GroupInfo
+	Renderers []RendererInfo
+	Files     []FileEntry
+}
+
 // App is a thin wrapper around the bubbletea Program for callers that don't
 // want to touch bubbletea directly. Multiple goroutines can call Push*
 // concurrently; the bubbletea event loop serializes everything internally.
@@ -205,6 +214,19 @@ func (a *App) SetFiles(files []FileEntry) {
 	prog := a.prog
 	a.mu.Unlock()
 	prog.Send(FileListMsg{Files: files})
+}
+
+// Reload reseeds the panels and re-renders scrollback after a config reload.
+// Safe from any goroutine.
+func (a *App) Reload(groups []GroupInfo, renderers []RendererInfo, files []FileEntry) {
+	a.mu.Lock()
+	if a.done {
+		a.mu.Unlock()
+		return
+	}
+	prog := a.prog
+	a.mu.Unlock()
+	prog.Send(ReloadMsg{Groups: groups, Renderers: renderers, Files: files})
 }
 
 // Quit asks the TUI to exit. Safe from any goroutine.
@@ -624,10 +646,44 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.filesScroll >= len(m.files) {
 			m.filesScroll = 0
 		}
+	case ReloadMsg:
+		m.applyReload(msg)
 	case QuitMsg:
 		return m, tea.Quit
 	}
 	return m, nil
+}
+
+// applyReload swaps in the new config's panels and toggle state, then
+// re-renders existing scrollback through renderFn (which now reads the
+// reloaded pipeline). Scrollback source entries are preserved; only their
+// rendered lines are rebuilt. Toggle state is reset to the new config's
+// StartOff defaults — the renderer set may have changed, so preserving old
+// indices would be ambiguous.
+func (m *model) applyReload(msg ReloadMsg) {
+	m.groupOrder = m.groupOrder[:0]
+	m.groupEnabled = map[string]bool{}
+	for _, g := range msg.Groups {
+		m.groupOrder = append(m.groupOrder, g.ID)
+		m.groupEnabled[g.ID] = !g.StartOff
+	}
+	m.rendererOrder = m.rendererOrder[:0]
+	m.rendererEnabled = m.rendererEnabled[:0]
+	for _, r := range msg.Renderers {
+		m.rendererOrder = append(m.rendererOrder, r.Name)
+		m.rendererEnabled = append(m.rendererEnabled, !r.StartOff)
+	}
+	m.files = msg.Files
+	if m.filesScroll >= len(m.files) {
+		m.filesScroll = 0
+	}
+	if m.groupsScroll >= len(m.groupOrder) {
+		m.groupsScroll = 0
+	}
+	if m.renderersScroll >= len(m.rendererOrder) {
+		m.renderersScroll = 0
+	}
+	m.reRenderAll()
 }
 
 func (m *model) appendEvent(ev render.Event) {

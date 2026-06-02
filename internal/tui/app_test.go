@@ -607,6 +607,50 @@ func TestModelClearSession(t *testing.T) {
 // m.width terminal columns wide (visible width via stripANSI), so when
 // the terminal repaints a shorter line nothing from the previous render
 // leaks through on the right.
+func TestReloadMsgReseedsPanelsAndState(t *testing.T) {
+	m := newModel(1000)
+	// Seed an initial config: one group "old", one renderer "r_old" (on).
+	m.groupOrder = []string{"old"}
+	m.groupEnabled = map[string]bool{"old": true}
+	m.rendererOrder = []string{"r_old"}
+	m.rendererEnabled = []bool{true}
+	// renderFn echoes raw as a single text line so reRenderAll has something
+	// to rebuild from.
+	m.renderFn = func(group, file, raw string) (render.Event, bool) {
+		return render.Event{Group: group, File: file, Raw: raw,
+			Rendered: []render.Part{{Type: "text", Value: raw}}}, true
+	}
+	m.appendStored(scrollbackEvent{group: "old", file: "f", raw: "line1"})
+
+	// Reload to a new config: group "new", renderer "r_new" starting off.
+	newM, _ := m.Update(ReloadMsg{
+		Groups:    []GroupInfo{{ID: "new", StartOff: false}},
+		Renderers: []RendererInfo{{Name: "r_new", StartOff: true}},
+		Files:     []FileEntry{{Path: "/x/new.log", Group: "new"}},
+	})
+	m = newM.(*model)
+
+	if len(m.groupOrder) != 1 || m.groupOrder[0] != "new" {
+		t.Fatalf("groupOrder = %v, want [new]", m.groupOrder)
+	}
+	if _, ok := m.groupEnabled["old"]; ok {
+		t.Fatal("stale group 'old' should be gone after reload")
+	}
+	if len(m.rendererOrder) != 1 || m.rendererOrder[0] != "r_new" {
+		t.Fatalf("rendererOrder = %v, want [r_new]", m.rendererOrder)
+	}
+	if m.rendererEnabled[0] != false {
+		t.Fatal("renderer r_new has off:true, should seed disabled")
+	}
+	if len(m.files) != 1 || m.files[0].Path != "/x/new.log" {
+		t.Fatalf("files = %+v, want one /x/new.log", m.files)
+	}
+	// Scrollback content is preserved (one source entry survives).
+	if len(m.entries) != 1 || m.entries[0].raw != "line1" {
+		t.Fatalf("entries = %+v, want preserved line1", m.entries)
+	}
+}
+
 func TestModelStreamRowsPadToWidth(t *testing.T) {
 	m := newModel(100)
 	m.groupOrder = []string{"g"}
