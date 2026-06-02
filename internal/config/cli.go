@@ -26,6 +26,11 @@ type Config struct {
 	SSEAddr    string
 	ConfigFile string
 
+	// SourcePath is the absolute/relative path of the YAML file that was
+	// actually loaded (resolved from --config or the default lookup), or ""
+	// if no YAML was loaded. Used by the config-reload watcher.
+	SourcePath string
+
 	// Populated only via YAML in Phase 2; CLI has no flags for them yet.
 	DropUnmatched bool
 	TUIScrollback int // 0 = use the default (10000); set by tui.scrollback in YAML

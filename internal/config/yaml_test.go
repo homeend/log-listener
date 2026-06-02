@@ -3,7 +3,9 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
+	"time"
 )
 
 func writeYAML(t *testing.T, dir, name, content string) string {
@@ -289,6 +291,32 @@ directories:
 	_, err := loadWithFS([]string{"--config", yml}, refNow, homeStub)
 	if err == nil {
 		t.Fatal("expected regex compile error")
+	}
+}
+
+func TestLoadSetsSourcePath(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "log-listener.yml")
+	if err := os.WriteFile(path, []byte("directories:\n  - id: a\n    paths: ["+strconv.Quote(dir)+"]\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := Load([]string{"--config", path}, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.SourcePath != path {
+		t.Fatalf("SourcePath = %q, want %q", cfg.SourcePath, path)
+	}
+}
+
+func TestLoadNoYAMLHasEmptySourcePath(t *testing.T) {
+	dir := t.TempDir()
+	cfg, err := Load([]string{"-d", dir}, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.SourcePath != "" {
+		t.Fatalf("SourcePath = %q, want empty", cfg.SourcePath)
 	}
 }
 

@@ -121,6 +121,7 @@ func loadWithFS(args []string, now time.Time, homeDir func() (string, error)) (*
 	if err != nil {
 		return nil, err
 	}
+	cfg.SourcePath = yamlPath
 	if yamlPath == "" {
 		if err := cfg.Validate(); err != nil {
 			return nil, err
