@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"log-listener/internal/catalog"
 )
 
 func TestInitWritesFile(t *testing.T) {
@@ -182,3 +184,36 @@ func TestPromptOverwriteMapsReplies(t *testing.T) {
 		}
 	}
 }
+
+func TestInitOnlineUsesFetcher(t *testing.T) {
+	prev := initFetcher
+	t.Cleanup(func() { initFetcher = prev })
+	initFetcher = func() catalog.Fetcher {
+		return stubFetcher([]byte(`
+version: 9999
+defaults: {output: {color: true, drop_unmatched: false}, tui: {enabled: true, scrollback: 1}}
+fragments: {}
+renderers: {}
+bundles: {}
+apps:
+  zzz-remote-only:
+    use: []
+    sources:
+      - id: main
+        filter: '\.log$'
+        locations: [ { dir: { linux: '/var/log/zzz' } } ]
+`))
+	}
+	var stdout, stderr bytes.Buffer
+	code := runInit([]string{"zzz-remote-only", "-o", "-", "--online"}, strings.NewReader(""), false, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "zzz-remote-only") {
+		t.Errorf("remote app not resolved:\n%s", stdout.String())
+	}
+}
+
+type stubFetcher []byte
+
+func (s stubFetcher) Fetch() ([]byte, error) { return []byte(s), nil }

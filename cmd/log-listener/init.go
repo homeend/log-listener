@@ -11,6 +11,9 @@ import (
 	"log-listener/internal/config"
 )
 
+// initFetcher is a seam so tests can inject a fake remote catalog.
+var initFetcher = func() catalog.Fetcher { return catalog.NewHTTPFetcher() }
+
 // runInit implements `log-listener init <app|bundle>... [flags]`.
 // Flags: -o <path|-> (default ./log-listener.yml), --offline/--online,
 // --force (overwrite/merge non-interactively), --merge (merge vs overwrite),
@@ -53,22 +56,31 @@ func runInit(args []string, stdin io.Reader, interactive bool, stdout, stderr io
 			names = append(names, a)
 		}
 	}
-	_ = online  // Phase 2 uses this; offline path ignores it
-	_ = offline // offline is the only mode in Phase 1
-
-	cat, err := catalog.Bundled()
+	bundled, err := catalog.Bundled()
 	if err != nil {
 		fmt.Fprintln(stderr, "log-listener init:", err)
 		return 1
 	}
 
 	if list {
-		printList(stdout, cat)
+		printList(stdout, bundled)
 		return 0
 	}
 	if len(names) == 0 {
 		fmt.Fprintln(stderr, "log-listener init: name at least one app or bundle (try --list)")
 		return 2
+	}
+
+	// Choose the catalog source. --online/--offline force it; otherwise, on an
+	// interactive run, ask. Non-interactive defaults to offline. Select() falls
+	// back to bundled on any network/parse failure, so this never hard-fails.
+	cat := bundled
+	useOnline := online
+	if !online && !offline && interactive {
+		useOnline = promptYesNo(stdout, stdin, "Check GitHub for newer templates?")
+	}
+	if useOnline {
+		cat = catalog.Select(bundled, initFetcher())
 	}
 
 	env := catalog.DefaultEnv()
@@ -143,6 +155,15 @@ func printList(w io.Writer, cat *catalog.Catalog) {
 	for name, apps := range cat.Bundles {
 		fmt.Fprintf(w, "  %s: %s\n", name, strings.Join(apps, ", "))
 	}
+}
+
+// promptYesNo writes a [Y/n] prompt to w and reads a reply from r.
+// Returns true for anything other than "n" or "no" (case-insensitive).
+func promptYesNo(w io.Writer, r io.Reader, q string) bool {
+	fmt.Fprintf(w, "%s [Y/n] ", q)
+	line, _ := bufio.NewReader(r).ReadString('\n')
+	s := strings.ToLower(strings.TrimSpace(line))
+	return s != "n" && s != "no"
 }
 
 // promptOverwrite asks the overwrite/merge/cancel question and maps the reply
