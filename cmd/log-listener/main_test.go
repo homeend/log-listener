@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
+	"time"
 )
 
 func TestRunOnce(t *testing.T) {
@@ -61,6 +63,34 @@ func TestPathUnderAny(t *testing.T) {
 
 func contains(s, sub string) bool {
 	return bytes.Contains([]byte(s), []byte(sub))
+}
+
+func TestLoadRuntime(t *testing.T) {
+	dir := t.TempDir()
+	logPath := filepath.Join(dir, "app.log")
+	if err := os.WriteFile(logPath, []byte("hello\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	yml := "files:\n  - id: app\n    paths: [" + strconv.Quote(logPath) + "]\n" +
+		"renderers:\n  - name: r1\n    line_regex: \".*\"\n    template: \"$0\"\n"
+	cfgPath := filepath.Join(dir, "log-listener.yml")
+	if err := os.WriteFile(cfgPath, []byte(yml), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	rt, err := loadRuntime([]string{"--config", cfgPath}, false, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rt.pipeline.RendererCount() != 1 {
+		t.Fatalf("RendererCount = %d, want 1", rt.pipeline.RendererCount())
+	}
+	if len(rt.assignments) != 1 || rt.assignments[0].Path != logPath {
+		t.Fatalf("assignments = %+v, want one for %s", rt.assignments, logPath)
+	}
+	if rt.cfg.SourcePath != cfgPath {
+		t.Fatalf("SourcePath = %q, want %q", rt.cfg.SourcePath, cfgPath)
+	}
 }
 
 func TestRunOnceWithRenderer(t *testing.T) {

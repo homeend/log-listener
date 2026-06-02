@@ -105,6 +105,59 @@ func run(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
+// runtime bundles the per-config-load derived state: the parsed config, the
+// compiled renderer pipeline, and the file→group assignments. Built once at
+// startup and rebuilt on every config reload.
+type runtime struct {
+	cfg         *config.Config
+	pipeline    *render.Pipeline
+	assignments []discover.Assignment
+}
+
+// loadRuntime parses args (re-reading the YAML file), assigns files to groups,
+// and compiles the renderer pipeline. dropUnmatched is passed explicitly so a
+// reload keeps the STARTUP drop setting rather than the reloaded file's value
+// (output settings are out of scope for reload). Pure and side-effect-free —
+// the unit-testable seam for reload.
+func loadRuntime(args []string, dropUnmatched bool, now time.Time) (*runtime, error) {
+	cfg, err := config.Load(args, now)
+	if err != nil {
+		return nil, err
+	}
+	assignments, err := discover.Assign(cfg.Groups, cfg.GlobalFilter)
+	if err != nil {
+		return nil, err
+	}
+	pipeline, err := render.NewPipeline(cfg.RendererSpecs, dropUnmatched)
+	if err != nil {
+		return nil, err
+	}
+	return &runtime{cfg: cfg, pipeline: pipeline, assignments: assignments}, nil
+}
+
+// buildWatcher constructs a fresh watch.Watcher wired with matcher closures
+// over cfg, registers every assignment as a tailer (fromStart=false → start at
+// EOF, so a reload does not replay file history), and adds directory watches.
+// Per-file/dir failures are logged to stderr but do not abort.
+func buildWatcher(cfg *config.Config, assignments []discover.Assignment, stderr io.Writer) (*watch.Watcher, error) {
+	w, err := watch.New(makeNewFileMatcher(cfg), 2*time.Second)
+	if err != nil {
+		return nil, err
+	}
+	w.SetDirMatcher(makeNewDirMatcher(cfg))
+	for _, a := range assignments {
+		if err := w.Add(a.Path, a.GroupID, false); err != nil {
+			fmt.Fprintf(stderr, "log-listener: cannot tail %s: %v\n", a.Path, err)
+		}
+	}
+	for _, d := range dirsToWatch(cfg) {
+		if err := w.WatchDir(d); err != nil {
+			fmt.Fprintf(stderr, "log-listener: cannot watch %s: %v\n", d, err)
+		}
+	}
+	return w, nil
+}
+
 func runOnce(assignments []discover.Assignment, pipeline *render.Pipeline, stdoutSink *sink.Stdout, sseHub *sink.SSEHub) error {
 	for _, a := range assignments {
 		f, err := os.Open(a.Path)
@@ -126,23 +179,11 @@ func runOnce(assignments []discover.Assignment, pipeline *render.Pipeline, stdou
 }
 
 func runWatch(cfg *config.Config, assignments []discover.Assignment, pipeline *render.Pipeline, stdoutSink *sink.Stdout, sseHub *sink.SSEHub, stderr io.Writer) error {
-	w, err := watch.New(makeNewFileMatcher(cfg), 2*time.Second)
+	w, err := buildWatcher(cfg, assignments, stderr)
 	if err != nil {
 		return err
 	}
-	w.SetDirMatcher(makeNewDirMatcher(cfg))
 	defer w.Close()
-
-	for _, a := range assignments {
-		if err := w.Add(a.Path, a.GroupID, false); err != nil {
-			fmt.Fprintf(stderr, "log-listener: cannot tail %s: %v\n", a.Path, err)
-		}
-	}
-	for _, d := range dirsToWatch(cfg) {
-		if err := w.WatchDir(d); err != nil {
-			fmt.Fprintf(stderr, "log-listener: cannot watch %s: %v\n", d, err)
-		}
-	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -200,23 +241,11 @@ func emit(p *render.Pipeline, stdoutSink *sink.Stdout, sseHub *sink.SSEHub, grou
 // events through the renderer pipeline into app.Push() and (if configured)
 // the SSE hub.
 func runWatchTUI(cfg *config.Config, assignments []discover.Assignment, pipeline *render.Pipeline, sseHub *sink.SSEHub, stderr io.Writer) error {
-	w, err := watch.New(makeNewFileMatcher(cfg), 2*time.Second)
+	w, err := buildWatcher(cfg, assignments, stderr)
 	if err != nil {
 		return err
 	}
-	w.SetDirMatcher(makeNewDirMatcher(cfg))
 	defer w.Close()
-
-	for _, a := range assignments {
-		if err := w.Add(a.Path, a.GroupID, false); err != nil {
-			fmt.Fprintf(stderr, "log-listener: cannot tail %s: %v\n", a.Path, err)
-		}
-	}
-	for _, d := range dirsToWatch(cfg) {
-		if err := w.WatchDir(d); err != nil {
-			fmt.Fprintf(stderr, "log-listener: cannot watch %s: %v\n", d, err)
-		}
-	}
 
 	// Initial file list, groups, and renderers — passed through tui.New
 	// so the model is seeded before bubbletea starts. Calling SetFiles
