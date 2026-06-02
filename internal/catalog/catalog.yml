@@ -1,8 +1,89 @@
+# log-listener template catalog. `log-listener init <app>...` resolves these
+# for the current OS. version is compared against the online catalog.
 version: 1
+
 defaults:
   output: { color: true, drop_unmatched: false }
   tui: { enabled: true, scrollback: 20000 }
-fragments: {}
-apps: {}
-renderers: {}
-bundles: {}
+
+fragments:
+  # The shared JetBrains discovery: ~/.cache/JetBrains/<Product><Version>/log,
+  # parameterized by {product}. Newest scheme first, legacy second.
+  jetbrains-base:
+    sources:
+      - id: main
+        filter: '^(idea\.log(\.\d+)?|open-telemetry-meters\..+\.json)$'
+        locations:
+          - dir:
+              linux:   '~/.cache/JetBrains/{product}*/log'
+              darwin:  '~/Library/Logs/JetBrains/{product}*'
+              windows: '%LOCALAPPDATA%/JetBrains/{product}*/log'
+          - dir:
+              linux:   '~/.{product}*/system/log'
+              darwin:  '~/Library/Caches/{product}*/log'
+              windows: '%USERPROFILE%/.{product}*/system/log'
+          - dir:  # WSL: the Windows-side install seen from Linux
+              linux: '/mnt/c/Users/*/AppData/Local/JetBrains/{product}*/log'
+  # Junie<->IDE bridge logs, physically inside a JetBrains product's log dir.
+  junie-bridge:
+    sources:
+      - id: junie
+        filter: '\.log$'
+        locations:
+          - dir:
+              linux:   '~/.cache/JetBrains/{product}*/log/junie'
+              darwin:  '~/Library/Logs/JetBrains/{product}*/junie'
+              windows: '%LOCALAPPDATA%/JetBrains/{product}*/log/junie'
+  # Junie agent's own logs.
+  junie-direct:
+    sources:
+      - id: agent
+        filter: '\.log$'
+        locations:
+          - dir:
+              linux:   '~/.config/junie/log'
+              darwin:  '~/Library/Logs/junie'
+              windows: '%LOCALAPPDATA%/junie/log'
+
+apps:
+  goland:
+    renderers: [json-line, idea-trailing-json]
+    use:
+      - { frag: jetbrains-base, product: GoLand }
+    sources:
+      - id: acp
+        filter: '\.log$'
+        locations:
+          - dir:
+              linux:   '~/.cache/JetBrains/GoLand*/log/acp'
+              darwin:  '~/Library/Logs/JetBrains/GoLand*/acp'
+              windows: '%LOCALAPPDATA%/JetBrains/GoLand*/log/acp'
+  idea:
+    renderers: [json-line, idea-trailing-json]
+    use:
+      - { frag: jetbrains-base, product: IntelliJIdea }
+      - { frag: junie-bridge,   product: IntelliJIdea }
+  pycharm:
+    renderers: [json-line, idea-trailing-json]
+    use:
+      - { frag: jetbrains-base, product: PyCharm }
+  webstorm:
+    renderers: [json-line, idea-trailing-json]
+    use:
+      - { frag: jetbrains-base, product: WebStorm }
+  junie:
+    use:
+      - { frag: junie-direct }
+      - { frag: junie-bridge, product: IntelliJIdea }
+      - { frag: junie-bridge, product: GoLand }
+
+renderers:
+  json-line:
+    line_regex: '^\s*(\{.*\})\s*$'
+    template: 'json($1)'
+  idea-trailing-json:
+    line_regex: '^(.*?\s)(\{.+\})\s*$'
+    template: '$1\njson($2)'
+
+bundles:
+  jetbrains: [goland, idea, pycharm, webstorm]
