@@ -122,6 +122,39 @@ func TestInitForceMerge(t *testing.T) {
 	}
 }
 
+func TestInitForceOverwrite(t *testing.T) {
+	dir := t.TempDir()
+	out := filepath.Join(dir, "log-listener.yml")
+	if err := os.WriteFile(out, []byte("directories:\n  - id: mine\n    paths: [/x]\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var stdout, stderr bytes.Buffer
+	code := runInit([]string{"goland", "-o", out, "--offline", "--force"}, strings.NewReader(""), false, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr.String())
+	}
+	s, _ := os.ReadFile(out)
+	// overwrite (no --merge) replaces: the old "mine" group must be gone.
+	if strings.Contains(string(s), "id: mine") {
+		t.Errorf("overwrite should drop the existing entry:\n%s", s)
+	}
+	if !strings.Contains(string(s), "id: goland") {
+		t.Errorf("overwrite missing new content:\n%s", s)
+	}
+}
+
+func TestInitList(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := runInit([]string{"--list"}, strings.NewReader(""), false, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr.String())
+	}
+	s := stdout.String()
+	if !strings.Contains(s, "goland") || !strings.Contains(s, "jetbrains") {
+		t.Errorf("--list should show apps and bundles:\n%s", s)
+	}
+}
+
 func TestPromptOverwriteMapsReplies(t *testing.T) {
 	cases := map[string]string{
 		"o\n": "overwrite", "overwrite\n": "overwrite",
