@@ -15,6 +15,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -50,6 +51,9 @@ func run(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "log-listener:", err)
 		return 2
 	}
+
+	var pipePtr atomic.Pointer[render.Pipeline]
+	pipePtr.Store(pipeline)
 
 	// Color is on only when (a) the user didn't pass --no-color AND (b) the
 	// output is a real TTY. Non-*os.File writers (e.g. a test bytes.Buffer)
@@ -91,14 +95,14 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 
 	if useTUI {
-		if err := runWatchTUI(cfg, assignments, pipeline, sseHub, stderr); err != nil {
+		if err := runWatchTUI(cfg, assignments, &pipePtr, sseHub, stderr); err != nil {
 			fmt.Fprintln(stderr, "log-listener:", err)
 			return 1
 		}
 		return 0
 	}
 
-	if err := runWatch(cfg, assignments, pipeline, stdoutSink, sseHub, stderr); err != nil {
+	if err := runWatch(cfg, assignments, &pipePtr, stdoutSink, sseHub, stderr); err != nil {
 		fmt.Fprintln(stderr, "log-listener:", err)
 		return 1
 	}
@@ -172,7 +176,13 @@ func runOnce(assignments []discover.Assignment, pipeline *render.Pipeline, stdou
 		s := bufio.NewScanner(f)
 		s.Buffer(make([]byte, 64*1024), 16*1024*1024)
 		for s.Scan() {
-			emit(pipeline, stdoutSink, sseHub, a.GroupID, a.Path, s.Text())
+			ev, ok := pipeline.Render(time.Now(), a.GroupID, a.Path, s.Text())
+			if ok {
+				stdoutSink.Emit(ev)
+				if sseHub != nil {
+					sseHub.Emit(ev)
+				}
+			}
 		}
 		if err := s.Err(); err != nil {
 			f.Close()
@@ -183,7 +193,7 @@ func runOnce(assignments []discover.Assignment, pipeline *render.Pipeline, stdou
 	return nil
 }
 
-func runWatch(cfg *config.Config, assignments []discover.Assignment, pipeline *render.Pipeline, stdoutSink *sink.Stdout, sseHub *sink.SSEHub, stderr io.Writer) error {
+func runWatch(cfg *config.Config, assignments []discover.Assignment, pipePtr *atomic.Pointer[render.Pipeline], stdoutSink *sink.Stdout, sseHub *sink.SSEHub, stderr io.Writer) error {
 	w, err := buildWatcher(cfg, assignments, stderr)
 	if err != nil {
 		return err
@@ -209,7 +219,7 @@ func runWatch(cfg *config.Config, assignments []discover.Assignment, pipeline *r
 	for {
 		select {
 		case ev := <-w.Events():
-			emit(pipeline, stdoutSink, sseHub, ev.Group, ev.Path, ev.Line)
+			emit(pipePtr, stdoutSink, sseHub, ev.Group, ev.Path, ev.Line)
 		case e := <-w.Errors():
 			fmt.Fprintf(stderr, "log-listener: %v\n", e)
 		case <-ctx.Done():
@@ -217,7 +227,7 @@ func runWatch(cfg *config.Config, assignments []discover.Assignment, pipeline *r
 			for {
 				select {
 				case ev := <-w.Events():
-					emit(pipeline, stdoutSink, sseHub, ev.Group, ev.Path, ev.Line)
+					emit(pipePtr, stdoutSink, sseHub, ev.Group, ev.Path, ev.Line)
 				case e := <-w.Errors():
 					fmt.Fprintf(stderr, "log-listener: %v\n", e)
 				case <-drainDeadline:
@@ -230,8 +240,8 @@ func runWatch(cfg *config.Config, assignments []discover.Assignment, pipeline *r
 
 // emit routes a raw line through the renderer pipeline then fans out to the
 // stdout sink and (if running) the SSE broadcast hub.
-func emit(p *render.Pipeline, stdoutSink *sink.Stdout, sseHub *sink.SSEHub, group, path, line string) {
-	ev, ok := p.Render(time.Now(), group, path, line)
+func emit(pipePtr *atomic.Pointer[render.Pipeline], stdoutSink *sink.Stdout, sseHub *sink.SSEHub, group, path, line string) {
+	ev, ok := pipePtr.Load().Render(time.Now(), group, path, line)
 	if !ok {
 		return
 	}
@@ -245,7 +255,7 @@ func emit(p *render.Pipeline, stdoutSink *sink.Stdout, sseHub *sink.SSEHub, grou
 // terminal on the main goroutine, while a background goroutine pumps watcher
 // events through the renderer pipeline into app.Push() and (if configured)
 // the SSE hub.
-func runWatchTUI(cfg *config.Config, assignments []discover.Assignment, pipeline *render.Pipeline, sseHub *sink.SSEHub, stderr io.Writer) error {
+func runWatchTUI(cfg *config.Config, assignments []discover.Assignment, pipePtr *atomic.Pointer[render.Pipeline], sseHub *sink.SSEHub, stderr io.Writer) error {
 	w, err := buildWatcher(cfg, assignments, stderr)
 	if err != nil {
 		return err
@@ -264,21 +274,22 @@ func runWatchTUI(cfg *config.Config, assignments []discover.Assignment, pipeline
 	for _, g := range cfg.Groups {
 		groups = append(groups, tui.GroupInfo{ID: g.ID, StartOff: g.StartOff})
 	}
-	renderers := make([]tui.RendererInfo, pipeline.RendererCount())
+	p0 := pipePtr.Load()
+	renderers := make([]tui.RendererInfo, p0.RendererCount())
 	for i := range renderers {
 		renderers[i] = tui.RendererInfo{
-			Name:     pipeline.RendererName(i),
-			StartOff: !pipeline.IsEnabled(i),
+			Name:     p0.RendererName(i),
+			StartOff: !p0.IsEnabled(i),
 		}
 	}
 	app := tui.New(tui.Options{
-		Scrollback:    cfg.TUIScrollback,
-		InitialFiles:  initial,
-		Groups:        groups,
-		Renderers:     renderers,
-		SetRendererOn: pipeline.SetRendererEnabled,
+		Scrollback:   cfg.TUIScrollback,
+		InitialFiles: initial,
+		Groups:       groups,
+		Renderers:    renderers,
+		SetRendererOn: func(i int, on bool) { pipePtr.Load().SetRendererEnabled(i, on) },
 		RenderFn: func(group, file, raw string) (render.Event, bool) {
-			return pipeline.Render(time.Now(), group, file, raw)
+			return pipePtr.Load().Render(time.Now(), group, file, raw)
 		},
 	})
 
@@ -299,7 +310,7 @@ func runWatchTUI(cfg *config.Config, assignments []discover.Assignment, pipeline
 		for {
 			select {
 			case ev := <-w.Events():
-				rev, ok := pipeline.Render(time.Now(), ev.Group, ev.Path, ev.Line)
+				rev, ok := pipePtr.Load().Render(time.Now(), ev.Group, ev.Path, ev.Line)
 				if !ok {
 					continue
 				}
