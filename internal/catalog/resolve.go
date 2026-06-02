@@ -2,6 +2,8 @@ package catalog
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 
@@ -159,4 +161,27 @@ func groupID(app, product, sourceID string, seen map[string]bool) string {
 	}
 	seen[id] = true
 	return id
+}
+
+// DefaultEnv builds the live Env: real OS, home dir, environment, and an
+// Exists that reports whether a directory glob matches at least one directory.
+func DefaultEnv() Env {
+	home, _ := os.UserHomeDir()
+	return Env{
+		OS:     runtime.GOOS,
+		Home:   home,
+		Getenv: os.Getenv,
+		Exists: func(dirGlob string) bool {
+			matches, err := filepath.Glob(dirGlob)
+			if err != nil {
+				return false
+			}
+			for _, m := range matches {
+				if fi, err := os.Stat(m); err == nil && fi.IsDir() {
+					return true
+				}
+			}
+			return false
+		},
+	}
 }
