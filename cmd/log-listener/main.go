@@ -96,7 +96,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 
 	if useTUI {
-		if err := runWatchTUI(cfg, assignments, &pipePtr, sseHub, stderr); err != nil {
+		if err := runWatchTUI(cfg, args, cfg.DropUnmatched, assignments, &pipePtr, sseHub, stderr); err != nil {
 			fmt.Fprintln(stderr, "log-listener:", err)
 			return 1
 		}
@@ -291,12 +291,23 @@ func emit(pipePtr *atomic.Pointer[render.Pipeline], stdoutSink *sink.Stdout, sse
 // terminal on the main goroutine, while a background goroutine pumps watcher
 // events through the renderer pipeline into app.Push() and (if configured)
 // the SSE hub.
-func runWatchTUI(cfg *config.Config, assignments []discover.Assignment, pipePtr *atomic.Pointer[render.Pipeline], sseHub *sink.SSEHub, stderr io.Writer) error {
+func runWatchTUI(cfg *config.Config, args []string, dropUnmatched bool, assignments []discover.Assignment, pipePtr *atomic.Pointer[render.Pipeline], sseHub *sink.SSEHub, stderr io.Writer) error {
 	w, err := buildWatcher(cfg, assignments, stderr)
 	if err != nil {
 		return err
 	}
 	defer w.Close()
+
+	var cfgChanges <-chan struct{}
+	if cfg.SourcePath != "" {
+		cw, err := configwatch.New(cfg.SourcePath, 300*time.Millisecond)
+		if err != nil {
+			fmt.Fprintf(stderr, "log-listener: config watch disabled: %v\n", err)
+		} else {
+			defer cw.Close()
+			cfgChanges = cw.Changes()
+		}
+	}
 
 	// Initial file list, groups, and renderers — passed through tui.New
 	// so the model is seeded before bubbletea starts. Calling SetFiles
@@ -357,6 +368,40 @@ func runWatchTUI(cfg *config.Config, assignments []discover.Assignment, pipePtr 
 			case <-w.Errors():
 				// Errors go to /dev/null in TUI mode for now — a future
 				// phase could surface them in a status bar.
+			case <-cfgChanges:
+				// Bad reloads are dropped silently by design (last-good config
+				// keeps running). On success: swap pipeline, rebuild watcher,
+				// then reseed the TUI panels + re-render scrollback.
+				rt, err := loadRuntime(args, dropUnmatched, time.Now())
+				if err != nil {
+					continue
+				}
+				newW, err := buildWatcher(rt.cfg, rt.assignments, stderr)
+				if err != nil {
+					continue
+				}
+				// Store the new pipeline before app.Reload so the scrollback
+				// re-render (which reads pipePtr via RenderFn) uses the new
+				// renderers. Close the superseded watcher; the deferred
+				// w.Close() closes the final one (sync.Once-safe).
+				pipePtr.Store(rt.pipeline)
+				w.Close()
+				w = newW
+
+				p := rt.pipeline
+				newGroups := make([]tui.GroupInfo, 0, len(rt.cfg.Groups))
+				for _, g := range rt.cfg.Groups {
+					newGroups = append(newGroups, tui.GroupInfo{ID: g.ID, StartOff: g.StartOff})
+				}
+				newRenderers := make([]tui.RendererInfo, p.RendererCount())
+				for i := range newRenderers {
+					newRenderers[i] = tui.RendererInfo{Name: p.RendererName(i), StartOff: !p.IsEnabled(i)}
+				}
+				newFiles := make([]tui.FileEntry, 0, len(rt.assignments))
+				for _, a := range rt.assignments {
+					newFiles = append(newFiles, tui.FileEntry{Path: a.Path, Group: a.GroupID})
+				}
+				app.Reload(newGroups, newRenderers, newFiles)
 			case <-ctx.Done():
 				return
 			}
