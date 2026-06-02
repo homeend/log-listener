@@ -1,0 +1,8 @@
+version: 1
+defaults:
+  output: { color: true, drop_unmatched: false }
+  tui: { enabled: true, scrollback: 20000 }
+fragments: {}
+apps: {}
+renderers: {}
+bundles: {}
