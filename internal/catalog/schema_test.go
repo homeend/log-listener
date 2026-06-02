@@ -56,6 +56,9 @@ bundles:
 	if !c.Defaults.TUI.Enabled || c.Defaults.TUI.Scrollback != 20000 {
 		t.Errorf("defaults.tui = %+v", c.Defaults.TUI)
 	}
+	if !c.Defaults.Output.Color || c.Defaults.Output.DropUnmatched {
+		t.Errorf("defaults.output = %+v", c.Defaults.Output)
+	}
 }
 
 func TestParseRejectsUnknownKey(t *testing.T) {

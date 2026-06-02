@@ -25,11 +25,13 @@ type Defaults struct {
 	TUI    TUIDefaults    `yaml:"tui"`
 }
 
+// OutputDefaults holds the global output settings emitted into generated configs.
 type OutputDefaults struct {
 	Color         bool `yaml:"color"`
 	DropUnmatched bool `yaml:"drop_unmatched"`
 }
 
+// TUIDefaults holds the global TUI settings emitted into generated configs.
 type TUIDefaults struct {
 	Enabled    bool `yaml:"enabled"`
 	Scrollback int  `yaml:"scrollback"`
