@@ -65,6 +65,32 @@ func TestCoalescesBurst(t *testing.T) {
 	}
 }
 
+func TestNotifiesOnAtomicRename(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "cfg.yml")
+	if err := os.WriteFile(path, []byte("a: 1\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	w, err := New(path, 50*time.Millisecond)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer w.Close()
+
+	// Simulate an editor's atomic save: write a temp file in the same dir,
+	// then rename it over the target.
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, []byte("a: 2\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(tmp, path); err != nil {
+		t.Fatal(err)
+	}
+	if !waitSignal(w.Changes(), 2*time.Second) {
+		t.Fatal("expected a change signal after atomic rename-over-save")
+	}
+}
+
 func TestIgnoresSiblingFiles(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "cfg.yml")

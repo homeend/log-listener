@@ -70,6 +70,8 @@ func (w *Watcher) Close() error {
 }
 
 func (w *Watcher) loop() {
+	// timerC is nil until a relevant event arms the debounce timer; a nil
+	// channel in a select blocks forever, so the timer arm is inert until armed.
 	var timer *time.Timer
 	var timerC <-chan time.Time
 	arm := func() {
@@ -90,6 +92,9 @@ func (w *Watcher) loop() {
 			return
 		case ev, ok := <-w.fs.Events:
 			if !ok {
+				if timer != nil {
+					timer.Stop()
+				}
 				return
 			}
 			abs, err := filepath.Abs(ev.Name)
@@ -99,6 +104,9 @@ func (w *Watcher) loop() {
 			arm()
 		case _, ok := <-w.fs.Errors:
 			if !ok {
+				if timer != nil {
+					timer.Stop()
+				}
 				return
 			}
 			// Best-effort: ignore watcher errors. A reload is not critical
