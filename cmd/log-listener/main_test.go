@@ -93,6 +93,36 @@ func TestLoadRuntime(t *testing.T) {
 	}
 }
 
+func TestLoadRuntimeForwardsDropUnmatched(t *testing.T) {
+	dir := t.TempDir()
+	logPath := filepath.Join(dir, "app.log")
+	if err := os.WriteFile(logPath, []byte("hello\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// No renderers → every line is "unmatched", so drop behavior is observable.
+	yml := "files:\n  - id: app\n    paths: [" + strconv.Quote(logPath) + "]\n"
+	cfgPath := filepath.Join(dir, "log-listener.yml")
+	if err := os.WriteFile(cfgPath, []byte(yml), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	withDrop, err := loadRuntime([]string{"--config", cfgPath}, true, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := withDrop.pipeline.Render(time.Now(), "app", logPath, "x"); ok {
+		t.Fatal("dropUnmatched=true should drop an unmatched line (want ok=false)")
+	}
+
+	withoutDrop, err := loadRuntime([]string{"--config", cfgPath}, false, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := withoutDrop.pipeline.Render(time.Now(), "app", logPath, "x"); !ok {
+		t.Fatal("dropUnmatched=false should emit an unmatched line as-is (want ok=true)")
+	}
+}
+
 func TestRunOnceWithRenderer(t *testing.T) {
 	dir := t.TempDir()
 	logPath := filepath.Join(dir, "a.log")

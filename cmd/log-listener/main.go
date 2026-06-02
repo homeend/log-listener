@@ -115,10 +115,15 @@ type runtime struct {
 }
 
 // loadRuntime parses args (re-reading the YAML file), assigns files to groups,
-// and compiles the renderer pipeline. dropUnmatched is passed explicitly so a
-// reload keeps the STARTUP drop setting rather than the reloaded file's value
-// (output settings are out of scope for reload). Pure and side-effect-free —
-// the unit-testable seam for reload.
+// and compiles the renderer pipeline. It is the RELOAD seam: on a config
+// reload the watcher and pipeline are rebuilt from a fresh runtime. Startup
+// (run) intentionally inlines the same three calls instead of using this,
+// because it already parses cfg once to make mode decisions (SSE/TUI/color)
+// and would otherwise parse the file twice.
+//
+// dropUnmatched is passed explicitly so a reload keeps the STARTUP drop
+// setting rather than the reloaded file's value (output settings are out of
+// scope for reload). Pure and side-effect-free — the unit-testable seam.
 func loadRuntime(args []string, dropUnmatched bool, now time.Time) (*runtime, error) {
 	cfg, err := config.Load(args, now)
 	if err != nil {
@@ -137,7 +142,7 @@ func loadRuntime(args []string, dropUnmatched bool, now time.Time) (*runtime, er
 
 // buildWatcher constructs a fresh watch.Watcher wired with matcher closures
 // over cfg, registers every assignment as a tailer (fromStart=false → start at
-// EOF, so a reload does not replay file history), and adds directory watches.
+// EOF, so neither startup nor reload replays existing file content), and adds directory watches.
 // Per-file/dir failures are logged to stderr but do not abort.
 func buildWatcher(cfg *config.Config, assignments []discover.Assignment, stderr io.Writer) (*watch.Watcher, error) {
 	w, err := watch.New(makeNewFileMatcher(cfg), 2*time.Second)
