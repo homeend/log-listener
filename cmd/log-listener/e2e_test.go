@@ -500,6 +500,110 @@ func TestE2ESSEDeliversEvents(t *testing.T) {
 	t.Fatal("timed out waiting for SSE event with marker")
 }
 
+// TestE2EConfigReloadSwapsRenderer verifies that rewriting the YAML config
+// file causes the renderer pipeline to be swapped live (stdout mode).
+//
+// The debounce is 300ms and the watcher tick is 2s, so we use generous
+// timeouts throughout. Line 2 is appended in a loop after the config rewrite
+// because the rebuilt watcher starts at EOF — an append landing before the new
+// tailer attaches would be silently missed; retrying until the deadline ensures
+// at least one append lands after the swap.
+func TestE2EConfigReloadSwapsRenderer(t *testing.T) {
+	dir := t.TempDir()
+
+	// Create the log file up front (empty, so the tailer attaches at EOF).
+	logPath := filepath.Join(dir, "reload.log")
+	if err := os.WriteFile(logPath, []byte{}, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Write the initial YAML config: renderer template "V1: $1".
+	cfgPath := filepath.Join(dir, "test.yml")
+	v1cfg := fmt.Sprintf(`files:
+  - id: testfiles
+    paths: [%q]
+renderers:
+  - name: v1renderer
+    line_regex: "^(.*)$"
+    template: "V1: $1"
+`, logPath)
+	if err := os.WriteFile(cfgPath, []byte(v1cfg), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	s := startListener(t, "--config", cfgPath, "--no-tui", "--no-color")
+	time.Sleep(400 * time.Millisecond) // let fsnotify register and tailer attach
+
+	// Append line 1 and wait for V1 output to confirm the pipeline is running.
+	f, err := os.OpenFile(logPath, os.O_APPEND|os.O_WRONLY, 0o644)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.WriteString("line-one\n"); err != nil {
+		t.Fatal(err)
+	}
+	f.Close()
+
+	if _, all, timedOut := s.Await(8*time.Second, func(line string) bool {
+		return strings.Contains(line, "V1: line-one")
+	}); timedOut {
+		t.Fatalf("never saw V1 output for line-one; lines:\n  %s", strings.Join(all, "\n  "))
+	}
+
+	// Rewrite the config with a different renderer template "V2: $1".
+	v2cfg := fmt.Sprintf(`files:
+  - id: testfiles
+    paths: [%q]
+renderers:
+  - name: v2renderer
+    line_regex: "^(.*)$"
+    template: "V2: $1"
+`, logPath)
+	if err := os.WriteFile(cfgPath, []byte(v2cfg), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// The rebuilt watcher starts tailing at EOF. Append line 2 repeatedly
+	// until we see V2 output or the deadline passes. Early appends that land
+	// before the new tailer attaches are silently skipped by design; this
+	// loop ensures at least one lands after the reload completes.
+	deadline := time.Now().Add(15 * time.Second)
+	appendTicker := time.NewTicker(500 * time.Millisecond)
+	defer appendTicker.Stop()
+
+	// Start the append loop in the background. stopAppend is closed when we
+	// no longer need more appends (after Await returns or the deadline passes).
+	stopAppend := make(chan struct{})
+	go func() {
+		for {
+			select {
+			case <-appendTicker.C:
+				if time.Now().After(deadline) {
+					return
+				}
+				af, err := os.OpenFile(logPath, os.O_APPEND|os.O_WRONLY, 0o644)
+				if err != nil {
+					return
+				}
+				af.WriteString("line-two\n")
+				af.Close()
+			case <-stopAppend:
+				return
+			}
+		}
+	}()
+
+	_, all, timedOut := s.Await(15*time.Second, func(line string) bool {
+		return strings.Contains(line, "V2: line-two")
+	})
+	// Stop the append loop before asserting.
+	close(stopAppend)
+
+	if timedOut {
+		t.Fatalf("never saw V2 output after config reload; lines seen:\n  %s", strings.Join(all, "\n  "))
+	}
+}
+
 // pickFreeAddr asks the OS for a free TCP port and returns "127.0.0.1:N".
 func pickFreeAddr(t *testing.T) string {
 	t.Helper()

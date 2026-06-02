@@ -317,11 +317,6 @@ func runWatchTUI(cfg *config.Config, args []string, dropUnmatched bool, assignme
 	if err != nil {
 		return err
 	}
-	// Closure (not `defer w.Close()`): w is reassigned on config reload, and a
-	// bare method-value defer would bind the receiver to the initial watcher,
-	// leaking the final one. The closure reads w at shutdown. Superseded
-	// watchers are closed inline in the reload branch.
-	defer func() { w.Close() }()
 
 	var cfgChanges <-chan struct{}
 	if cfg.SourcePath != "" {
@@ -363,7 +358,13 @@ func runWatchTUI(cfg *config.Config, args []string, dropUnmatched bool, assignme
 		}
 	}()
 
+	// The pump goroutine is the SOLE owner of w: it reassigns w on reload and
+	// closes the final w on exit. Keeping all w access on this one goroutine
+	// (no close from main) avoids a data race with the reload reassignment.
+	pumpDone := make(chan struct{})
 	go func() {
+		defer close(pumpDone)
+		defer func() { w.Close() }() // closes the final w (runs on this goroutine; superseded watchers closed inline)
 		for {
 			select {
 			case ev := <-w.Events():
@@ -406,7 +407,10 @@ func runWatchTUI(cfg *config.Config, args []string, dropUnmatched bool, assignme
 		}
 	}()
 
-	return app.Run()
+	err = app.Run()
+	cancel()   // tell the pump goroutine to stop
+	<-pumpDone // wait for it to close w and exit before returning
+	return err
 }
 
 func makeNewFileMatcher(cfg *config.Config) watch.NewFileMatcher {
