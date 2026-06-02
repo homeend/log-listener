@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
 	"strings"
 
 	"log-listener/internal/catalog"
@@ -147,13 +148,24 @@ func runInit(args []string, stdin io.Reader, interactive bool, stdout, stderr io
 }
 
 func printList(w io.Writer, cat *catalog.Catalog) {
-	fmt.Fprintln(w, "apps:")
+	apps := make([]string, 0, len(cat.Apps))
 	for name := range cat.Apps {
+		apps = append(apps, name)
+	}
+	sort.Strings(apps)
+	fmt.Fprintln(w, "apps:")
+	for _, name := range apps {
 		fmt.Fprintf(w, "  %s\n", name)
 	}
+
+	bundles := make([]string, 0, len(cat.Bundles))
+	for name := range cat.Bundles {
+		bundles = append(bundles, name)
+	}
+	sort.Strings(bundles)
 	fmt.Fprintln(w, "bundles:")
-	for name, apps := range cat.Bundles {
-		fmt.Fprintf(w, "  %s: %s\n", name, strings.Join(apps, ", "))
+	for _, name := range bundles {
+		fmt.Fprintf(w, "  %s: %s\n", name, strings.Join(cat.Bundles[name], ", "))
 	}
 }
 

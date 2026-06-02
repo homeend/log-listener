@@ -61,5 +61,3 @@ func Select(bundled *Catalog, f Fetcher) *Catalog {
 	}
 	return bundled
 }
-
-func itoa(n int) string { return strconv.Itoa(n) }

@@ -2,8 +2,11 @@ package catalog
 
 import (
 	"errors"
+	"strconv"
 	"testing"
 )
+
+func itoa(n int) string { return strconv.Itoa(n) }
 
 type fakeFetcher struct {
 	data []byte

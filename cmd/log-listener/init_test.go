@@ -6,9 +6,40 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"log-listener/internal/catalog"
+	"log-listener/internal/config"
+	"log-listener/internal/render"
 )
+
+// TestInitOutputLoadsAndBuildsPipeline is the end-to-end guard: a generated
+// config must load through the real (strict) config.Load AND its catalog
+// filter/renderer regexes must compile into a real render pipeline. This is the
+// only test that compiles the bundled catalog's regex strings, so a bad regex
+// or schema drift in catalog.yml fails here instead of at a user's runtime.
+func TestInitOutputLoadsAndBuildsPipeline(t *testing.T) {
+	dir := t.TempDir()
+	out := filepath.Join(dir, "log-listener.yml")
+	var stdout, stderr bytes.Buffer
+	// the whole jetbrains bundle + junie exercises every fragment and renderer
+	code := runInit([]string{"jetbrains", "junie", "-o", out, "--offline"}, strings.NewReader(""), false, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("init exit %d: %s", code, stderr.String())
+	}
+
+	cfg, err := config.Load([]string{"--config", out}, time.Now())
+	if err != nil {
+		data, _ := os.ReadFile(out)
+		t.Fatalf("generated config failed to load: %v\n---\n%s", err, data)
+	}
+	if len(cfg.Groups) == 0 {
+		t.Fatal("generated config has no groups")
+	}
+	if _, err := render.NewPipeline(cfg.RendererSpecs, cfg.DropUnmatched); err != nil {
+		t.Fatalf("generated renderers failed to compile: %v", err)
+	}
+}
 
 func TestInitWritesFile(t *testing.T) {
 	dir := t.TempDir()
