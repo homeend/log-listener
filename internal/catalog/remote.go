@@ -52,7 +52,7 @@ func Select(bundled *Catalog, f Fetcher) *Catalog {
 	if err != nil {
 		return bundled
 	}
-	remote, err := Parse(data)
+	remote, err := parseLenient(data) // lenient: a newer remote may add fields we don't know
 	if err != nil {
 		return bundled
 	}

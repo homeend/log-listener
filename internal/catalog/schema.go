@@ -74,12 +74,26 @@ type Renderer struct {
 	Template  string `yaml:"template"`
 }
 
-// Parse decodes a catalog document strictly (unknown keys are an error).
+// Parse decodes a catalog document strictly (unknown keys are an error). Used
+// for the bundled catalog so authoring typos surface at build/test time.
 func Parse(data []byte) (*Catalog, error) {
 	var c Catalog
 	dec := yaml.NewDecoder(bytes.NewReader(data))
 	dec.KnownFields(true)
 	if err := dec.Decode(&c); err != nil {
+		return nil, err
+	}
+	return &c, nil
+}
+
+// parseLenient decodes a catalog WITHOUT strict unknown-key checking. Used for
+// the remote catalog (see Select) so a newer published catalog that adds fields
+// an older binary doesn't recognize is still usable — forward compatibility,
+// mirroring the strict config.Load vs lenient config.ParseFile split. The remote
+// catalog is our own CI-validated artifact, so leniency here is safe.
+func parseLenient(data []byte) (*Catalog, error) {
+	var c Catalog
+	if err := yaml.Unmarshal(data, &c); err != nil {
 		return nil, err
 	}
 	return &c, nil
