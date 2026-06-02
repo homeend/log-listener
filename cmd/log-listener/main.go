@@ -167,6 +167,9 @@ func buildWatcher(cfg *config.Config, assignments []discover.Assignment, stderr 
 	return w, nil
 }
 
+// runOnce uses the concrete pipeline directly — --once exits before the
+// watcher or reload machinery starts, so no swap can occur. That's why it
+// can't share emit(), which loads through the atomic pointer.
 func runOnce(assignments []discover.Assignment, pipeline *render.Pipeline, stdoutSink *sink.Stdout, sseHub *sink.SSEHub) error {
 	for _, a := range assignments {
 		f, err := os.Open(a.Path)
