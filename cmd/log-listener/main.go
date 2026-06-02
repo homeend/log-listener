@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"log-listener/internal/config"
+	"log-listener/internal/configwatch"
 	"log-listener/internal/discover"
 	"log-listener/internal/render"
 	"log-listener/internal/sink"
@@ -102,7 +103,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return 0
 	}
 
-	if err := runWatch(cfg, assignments, &pipePtr, stdoutSink, sseHub, stderr); err != nil {
+	if err := runWatch(cfg, args, cfg.DropUnmatched, assignments, &pipePtr, stdoutSink, sseHub, stderr); err != nil {
 		fmt.Fprintln(stderr, "log-listener:", err)
 		return 1
 	}
@@ -196,12 +197,23 @@ func runOnce(assignments []discover.Assignment, pipeline *render.Pipeline, stdou
 	return nil
 }
 
-func runWatch(cfg *config.Config, assignments []discover.Assignment, pipePtr *atomic.Pointer[render.Pipeline], stdoutSink *sink.Stdout, sseHub *sink.SSEHub, stderr io.Writer) error {
+func runWatch(cfg *config.Config, args []string, dropUnmatched bool, assignments []discover.Assignment, pipePtr *atomic.Pointer[render.Pipeline], stdoutSink *sink.Stdout, sseHub *sink.SSEHub, stderr io.Writer) error {
 	w, err := buildWatcher(cfg, assignments, stderr)
 	if err != nil {
 		return err
 	}
 	defer w.Close()
+
+	var cfgChanges <-chan struct{}
+	if cfg.SourcePath != "" {
+		cw, err := configwatch.New(cfg.SourcePath, 300*time.Millisecond)
+		if err != nil {
+			fmt.Fprintf(stderr, "log-listener: config watch disabled: %v\n", err)
+		} else {
+			defer cw.Close()
+			cfgChanges = cw.Changes()
+		}
+	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -225,6 +237,18 @@ func runWatch(cfg *config.Config, assignments []discover.Assignment, pipePtr *at
 			emit(pipePtr, stdoutSink, sseHub, ev.Group, ev.Path, ev.Line)
 		case e := <-w.Errors():
 			fmt.Fprintf(stderr, "log-listener: %v\n", e)
+		case <-cfgChanges:
+			rt, err := loadRuntime(args, dropUnmatched, time.Now())
+			if err != nil {
+				continue // silent: keep the last-good config running
+			}
+			newW, err := buildWatcher(rt.cfg, rt.assignments, stderr)
+			if err != nil {
+				continue
+			}
+			pipePtr.Store(rt.pipeline)
+			w.Close()
+			w = newW
 		case <-ctx.Done():
 			drainDeadline := time.After(200 * time.Millisecond)
 			for {
