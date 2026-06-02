@@ -62,6 +62,32 @@ make demo               # creates a tempdir, seeds a log line, tails it
 
 ---
 
+## Quick start with templates
+
+Generate a config for known applications instead of hand-writing one:
+
+```bash
+log-listener init goland junie          # write ./log-listener.yml
+log-listener init jetbrains -o dev.yml  # a whole product family
+log-listener init goland -o -           # print to stdout
+log-listener init --list                # show available apps and bundles
+```
+
+`init` resolves each app's log locations for your OS, keeps the directories that
+actually exist on disk, attaches sensible renderers, and writes a
+`log-listener.yml` that the normal `log-listener` run consumes (and
+live-reloads). Apps compose: selecting `junie` pulls in its own logs **plus**
+the Junie↔IDE bridge logs that live inside each JetBrains product.
+
+On an interactive run it offers to fetch a newer template catalog from GitHub;
+`--offline` skips the check, `--online` forces it. Any network failure silently
+falls back to the catalog bundled into the binary. An existing output file is
+left untouched unless you confirm at the `[o]verwrite / [m]erge / [c]ancel`
+prompt, or pass `--force` (optionally with `--merge` to append only new entries)
+for non-interactive use.
+
+---
+
 ## Core concepts
 
 ### Directory groups vs. file groups

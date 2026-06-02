@@ -7,6 +7,16 @@ and this project adheres to phased delivery per `PLAN.md`.
 
 ## [Unreleased]
 
+### Template auto-configuration
+- **`log-listener init <apps...>`**: generate a `log-listener.yml` from an
+  embedded, OS-aware catalog of application log templates (JetBrains family +
+  Junie). Templates compose via reusable fragments (shared family discovery and
+  cross-app bridge logs), resolve `{product}`/OS path tokens for the current OS,
+  and probe-and-pick the directories that exist. Supports `-o <path|->`,
+  `--list`, an interactive overwrite/merge/cancel prompt, `--force`/`--merge`,
+  and optional online catalog updates (`--online`/`--offline`) with a bundled
+  fallback on any failure.
+
 ### Config auto-reload
 - **Config auto-reload**: the loaded YAML config file is now watched; edits
   re-apply groups and renderers live (rebuilding the file watcher and swapping
