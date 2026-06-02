@@ -290,6 +290,26 @@ ignored.
 - `-R` rules: if any `-R` token is on the CLI, YAML's
   `global_file_filter` is dropped entirely.
 
+### Config auto-reload
+
+When `log-listener` loads a YAML config (via `--config` or the default
+`./log-listener.yml` / `~/.log-listener.yml` lookup), it watches that file and
+re-applies changes live — no restart needed. On save it re-reads the file and
+rebuilds the **groups/file discovery** and **renderers**:
+
+- Newly-matching files and directories start being tailed; files that no longer
+  match are dropped.
+- The renderer pipeline is rebuilt; in the TUI the renderer/group/file panels
+  reseed and existing scrollback re-renders under the new renderers (renderer
+  toggle state resets to the file's `disabled`/`off` defaults).
+- **Output settings are not re-applied** — SSE address, color, and scrollback
+  size keep their startup values.
+- An invalid edit (parse/validation error) is ignored silently; the last good
+  config keeps running.
+
+Works in both the interactive TUI and plain stdout streaming. Not active in
+`--once` mode. A brief gap (lines appended during the rebuild) may be missed.
+
 ---
 
 ## Renderer pipeline

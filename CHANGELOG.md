@@ -7,6 +7,12 @@ and this project adheres to phased delivery per `PLAN.md`.
 
 ## [Unreleased]
 
+### Config auto-reload
+- **Config auto-reload**: the loaded YAML config file is now watched; edits
+  re-apply groups and renderers live (rebuilding the file watcher and swapping
+  the renderer pipeline) in both TUI and stdout modes. Output settings are not
+  re-applied; invalid edits are ignored silently.
+
 ### Phase 6 review fixes
 - `Makefile` `run` target replaced with `demo`, which creates a tempdir
   and seeds it with a JSON-tail line so `make demo` is a self-contained
