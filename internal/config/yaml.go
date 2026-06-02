@@ -38,69 +38,73 @@ type AppliesTo struct {
 	Paths  []string
 }
 
-type yamlConfig struct {
-	Directories      []yamlDirGroup  `yaml:"directories"`
-	Files            []yamlFileGroup `yaml:"files"`
-	GlobalFileFilter *yamlFilter     `yaml:"global_file_filter"`
-	Renderers        []yamlRenderer  `yaml:"renderers"`
-	Output           *yamlOutput     `yaml:"output"`
-	TUI              *yamlTUI        `yaml:"tui"`
+// File is the YAML config schema, shared by the loader (readYAMLFile /
+// mergeYAMLInto) and the emitter (emit.go). One struct set = no read/write drift.
+type File struct {
+	Directories      []DirGroup  `yaml:"directories,omitempty"`
+	Files            []FileGroup `yaml:"files,omitempty"`
+	GlobalFileFilter *Filter     `yaml:"global_file_filter,omitempty"`
+	Renderers        []Renderer  `yaml:"renderers,omitempty"`
+	Output           *Output     `yaml:"output,omitempty"`
+	TUI              *TUI        `yaml:"tui,omitempty"`
 }
 
-type yamlDirGroup struct {
-	ID         string      `yaml:"id"`
-	Paths      []string    `yaml:"paths"`
-	Recursive  *bool       `yaml:"recursive"`
-	FileFilter *yamlFilter `yaml:"file_filter"`
+type DirGroup struct {
+	ID         string   `yaml:"id"`
+	Paths      []string `yaml:"paths,omitempty"`
+	Recursive  *bool    `yaml:"recursive,omitempty"`
+	FileFilter *Filter  `yaml:"file_filter,omitempty"`
 	// disabled: true -> entry filtered out entirely at load time.
 	// off: true      -> entry loaded, but its TUI toggle starts off.
 	// If both are set, disabled wins and off is ignored.
-	Disabled bool `yaml:"disabled"`
-	Off      bool `yaml:"off"`
+	Disabled bool `yaml:"disabled,omitempty"`
+	Off      bool `yaml:"off,omitempty"`
 }
 
-type yamlFileGroup struct {
+type FileGroup struct {
 	ID       string   `yaml:"id"`
-	Paths    []string `yaml:"paths"`
-	Disabled bool     `yaml:"disabled"`
-	Off      bool     `yaml:"off"`
+	Paths    []string `yaml:"paths,omitempty"`
+	Disabled bool     `yaml:"disabled,omitempty"`
+	Off      bool     `yaml:"off,omitempty"`
 }
 
-type yamlFilter struct {
-	NameRegex    string `yaml:"name_regex"`
-	ExcludeRegex string `yaml:"exclude_regex"`
-	Older        string `yaml:"older"`
-	Younger      string `yaml:"younger"`
+type Filter struct {
+	NameRegex    string `yaml:"name_regex,omitempty"`
+	ExcludeRegex string `yaml:"exclude_regex,omitempty"`
+	Older        string `yaml:"older,omitempty"`
+	Younger      string `yaml:"younger,omitempty"`
 }
 
-type yamlRenderer struct {
+type Renderer struct {
 	Name      string         `yaml:"name"`
 	LineRegex string         `yaml:"line_regex"`
 	Template  string         `yaml:"template"`
-	AppliesTo *yamlAppliesTo `yaml:"applies_to"`
-	Disabled  bool           `yaml:"disabled"`
-	Off       bool           `yaml:"off"`
+	AppliesTo *AppliesToSpec `yaml:"applies_to,omitempty"`
+	Disabled  bool           `yaml:"disabled,omitempty"`
+	Off       bool           `yaml:"off,omitempty"`
 }
 
-type yamlAppliesTo struct {
-	Groups []string `yaml:"groups"`
-	Paths  []string `yaml:"paths"`
+// AppliesToSpec is the YAML form of a renderer scope (distinct from the
+// compiled AppliesTo type carried into the render pipeline).
+type AppliesToSpec struct {
+	Groups []string `yaml:"groups,omitempty"`
+	Paths  []string `yaml:"paths,omitempty"`
 }
 
-type yamlOutput struct {
-	Color         *bool    `yaml:"color"`
-	DropUnmatched *bool    `yaml:"drop_unmatched"`
-	SSE           *yamlSSE `yaml:"sse"`
+type Output struct {
+	Color         *bool `yaml:"color,omitempty"`
+	DropUnmatched *bool `yaml:"drop_unmatched,omitempty"`
+	SSE           *SSE  `yaml:"sse,omitempty"`
 }
 
-type yamlSSE struct {
-	Enabled *bool  `yaml:"enabled"`
-	Addr    string `yaml:"addr"`
+type SSE struct {
+	Enabled *bool  `yaml:"enabled,omitempty"`
+	Addr    string `yaml:"addr,omitempty"`
 }
 
-type yamlTUI struct {
-	Enabled    *bool `yaml:"enabled"`
-	Scrollback *int  `yaml:"scrollback"`
+type TUI struct {
+	Enabled    *bool `yaml:"enabled,omitempty"`
+	Scrollback *int  `yaml:"scrollback,omitempty"`
 }
 
 // Load parses CLI args, resolves the YAML config (if any), and merges them
@@ -168,12 +172,12 @@ func resolveYAMLPath(explicit string, homeDir func() (string, error)) (string, e
 	return "", nil
 }
 
-func readYAMLFile(path string) (*yamlConfig, error) {
+func readYAMLFile(path string) (*File, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
-	var yc yamlConfig
+	var yc File
 	if len(data) == 0 {
 		return &yc, nil
 	}
@@ -191,7 +195,7 @@ func readYAMLFile(path string) (*yamlConfig, error) {
 //     are appended in YAML declaration order (after CLI groups for that kind)
 //   - global_file_filter: applied only if CLI didn't supply -R (any token)
 //   - renderers: always taken from YAML (CLI has no renderer flags)
-func mergeYAMLInto(cfg *Config, yc *yamlConfig, now time.Time) error {
+func mergeYAMLInto(cfg *Config, yc *File, now time.Time) error {
 	// global_file_filter — CLI -R wins entirely if present
 	if cfg.GlobalFilter == nil && yc.GlobalFileFilter != nil {
 		gf, err := yamlFilterToDiscover(yc.GlobalFileFilter, now)
@@ -330,7 +334,7 @@ func mergeYAMLInto(cfg *Config, yc *yamlConfig, now time.Time) error {
 	return nil
 }
 
-func yamlFilterToDiscover(yf *yamlFilter, now time.Time) (*discover.FileFilter, error) {
+func yamlFilterToDiscover(yf *Filter, now time.Time) (*discover.FileFilter, error) {
 	if yf == nil {
 		return nil, nil
 	}
