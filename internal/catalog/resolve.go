@@ -87,6 +87,7 @@ func (c *Catalog) expandNames(names []string) ([]string, error) {
 		}
 	}
 	for _, n := range names {
+		_, isApp := c.Apps[n]
 		switch {
 		case c.Bundles[n] != nil:
 			for _, app := range c.Bundles[n] {
@@ -95,7 +96,7 @@ func (c *Catalog) expandNames(names []string) ([]string, error) {
 				}
 				add(app)
 			}
-		case func() bool { _, ok := c.Apps[n]; return ok }():
+		case isApp:
 			add(n)
 		default:
 			return nil, fmt.Errorf("unknown app or bundle %q (see `log-listener init --list`)", n)
@@ -108,25 +109,28 @@ func (c *Catalog) expandNames(names []string) ([]string, error) {
 // directory group to f.
 func (c *Catalog) emitSource(f *config.File, app, product string, src Source, key string, env Env, seenID map[string]bool) {
 	var picked []string
-	var newest string
+	// firstCandidate is the first location that has a path for this OS, in
+	// declaration order (newest scheme first). It is the best-effort fallback
+	// emitted when no candidate directory currently exists on disk.
+	var firstCandidate string
 	for _, loc := range src.Locations {
 		raw, ok := loc.Dir[key]
 		if !ok {
 			continue
 		}
 		p := expandPath(substituteProduct(raw, product), env.Home, env.Getenv)
-		if newest == "" {
-			newest = p
+		if firstCandidate == "" {
+			firstCandidate = p
 		}
 		if env.Exists(p) {
 			picked = append(picked, p)
 		}
 	}
 	if len(picked) == 0 {
-		if newest == "" {
+		if firstCandidate == "" {
 			return
 		}
-		picked = []string{newest}
+		picked = []string{firstCandidate}
 	}
 	rec := false
 	g := config.DirGroup{
