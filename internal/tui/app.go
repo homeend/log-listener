@@ -99,7 +99,9 @@ type QuitMsg struct{}
 
 // ReloadMsg replaces the renderer/group/file panels after a live config
 // reload. Toggle state is reset to the supplied StartOff defaults and existing
-// scrollback is re-rendered under the new renderers.
+// scrollback is re-rendered under the new renderers. The caller must have
+// swapped the pipeline (which renderFn reads) BEFORE sending this — the
+// message carries panel state, not the pipeline itself.
 type ReloadMsg struct {
 	Groups    []GroupInfo
 	Renderers []RendererInfo
@@ -661,14 +663,16 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // StartOff defaults — the renderer set may have changed, so preserving old
 // indices would be ambiguous.
 func (m *model) applyReload(msg ReloadMsg) {
-	m.groupOrder = m.groupOrder[:0]
+	// Reset to nil (the newModel idiom) rather than slice[:0] — the renderer
+	// set may shrink, and nil avoids retaining/aliasing the old backing array.
+	m.groupOrder = nil
 	m.groupEnabled = map[string]bool{}
 	for _, g := range msg.Groups {
 		m.groupOrder = append(m.groupOrder, g.ID)
 		m.groupEnabled[g.ID] = !g.StartOff
 	}
-	m.rendererOrder = m.rendererOrder[:0]
-	m.rendererEnabled = m.rendererEnabled[:0]
+	m.rendererOrder = nil
+	m.rendererEnabled = nil
 	for _, r := range msg.Renderers {
 		m.rendererOrder = append(m.rendererOrder, r.Name)
 		m.rendererEnabled = append(m.rendererEnabled, !r.StartOff)
