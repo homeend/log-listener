@@ -168,6 +168,25 @@ func buildWatcher(cfg *config.Config, assignments []discover.Assignment, stderr 
 	return w, nil
 }
 
+// tuiPanelState derives the TUI panel seeds (groups, renderers, files) from a
+// config + pipeline + assignments. Used for both the initial tui.New seeding
+// and the config-reload app.Reload, so the two stay in lockstep.
+func tuiPanelState(cfg *config.Config, p *render.Pipeline, assignments []discover.Assignment) ([]tui.GroupInfo, []tui.RendererInfo, []tui.FileEntry) {
+	groups := make([]tui.GroupInfo, 0, len(cfg.Groups))
+	for _, g := range cfg.Groups {
+		groups = append(groups, tui.GroupInfo{ID: g.ID, StartOff: g.StartOff})
+	}
+	renderers := make([]tui.RendererInfo, p.RendererCount())
+	for i := range renderers {
+		renderers[i] = tui.RendererInfo{Name: p.RendererName(i), StartOff: !p.IsEnabled(i)}
+	}
+	files := make([]tui.FileEntry, 0, len(assignments))
+	for _, a := range assignments {
+		files = append(files, tui.FileEntry{Path: a.Path, Group: a.GroupID})
+	}
+	return groups, renderers, files
+}
+
 // runOnce uses the concrete pipeline directly — --once exits before the
 // watcher or reload machinery starts, so no swap can occur. That's why it
 // can't share emit(), which loads through the atomic pointer.
@@ -202,7 +221,11 @@ func runWatch(cfg *config.Config, args []string, dropUnmatched bool, assignments
 	if err != nil {
 		return err
 	}
-	defer w.Close()
+	// Closure (not `defer w.Close()`): w is reassigned on config reload, and a
+	// bare method-value defer would bind the receiver to the initial watcher,
+	// leaking the final one. The closure reads w at shutdown. Superseded
+	// watchers are closed inline in the reload branch.
+	defer func() { w.Close() }()
 
 	var cfgChanges <-chan struct{}
 	if cfg.SourcePath != "" {
@@ -251,10 +274,8 @@ func runWatch(cfg *config.Config, args []string, dropUnmatched bool, assignments
 				continue
 			}
 			// Store the new pipeline before swapping the watcher so no in-flight
-			// line renders under a mismatched renderer. Closing the superseded
-			// watcher here prevents a leak; the deferred w.Close() then closes
-			// the final watcher (safe to double-close — watch.Watcher guards
-			// Close with sync.Once).
+			// line renders under a mismatched renderer. Close the superseded
+			// watcher here; the deferred closure closes the final one.
 			pipePtr.Store(rt.pipeline)
 			w.Close()
 			w = newW
@@ -296,7 +317,11 @@ func runWatchTUI(cfg *config.Config, args []string, dropUnmatched bool, assignme
 	if err != nil {
 		return err
 	}
-	defer w.Close()
+	// Closure (not `defer w.Close()`): w is reassigned on config reload, and a
+	// bare method-value defer would bind the receiver to the initial watcher,
+	// leaking the final one. The closure reads w at shutdown. Superseded
+	// watchers are closed inline in the reload branch.
+	defer func() { w.Close() }()
 
 	var cfgChanges <-chan struct{}
 	if cfg.SourcePath != "" {
@@ -313,22 +338,7 @@ func runWatchTUI(cfg *config.Config, args []string, dropUnmatched bool, assignme
 	// so the model is seeded before bubbletea starts. Calling SetFiles
 	// before Run would deadlock: bubbletea's msgs channel is unbuffered
 	// and Run hasn't started reading from it yet.
-	initial := make([]tui.FileEntry, 0, len(assignments))
-	for _, a := range assignments {
-		initial = append(initial, tui.FileEntry{Path: a.Path, Group: a.GroupID})
-	}
-	groups := make([]tui.GroupInfo, 0, len(cfg.Groups))
-	for _, g := range cfg.Groups {
-		groups = append(groups, tui.GroupInfo{ID: g.ID, StartOff: g.StartOff})
-	}
-	p0 := pipePtr.Load()
-	renderers := make([]tui.RendererInfo, p0.RendererCount())
-	for i := range renderers {
-		renderers[i] = tui.RendererInfo{
-			Name:     p0.RendererName(i),
-			StartOff: !p0.IsEnabled(i),
-		}
-	}
+	groups, renderers, initial := tuiPanelState(cfg, pipePtr.Load(), assignments)
 	app := tui.New(tui.Options{
 		Scrollback:   cfg.TUIScrollback,
 		InitialFiles: initial,
@@ -382,25 +392,13 @@ func runWatchTUI(cfg *config.Config, args []string, dropUnmatched bool, assignme
 				}
 				// Store the new pipeline before app.Reload so the scrollback
 				// re-render (which reads pipePtr via RenderFn) uses the new
-				// renderers. Close the superseded watcher; the deferred
-				// w.Close() closes the final one (sync.Once-safe).
+				// renderers. Close the superseded watcher here; the deferred
+				// closure closes the final one.
 				pipePtr.Store(rt.pipeline)
 				w.Close()
 				w = newW
 
-				p := rt.pipeline
-				newGroups := make([]tui.GroupInfo, 0, len(rt.cfg.Groups))
-				for _, g := range rt.cfg.Groups {
-					newGroups = append(newGroups, tui.GroupInfo{ID: g.ID, StartOff: g.StartOff})
-				}
-				newRenderers := make([]tui.RendererInfo, p.RendererCount())
-				for i := range newRenderers {
-					newRenderers[i] = tui.RendererInfo{Name: p.RendererName(i), StartOff: !p.IsEnabled(i)}
-				}
-				newFiles := make([]tui.FileEntry, 0, len(rt.assignments))
-				for _, a := range rt.assignments {
-					newFiles = append(newFiles, tui.FileEntry{Path: a.Path, Group: a.GroupID})
-				}
+				newGroups, newRenderers, newFiles := tuiPanelState(rt.cfg, rt.pipeline, rt.assignments)
 				app.Reload(newGroups, newRenderers, newFiles)
 			case <-ctx.Done():
 				return
