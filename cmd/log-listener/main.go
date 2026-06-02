@@ -238,14 +238,23 @@ func runWatch(cfg *config.Config, args []string, dropUnmatched bool, assignments
 		case e := <-w.Errors():
 			fmt.Fprintf(stderr, "log-listener: %v\n", e)
 		case <-cfgChanges:
+			// Bad reloads are dropped silently by design (a parse/validation
+			// error or watcher-build failure leaves the last-good config
+			// running) — see the config-auto-reload design decision. Both
+			// continues below are intentionally quiet.
 			rt, err := loadRuntime(args, dropUnmatched, time.Now())
 			if err != nil {
-				continue // silent: keep the last-good config running
+				continue
 			}
 			newW, err := buildWatcher(rt.cfg, rt.assignments, stderr)
 			if err != nil {
 				continue
 			}
+			// Store the new pipeline before swapping the watcher so no in-flight
+			// line renders under a mismatched renderer. Closing the superseded
+			// watcher here prevents a leak; the deferred w.Close() then closes
+			// the final watcher (safe to double-close — watch.Watcher guards
+			// Close with sync.Once).
 			pipePtr.Store(rt.pipeline)
 			w.Close()
 			w = newW
