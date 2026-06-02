@@ -7,7 +7,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/mattn/go-isatty"
 	"log-listener/internal/catalog"
 	"log-listener/internal/config"
 )
@@ -16,7 +15,12 @@ import (
 // Flags: -o <path|-> (default ./log-listener.yml), --offline/--online,
 // --force (overwrite/merge non-interactively), --merge (merge vs overwrite),
 // --list (print available apps/bundles).
-func runInit(args []string, stdout, stderr io.Writer) int {
+//
+// interactive reports whether prompts are allowed (a real terminal); the caller
+// decides it (production: sink.IsTTY(os.Stdin)) so this stays testable without a
+// TTY. When an existing output file is found and the run is non-interactive,
+// init refuses unless --force is given. stdin is where prompt replies are read.
+func runInit(args []string, stdin io.Reader, interactive bool, stdout, stderr io.Writer) int {
 	var names []string
 	outPath := "log-listener.yml"
 	var offline, force, merge, list bool
@@ -94,8 +98,8 @@ func runInit(args []string, stdout, stderr io.Writer) int {
 			action = "merge"
 		case force:
 			action = "overwrite"
-		case isTTY(os.Stdin):
-			action = promptOverwrite(stdout, os.Stdin, outPath)
+		case interactive:
+			action = promptOverwrite(stdout, stdin, outPath)
 		default:
 			fmt.Fprintf(stderr, "log-listener init: %s exists; pass --force (optionally --merge), or run in a terminal\n", outPath)
 			return 1
@@ -139,13 +143,6 @@ func printList(w io.Writer, cat *catalog.Catalog) {
 	for name, apps := range cat.Bundles {
 		fmt.Fprintf(w, "  %s: %s\n", name, strings.Join(apps, ", "))
 	}
-}
-
-// isTTY reports whether f is an interactive terminal (used to decide prompting).
-// Uses IoctlGetTermios under the hood (via go-isatty) so /dev/null and pipes
-// correctly return false even though they have ModeCharDevice set.
-func isTTY(f *os.File) bool {
-	return isatty.IsTerminal(f.Fd())
 }
 
 // promptOverwrite asks the overwrite/merge/cancel question and maps the reply

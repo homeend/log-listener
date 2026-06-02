@@ -13,7 +13,7 @@ func TestInitWritesFile(t *testing.T) {
 	out := filepath.Join(dir, "log-listener.yml")
 	var stdout, stderr bytes.Buffer
 
-	code := runInit([]string{"goland", "-o", out, "--offline"}, &stdout, &stderr)
+	code := runInit([]string{"goland", "-o", out, "--offline"}, strings.NewReader(""), false, &stdout, &stderr)
 	if code != 0 {
 		t.Fatalf("exit %d, stderr=%s", code, stderr.String())
 	}
@@ -31,7 +31,7 @@ func TestInitWritesFile(t *testing.T) {
 
 func TestInitStdout(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	code := runInit([]string{"goland", "-o", "-", "--offline"}, &stdout, &stderr)
+	code := runInit([]string{"goland", "-o", "-", "--offline"}, strings.NewReader(""), false, &stdout, &stderr)
 	if code != 0 {
 		t.Fatalf("exit %d, stderr=%s", code, stderr.String())
 	}
@@ -42,7 +42,7 @@ func TestInitStdout(t *testing.T) {
 
 func TestInitUnknownApp(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	code := runInit([]string{"nope", "-o", "-", "--offline"}, &stdout, &stderr)
+	code := runInit([]string{"nope", "-o", "-", "--offline"}, strings.NewReader(""), false, &stdout, &stderr)
 	if code == 0 {
 		t.Fatal("expected non-zero exit for unknown app")
 	}
@@ -58,10 +58,49 @@ func TestInitNoOverwriteWithoutForce(t *testing.T) {
 		t.Fatal(err)
 	}
 	var stdout, stderr bytes.Buffer
-	// non-TTY buffers => no prompt => refuse without --force
-	code := runInit([]string{"goland", "-o", out, "--offline"}, &stdout, &stderr)
+	// non-interactive => no prompt => refuse without --force
+	code := runInit([]string{"goland", "-o", out, "--offline"}, strings.NewReader(""), false, &stdout, &stderr)
 	if code == 0 {
 		t.Fatal("expected refusal to overwrite without --force")
+	}
+}
+
+func TestInitInteractiveMerge(t *testing.T) {
+	dir := t.TempDir()
+	out := filepath.Join(dir, "log-listener.yml")
+	if err := os.WriteFile(out, []byte("directories:\n  - id: mine\n    paths: [/x]\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var stdout, stderr bytes.Buffer
+	// interactive: reply "m" at the overwrite/merge/cancel prompt
+	code := runInit([]string{"goland", "-o", out, "--offline"}, strings.NewReader("m\n"), true, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr.String())
+	}
+	s, _ := os.ReadFile(out)
+	if !strings.Contains(string(s), "id: mine") || !strings.Contains(string(s), "id: goland") {
+		t.Errorf("interactive merge dropped an entry:\n%s", s)
+	}
+	if !strings.Contains(stdout.String(), "[o]verwrite") {
+		t.Errorf("expected the prompt to be shown; stdout=%s", stdout.String())
+	}
+}
+
+func TestInitInteractiveCancel(t *testing.T) {
+	dir := t.TempDir()
+	out := filepath.Join(dir, "log-listener.yml")
+	orig := []byte("directories:\n  - id: mine\n    paths: [/x]\n")
+	if err := os.WriteFile(out, orig, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var stdout, stderr bytes.Buffer
+	code := runInit([]string{"goland", "-o", out, "--offline"}, strings.NewReader("c\n"), true, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr.String())
+	}
+	after, _ := os.ReadFile(out)
+	if string(after) != string(orig) {
+		t.Errorf("cancel should leave the file untouched; got:\n%s", after)
 	}
 }
 
@@ -72,7 +111,7 @@ func TestInitForceMerge(t *testing.T) {
 		t.Fatal(err)
 	}
 	var stdout, stderr bytes.Buffer
-	code := runInit([]string{"goland", "-o", out, "--offline", "--force", "--merge"}, &stdout, &stderr)
+	code := runInit([]string{"goland", "-o", out, "--offline", "--force", "--merge"}, strings.NewReader(""), false, &stdout, &stderr)
 	if code != 0 {
 		t.Fatalf("exit %d: %s", code, stderr.String())
 	}
