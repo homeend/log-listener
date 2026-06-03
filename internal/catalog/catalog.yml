@@ -7,75 +7,73 @@ defaults:
   tui: { enabled: true, scrollback: 20000 }
 
 fragments:
-  # The shared JetBrains discovery: ~/.cache/JetBrains/<Product><Version>/log,
-  # parameterized by {product}. Newest scheme first, legacy second.
+  # The shared JetBrains discovery parameterized by {product}. Newest scheme first, legacy second.
+  # linux primary is the IDE's runtime log dir under ~/.cache; the {product}* glob
+  # spans co-installed versions (e.g. IntelliJIdea2026.1 and 2026.2). The Toolbox
+  # install-dir path is kept as a legacy fallback.
   jetbrains-base:
     sources:
       - id: main
-        filter: '^(idea\.log(\.\d+)?|open-telemetry-meters\..+\.json)$'
+        filter: '^(idea\.log(\.\d+)?)$'
         locations:
           - dir:
               linux:   '~/.cache/JetBrains/{product}*/log'
               darwin:  '~/Library/Logs/JetBrains/{product}*'
               windows: '%LOCALAPPDATA%/JetBrains/{product}*/log'
           - dir:
-              linux:   '~/.{product}*/system/log'
-              darwin:  '~/Library/Caches/{product}*/log'
-              windows: '%USERPROFILE%/.{product}*/system/log'
-          - dir:  # WSL: the Windows-side install seen from Linux
-              linux: '/mnt/c/Users/*/AppData/Local/JetBrains/{product}*/log'
+              linux:   '~/.local/share/JetBrains/Toolbox/apps/{product}*/log'
   # Junie<->IDE bridge logs, physically inside a JetBrains product's log dir.
-  junie-bridge:
+  junie-acp:
     sources:
-      - id: junie
-        filter: '\.log$'
+      - id: junie-acp
+        filter: 'acp*\.log$'
         locations:
           - dir:
-              linux:   '~/.cache/JetBrains/{product}*/log/junie'
-              darwin:  '~/Library/Logs/JetBrains/{product}*/junie'
-              windows: '%LOCALAPPDATA%/JetBrains/{product}*/log/junie'
+              linux:   '~/.cache/JetBrains/{product}*/log/acp'
+              darwin:  '~/Library/Logs/JetBrains/{product}*/acp'
+              windows: '%LOCALAPPDATA%/JetBrains/{product}*/log/acp'
+          - dir:
+              linux:   '~/.local/share/JetBrains/Toolbox/apps/{product}*/log/acp'
   # Junie agent's own logs.
-  junie-direct:
+  junie-logs:
     sources:
-      - id: agent
+      - id: junie-logs
         filter: '\.log$'
         locations:
           - dir:
-              linux:   '~/.config/junie/log'
+              linux:   '~/.junie/logs'
               darwin:  '~/Library/Logs/junie'
-              windows: '%LOCALAPPDATA%/junie/log'
+              windows: '%USERPROFILE%/.junie/logs'
+          - dir:
+              linux:   '~/.junie-local/logs'
+              darwin:  '~/Library/Logs/junie-local'
+              windows: '%USERPROFILE%/.junie-local/logs'
 
 apps:
   goland:
     renderers: [json-line, idea-trailing-json]
     use:
       - { frag: jetbrains-base, product: GoLand }
-    sources:
-      - id: acp
-        filter: '\.log$'
-        locations:
-          - dir:
-              linux:   '~/.cache/JetBrains/GoLand*/log/acp'
-              darwin:  '~/Library/Logs/JetBrains/GoLand*/acp'
-              windows: '%LOCALAPPDATA%/JetBrains/GoLand*/log/acp'
+      - { frag: junie-acp,   product: GoLand }
   idea:
     renderers: [json-line, idea-trailing-json]
     use:
       - { frag: jetbrains-base, product: IntelliJIdea }
-      - { frag: junie-bridge,   product: IntelliJIdea }
+      - { frag: junie-acp,   product: IntelliJIdea }
   pycharm:
     renderers: [json-line, idea-trailing-json]
     use:
       - { frag: jetbrains-base, product: PyCharm }
+      - { frag: junie-acp,   product: PyCharm }
   webstorm:
     renderers: [json-line, idea-trailing-json]
     use:
       - { frag: jetbrains-base, product: WebStorm }
+      - { frag: junie-acp,   product: WebStorm }
   junie:
     use:
-      - { frag: junie-direct }
-      - { frag: junie-bridge, product: IntelliJIdea }
-      - { frag: junie-bridge, product: GoLand }
+      - { frag: junie-logs }
+      - { frag: junie-acp, product: IntelliJIdea }
 
 renderers:
   json-line:
