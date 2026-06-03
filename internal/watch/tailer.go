@@ -5,9 +5,7 @@ import (
 	"bytes"
 	"errors"
 	"io"
-	"io/fs"
 	"os"
-	"syscall"
 )
 
 // Tailer follows a single file. Tick() is called by the watcher loop on
@@ -36,7 +34,7 @@ func NewTailer(path string, fromStart bool) (*Tailer, error) {
 }
 
 func (t *Tailer) open(fromStart bool) error {
-	f, err := os.Open(t.path)
+	f, err := openShared(t.path)
 	if err != nil {
 		return err
 	}
@@ -45,7 +43,7 @@ func (t *Tailer) open(fromStart bool) error {
 		f.Close()
 		return err
 	}
-	ino, err := inodeOf(fi)
+	ino, err := inodeOf(f, t.path)
 	if err != nil {
 		f.Close()
 		return err
@@ -75,7 +73,7 @@ func (t *Tailer) Tick() (lines []string, rotated bool, err error) {
 	case statErr != nil:
 		didRotate = true
 	default:
-		ino, e := inodeOf(fi)
+		ino, e := inodeOf(nil, t.path)
 		if e != nil {
 			return nil, false, e
 		}
@@ -177,13 +175,4 @@ func (t *Tailer) Close() error {
 		return err
 	}
 	return nil
-}
-
-// inodeOf returns the inode number from a FileInfo. Linux-specific (Phase 1).
-func inodeOf(fi fs.FileInfo) (uint64, error) {
-	stat, ok := fi.Sys().(*syscall.Stat_t)
-	if !ok {
-		return 0, errors.New("watch: cannot read inode from FileInfo")
-	}
-	return stat.Ino, nil
 }

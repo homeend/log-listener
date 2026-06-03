@@ -29,8 +29,12 @@ func HasMeta(s string) bool {
 //	"/*"             → "/"
 //	"rel/*"          → "rel"
 //	"*"              → ""
+//
+// Both '/' and the OS separator are accepted; the result uses '/'. Callers
+// feed it back through filepath.Abs/Glob, which normalize separators per OS.
 func LiteralPrefix(pattern string) string {
-	sep := string(filepath.Separator)
+	const sep = "/"
+	pattern = filepath.ToSlash(pattern)
 	segs := strings.Split(pattern, sep)
 	for i, seg := range segs {
 		if HasMeta(seg) {
@@ -55,7 +59,7 @@ func LiteralPrefix(pattern string) string {
 // MatchesPath reports whether path matches pattern segment-by-segment.
 // Both must have the same number of non-empty segments. Differs from
 // filepath.Match in that '*' never crosses a '/' boundary even when
-// inside a character class.
+// inside a character class. '/' and the OS separator are both accepted.
 func MatchesPath(pattern, path string) (bool, error) {
 	pSegs := splitClean(pattern)
 	aSegs := splitClean(path)
@@ -107,7 +111,7 @@ func PrefixMatchesPattern(pattern, path string) (bool, error) {
 }
 
 func splitClean(p string) []string {
-	parts := strings.Split(p, string(filepath.Separator))
+	parts := strings.Split(filepath.ToSlash(p), "/")
 	out := parts[:0]
 	for _, s := range parts {
 		if s != "" {
