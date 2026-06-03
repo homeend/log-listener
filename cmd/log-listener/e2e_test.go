@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	goruntime "runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -35,6 +36,9 @@ func e2eBinary(t *testing.T) string {
 			return
 		}
 		bin := filepath.Join(dir, "log-listener")
+		if goruntime.GOOS == "windows" {
+			bin += ".exe"
+		}
 		cmd := exec.Command("go", "build", "-o", bin, ".")
 		cmd.Stderr = os.Stderr
 		if err := cmd.Run(); err != nil {

@@ -2,8 +2,10 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
+	goruntime "runtime"
 	"strings"
 	"testing"
 	"time"
@@ -219,8 +221,11 @@ func TestPromptOverwriteMapsReplies(t *testing.T) {
 func TestInitOnlineUsesFetcher(t *testing.T) {
 	prev := initFetcher
 	t.Cleanup(func() { initFetcher = prev })
+	// Key the location to the host OS so the source resolves on every
+	// platform (resolution is OS-aware; a linux-only fixture would emit
+	// nothing on windows/darwin).
 	initFetcher = func() catalog.Fetcher {
-		return stubFetcher([]byte(`
+		return stubFetcher([]byte(fmt.Sprintf(`
 version: 9999
 defaults: {output: {color: true, drop_unmatched: false}, tui: {enabled: true, scrollback: 1}}
 fragments: {}
@@ -232,8 +237,8 @@ apps:
     sources:
       - id: main
         filter: '\.log$'
-        locations: [ { dir: { linux: '/var/log/zzz' } } ]
-`))
+        locations: [ { dir: { %s: '/var/log/zzz' } } ]
+`, goruntime.GOOS)))
 	}
 	var stdout, stderr bytes.Buffer
 	code := runInit([]string{"zzz-remote-only", "-o", "-", "--online"}, strings.NewReader(""), false, &stdout, &stderr)

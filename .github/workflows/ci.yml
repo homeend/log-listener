@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build
+        run: go build ./...
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test
+        run: go test ./...
+
+      # The race detector needs cgo + a C toolchain. The ubuntu and macos
+      # runners ship one; the windows runner does not by default, so it's
+      # skipped there (the same logic is exercised on the other two).
+      - name: Test (race)
+        if: runner.os != 'Windows'
+        run: go test -race ./...
+        env:
+          CGO_ENABLED: "1"

@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/mattn/go-isatty"
+
 	"log-listener/internal/render"
 )
 
@@ -85,12 +87,13 @@ func (s *Stdout) Emit(ev render.Event) {
 // Close is a no-op for Stdout; it doesn't own the writer.
 func (s *Stdout) Close() error { return nil }
 
-// IsTTY reports whether the given file is a character device (terminal).
-// Used to auto-disable color when output is piped or redirected.
+// IsTTY reports whether the given file is an interactive terminal.
+// Used to auto-disable color and the TUI when output is piped or redirected.
+//
+// go-isatty handles the platform differences: ModeCharDevice is unreliable on
+// Windows (console handles don't report it), so it queries GetConsoleMode
+// there and checks for cygwin/msys pseudo-terminals as well.
 func IsTTY(f *os.File) bool {
-	fi, err := f.Stat()
-	if err != nil {
-		return false
-	}
-	return (fi.Mode() & os.ModeCharDevice) != 0
+	fd := f.Fd()
+	return isatty.IsTerminal(fd) || isatty.IsCygwinTerminal(fd)
 }
