@@ -7,9 +7,9 @@ import (
 	"time"
 )
 
-// CatalogURL is the raw URL of the published catalog. Fill in owner/repo before
-// release; the default branch is assumed.
-const CatalogURL = "https://raw.githubusercontent.com/OWNER/log-listener/main/internal/catalog/catalog.yml"
+// CatalogURL is the raw URL of the published catalog. Override per-invocation
+// with `init --url <url>`; the default branch is assumed.
+const CatalogURL = "https://raw.githubusercontent.com/homeend/log-listener/main/internal/catalog/catalog.yml"
 
 // Fetcher retrieves a raw catalog document. Network access lives only here.
 type Fetcher interface {
@@ -24,7 +24,17 @@ type HTTPFetcher struct {
 
 // NewHTTPFetcher returns a Fetcher for CatalogURL with a 5s timeout.
 func NewHTTPFetcher() HTTPFetcher {
-	return HTTPFetcher{URL: CatalogURL, Client: &http.Client{Timeout: 5 * time.Second}}
+	return NewHTTPFetcherURL("")
+}
+
+// NewHTTPFetcherURL returns a Fetcher for a caller-supplied catalog URL with a
+// 5s timeout. An empty url falls back to CatalogURL, so callers can pass an
+// override straight through without nil-checking it first.
+func NewHTTPFetcherURL(url string) HTTPFetcher {
+	if url == "" {
+		url = CatalogURL
+	}
+	return HTTPFetcher{URL: url, Client: &http.Client{Timeout: 5 * time.Second}}
 }
 
 func (h HTTPFetcher) Fetch() ([]byte, error) {

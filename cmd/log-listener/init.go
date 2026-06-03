@@ -12,11 +12,13 @@ import (
 	"log-listener/internal/config"
 )
 
-// initFetcher is a seam so tests can inject a fake remote catalog.
-var initFetcher = func() catalog.Fetcher { return catalog.NewHTTPFetcher() }
+// initFetcher is a seam so tests can inject a fake remote catalog. The url is
+// the override from --url ("" means use the built-in catalog.CatalogURL).
+var initFetcher = func(url string) catalog.Fetcher { return catalog.NewHTTPFetcherURL(url) }
 
 // runInit implements `log-listener init <app|bundle>... [flags]`.
 // Flags: -o <path|-> (default ./log-listener.yml), --offline/--online,
+// --url <url> (fetch templates from a custom URL; implies --online),
 // --force (overwrite/merge non-interactively), --merge (merge vs overwrite),
 // --list (print available apps/bundles).
 //
@@ -29,6 +31,7 @@ func runInit(args []string, stdin io.Reader, interactive bool, stdout, stderr io
 	outPath := "log-listener.yml"
 	var offline, force, merge, list bool
 	online := false
+	catalogURL := ""
 
 	for i := 0; i < len(args); i++ {
 		switch a := args[i]; a {
@@ -43,6 +46,13 @@ func runInit(args []string, stdin io.Reader, interactive bool, stdout, stderr io
 			offline = true
 		case "--online":
 			online = true
+		case "--url":
+			if i+1 >= len(args) {
+				fmt.Fprintln(stderr, "log-listener init: --url needs a value")
+				return 2
+			}
+			catalogURL = args[i+1]
+			i++
 		case "--force":
 			force = true
 		case "--merge":
@@ -76,12 +86,13 @@ func runInit(args []string, stdin io.Reader, interactive bool, stdout, stderr io
 	// interactive run, ask. Non-interactive defaults to offline. Select() falls
 	// back to bundled on any network/parse failure, so this never hard-fails.
 	cat := bundled
-	useOnline := online
-	if !online && !offline && interactive {
+	// An explicit --url means "go fetch from there", so it implies online.
+	useOnline := online || catalogURL != ""
+	if !useOnline && !offline && interactive {
 		useOnline = promptYesNo(stdout, stdin, "Check GitHub for newer templates?")
 	}
 	if useOnline {
-		cat = catalog.Select(bundled, initFetcher())
+		cat = catalog.Select(bundled, initFetcher(catalogURL))
 	}
 
 	env := catalog.DefaultEnv()

@@ -224,7 +224,7 @@ func TestInitOnlineUsesFetcher(t *testing.T) {
 	// Key the location to the host OS so the source resolves on every
 	// platform (resolution is OS-aware; a linux-only fixture would emit
 	// nothing on windows/darwin).
-	initFetcher = func() catalog.Fetcher {
+	initFetcher = func(string) catalog.Fetcher {
 		return stubFetcher([]byte(fmt.Sprintf(`
 version: 9999
 defaults: {output: {color: true, drop_unmatched: false}, tui: {enabled: true, scrollback: 1}}
@@ -244,6 +244,44 @@ apps:
 	code := runInit([]string{"zzz-remote-only", "-o", "-", "--online"}, strings.NewReader(""), false, &stdout, &stderr)
 	if code != 0 {
 		t.Fatalf("exit %d: %s", code, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "zzz-remote-only") {
+		t.Errorf("remote app not resolved:\n%s", stdout.String())
+	}
+}
+
+// TestInitURLImpliesOnline verifies that --url both forces an online fetch
+// (no --online needed) and threads the URL through to the fetcher seam.
+func TestInitURLImpliesOnline(t *testing.T) {
+	prev := initFetcher
+	t.Cleanup(func() { initFetcher = prev })
+	var gotURL string
+	initFetcher = func(url string) catalog.Fetcher {
+		gotURL = url
+		return stubFetcher([]byte(fmt.Sprintf(`
+version: 9999
+defaults: {output: {color: true, drop_unmatched: false}, tui: {enabled: true, scrollback: 1}}
+fragments: {}
+renderers: {}
+bundles: {}
+apps:
+  zzz-remote-only:
+    use: []
+    sources:
+      - id: main
+        filter: '\.log$'
+        locations: [ { dir: { %s: '/var/log/zzz' } } ]
+`, goruntime.GOOS)))
+	}
+	var stdout, stderr bytes.Buffer
+	// Note: no --online flag; --url alone must trigger the fetch.
+	code := runInit([]string{"zzz-remote-only", "-o", "-", "--url", "https://example.test/catalog.yml"},
+		strings.NewReader(""), false, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr.String())
+	}
+	if gotURL != "https://example.test/catalog.yml" {
+		t.Errorf("fetcher got URL %q, want the --url value", gotURL)
 	}
 	if !strings.Contains(stdout.String(), "zzz-remote-only") {
 		t.Errorf("remote app not resolved:\n%s", stdout.String())

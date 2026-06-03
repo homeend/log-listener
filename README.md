@@ -79,8 +79,10 @@ actually exist on disk, attaches sensible renderers, and writes a
 live-reloads). Apps compose: selecting `junie` pulls in its own logs **plus**
 the Junie↔IDE bridge logs that live inside each JetBrains product.
 
-On an interactive run it offers to fetch a newer template catalog from GitHub;
-`--offline` skips the check, `--online` forces it. Any network failure silently
+On an interactive run it offers to fetch a newer template catalog from GitHub
+(`https://raw.githubusercontent.com/homeend/log-listener/main/internal/catalog/catalog.yml`);
+`--offline` skips the check, `--online` forces it, and `--url <url>` fetches from
+a catalog you host yourself (implies `--online`). Any network failure silently
 falls back to the catalog bundled into the binary. An existing output file is
 left untouched unless you confirm at the `[o]verwrite / [m]erge / [c]ancel`
 prompt, or pass `--force` (optionally with `--merge` to append only new entries)
