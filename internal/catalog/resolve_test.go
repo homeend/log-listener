@@ -1,6 +1,7 @@
 package catalog
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -130,6 +131,73 @@ func TestResolveBundleAndDedup(t *testing.T) {
 	if !ids["idea-intellijidea-junie"] {
 		t.Errorf("missing idea junie-bridge group; ids=%v", ids)
 	}
+}
+
+// TestResolveNormalizesSeparatorsPerOS guards that generated paths use the
+// target OS's separator uniformly: the env-derived prefix (%LOCALAPPDATA%, a
+// backslash value on Windows) and the '/'-authored template suffix must not
+// leak a mixed result like `C:\Users\me\AppData\Local/JetBrains/...`.
+func TestResolveNormalizesSeparatorsPerOS(t *testing.T) {
+	c, err := Parse([]byte(`
+version: 1
+defaults: { output: { color: true, drop_unmatched: false }, tui: { enabled: true, scrollback: 1 } }
+fragments: {}
+renderers: {}
+bundles: {}
+apps:
+  idea:
+    use: []
+    sources:
+      - id: main
+        filter: '\.log$'
+        locations:
+          - dir:
+              windows: '%LOCALAPPDATA%/JetBrains/IntelliJIdea*/log'
+              linux:   '~/.cache/JetBrains/IntelliJIdea*/log'
+`))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+
+	t.Run("windows", func(t *testing.T) {
+		env := Env{OS: "windows", Home: `C:\Users\me`,
+			Getenv: func(k string) string {
+				if k == "LOCALAPPDATA" {
+					return `C:\Users\me\AppData\Local`
+				}
+				return ""
+			},
+			Exists: func(string) bool { return false }} // force fallback path
+		f, err := c.Resolve([]string{"idea"}, env)
+		if err != nil {
+			t.Fatalf("Resolve: %v", err)
+		}
+		got := f.Directories[0].Paths[0]
+		want := `C:\Users\me\AppData\Local\JetBrains\IntelliJIdea*\log`
+		if got != want {
+			t.Errorf("windows path = %q, want %q", got, want)
+		}
+		if strings.Contains(got, "/") {
+			t.Errorf("windows path still contains a forward slash: %q", got)
+		}
+	})
+
+	t.Run("linux", func(t *testing.T) {
+		env := Env{OS: "linux", Home: "/home/me", Getenv: func(string) string { return "" },
+			Exists: func(string) bool { return false }}
+		f, err := c.Resolve([]string{"idea"}, env)
+		if err != nil {
+			t.Fatalf("Resolve: %v", err)
+		}
+		got := f.Directories[0].Paths[0]
+		want := "/home/me/.cache/JetBrains/IntelliJIdea*/log"
+		if got != want {
+			t.Errorf("linux path = %q, want %q", got, want)
+		}
+		if strings.Contains(got, `\`) {
+			t.Errorf("linux path contains a backslash: %q", got)
+		}
+	})
 }
 
 func TestResolveUnknownName(t *testing.T) {

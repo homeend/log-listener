@@ -120,7 +120,7 @@ func (c *Catalog) emitSource(f *config.File, app, product string, src Source, ke
 		if !ok {
 			continue
 		}
-		p := expandPath(substituteProduct(raw, product), env.Home, env.Getenv)
+		p := normalizeSep(expandPath(substituteProduct(raw, product), env.Home, env.Getenv), key)
 		if firstCandidate == "" {
 			firstCandidate = p
 		}
