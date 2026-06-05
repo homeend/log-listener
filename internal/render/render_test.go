@@ -81,7 +81,7 @@ func TestRendererAppliesTo(t *testing.T) {
 			Paths:  []string{"*.app.log"},
 		},
 	}
-	r, err := Compile(spec)
+	r, err := Compile(spec, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -102,7 +102,7 @@ func TestRendererAppliesTo(t *testing.T) {
 }
 
 func TestRendererAppliesToEmptyMeansGlobal(t *testing.T) {
-	r, err := Compile(config.RendererSpec{Name: "g", LineRegex: `.`, Template: ``})
+	r, err := Compile(config.RendererSpec{Name: "g", LineRegex: `.`, Template: ``}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,7 +116,7 @@ func TestPipelineFirstMatchWins(t *testing.T) {
 		{Name: "first", LineRegex: `^ERROR`, Template: `[err]`},
 		{Name: "second", LineRegex: `.*`, Template: `[any]`},
 	}
-	p, err := NewPipeline(specs, false)
+	p, err := NewPipeline(specs, nil, nil, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,7 +136,7 @@ func TestPipelineFirstMatchWins(t *testing.T) {
 func TestPipelineDropUnmatched(t *testing.T) {
 	p, err := NewPipeline([]config.RendererSpec{
 		{Name: "r", LineRegex: `^ERROR`, Template: `$0`},
-	}, true)
+	}, nil, nil, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -154,7 +154,7 @@ func TestPipelineDropUnmatched(t *testing.T) {
 }
 
 func TestPipelineUnmatchedFallsThroughAsText(t *testing.T) {
-	p, _ := NewPipeline(nil, false)
+	p, _ := NewPipeline(nil, nil, nil, false)
 	ev, ok := p.Render(time.Now(), "d", "/x", "hello")
 	if !ok {
 		t.Fatal("non-drop mode: unmatched must still emit event")
@@ -206,7 +206,7 @@ func TestPipelineRendererScopedByAppliesTo(t *testing.T) {
 		},
 		{Name: "fallback", LineRegex: `.*`, Template: `[any]`},
 	}
-	p, err := NewPipeline(specs, false)
+	p, err := NewPipeline(specs, nil, nil, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -232,7 +232,7 @@ func TestPipelineSetRendererEnabledFallsToNextMatch(t *testing.T) {
 		{Name: "first", LineRegex: `^X`, Template: `[first]`},
 		{Name: "second", LineRegex: `^X`, Template: `[second]`},
 	}
-	p, err := NewPipeline(specs, false)
+	p, err := NewPipeline(specs, nil, nil, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -261,7 +261,7 @@ func TestPipelineSetRendererEnabledFallsToNextMatch(t *testing.T) {
 func TestPipelineDisabledFallsThroughToRaw(t *testing.T) {
 	p, err := NewPipeline([]config.RendererSpec{
 		{Name: "only", LineRegex: `.*`, Template: `[styled]`},
-	}, false)
+	}, nil, nil, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -281,7 +281,7 @@ func TestPipelineDisabledFallsThroughToRaw(t *testing.T) {
 func TestPipelineStartOffHonored(t *testing.T) {
 	p, _ := NewPipeline([]config.RendererSpec{
 		{Name: "sleeping", LineRegex: `.*`, Template: `[s]`, StartOff: true},
-	}, false)
+	}, nil, nil, false)
 	if p.IsEnabled(0) {
 		t.Fatal("StartOff=true must initialize renderer disabled")
 	}
@@ -295,7 +295,7 @@ func TestPipelineRendererAccessors(t *testing.T) {
 	p, _ := NewPipeline([]config.RendererSpec{
 		{Name: "a", LineRegex: `.*`, Template: `$0`},
 		{Name: "b", LineRegex: `.*`, Template: `$0`},
-	}, false)
+	}, nil, nil, false)
 	if p.RendererCount() != 2 {
 		t.Fatalf("count=%d want 2", p.RendererCount())
 	}
@@ -309,5 +309,52 @@ func TestPipelineRendererAccessors(t *testing.T) {
 	}
 	if p.RendererName(99) != "" {
 		t.Fatal("out-of-range name must be empty")
+	}
+}
+
+func TestRendererViaMatcherCaptures(t *testing.T) {
+	matchers := map[string]config.MatcherSpec{
+		"json-on-idea": {Name: "idea.log", LineRegex: `^\s*(\{.*\})\s*$`},
+	}
+	specs := []config.RendererSpec{
+		{Name: "idea-json", Matcher: "json-on-idea", Template: "json($1)"},
+	}
+	p, err := NewPipeline(specs, matchers, nil, false)
+	if err != nil {
+		t.Fatalf("NewPipeline: %v", err)
+	}
+	ev, ok := p.Render(time.Time{}, "g", "/var/log/idea.log", `{"a":1}`)
+	if !ok || ev.Renderer != "idea-json" {
+		t.Fatalf("expected idea-json render, got ok=%v renderer=%q", ok, ev.Renderer)
+	}
+	ev, ok = p.Render(time.Time{}, "g", "/var/log/other.log", `{"a":1}`)
+	if !ok || ev.Renderer != "" {
+		t.Fatalf("expected raw passthrough for other.log, got renderer=%q", ev.Renderer)
+	}
+}
+
+func TestRendererMatcherWithoutLineRegexIsError(t *testing.T) {
+	matchers := map[string]config.MatcherSpec{"nameonly": {Name: "idea.log"}}
+	specs := []config.RendererSpec{{Name: "r", Matcher: "nameonly", Template: "x"}}
+	if _, err := NewPipeline(specs, matchers, nil, false); err == nil {
+		t.Fatal("expected error: matcher used by renderer has no line_regex")
+	}
+}
+
+func TestRendererRequiresExactlyOneOfLineRegexOrMatcher(t *testing.T) {
+	both := []config.RendererSpec{{Name: "r", LineRegex: "x", Matcher: "m", Template: "t"}}
+	if _, err := NewPipeline(both, map[string]config.MatcherSpec{"m": {LineRegex: "y"}}, nil, false); err == nil {
+		t.Fatal("expected error when both line_regex and matcher set")
+	}
+	neither := []config.RendererSpec{{Name: "r", Template: "t"}}
+	if _, err := NewPipeline(neither, nil, nil, false); err == nil {
+		t.Fatal("expected error when neither line_regex nor matcher set")
+	}
+}
+
+func TestRendererUnknownMatcherRef(t *testing.T) {
+	specs := []config.RendererSpec{{Name: "r", Matcher: "ghost", Template: "t"}}
+	if _, err := NewPipeline(specs, nil, nil, false); err == nil {
+		t.Fatal("expected error for unknown matcher reference")
 	}
 }

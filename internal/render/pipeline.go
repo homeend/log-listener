@@ -3,38 +3,67 @@ package render
 import (
 	"fmt"
 	"path/filepath"
-	"regexp"
 	"sync/atomic"
 	"time"
 
 	"log-listener/internal/config"
+	"log-listener/internal/match"
 )
 
-// Renderer is a compiled rendering rule.
+// toMatchSpec converts a config matcher spec into a match.Spec.
+func toMatchSpec(s config.MatcherSpec) match.Spec {
+	return match.Spec{
+		Line: s.Line, LineRegex: s.LineRegex,
+		Name: s.Name, NameRegex: s.NameRegex,
+		Path: s.Path, PathRegex: s.PathRegex,
+	}
+}
+
+// Renderer is a compiled rendering rule. The matcher provides the content
+// match + template captures; applies_to (groups/pathGlobs) scopes it.
 type Renderer struct {
 	Name      string
-	lineRegex *regexp.Regexp
+	matcher   *match.Matcher
 	template  *Template
-	// nil means "no group constraint"; otherwise the file's group ID must be
-	// a key with value true.
 	groups    map[string]bool
 	pathGlobs []string
 }
 
-// Compile turns a config.RendererSpec into a runtime Renderer.
-func Compile(spec config.RendererSpec) (*Renderer, error) {
-	if spec.LineRegex == "" {
-		return nil, fmt.Errorf("renderer %q: line_regex is required", spec.Name)
+// Compile turns a config.RendererSpec into a runtime Renderer. Exactly one of
+// LineRegex or Matcher must be set. A matcher used here must carry a
+// line_regex (captures feed the template).
+func Compile(spec config.RendererSpec, matchers map[string]config.MatcherSpec) (*Renderer, error) {
+	hasLine := spec.LineRegex != ""
+	hasMatcher := spec.Matcher != ""
+	if hasLine == hasMatcher {
+		return nil, fmt.Errorf("renderer %q: set exactly one of line_regex or matcher", spec.Name)
 	}
-	re, err := regexp.Compile(spec.LineRegex)
+
+	var ms match.Spec
+	if hasMatcher {
+		cm, ok := matchers[spec.Matcher]
+		if !ok {
+			return nil, fmt.Errorf("renderer %q: unknown matcher %q", spec.Name, spec.Matcher)
+		}
+		ms = toMatchSpec(cm)
+	} else {
+		ms = match.Spec{LineRegex: spec.LineRegex}
+	}
+
+	m, err := match.Compile(ms)
 	if err != nil {
-		return nil, fmt.Errorf("renderer %q: line_regex: %w", spec.Name, err)
+		return nil, fmt.Errorf("renderer %q: %w", spec.Name, err)
 	}
+	if !m.HasLineRegex() {
+		return nil, fmt.Errorf("renderer %q: matcher %q has no line_regex (nothing to capture)", spec.Name, spec.Matcher)
+	}
+
 	tpl, err := ParseTemplate(spec.Template)
 	if err != nil {
 		return nil, fmt.Errorf("renderer %q: template: %w", spec.Name, err)
 	}
-	r := &Renderer{Name: spec.Name, lineRegex: re, template: tpl}
+
+	r := &Renderer{Name: spec.Name, matcher: m, template: tpl}
 	if spec.AppliesTo != nil {
 		if len(spec.AppliesTo.Groups) > 0 {
 			r.groups = make(map[string]bool, len(spec.AppliesTo.Groups))
@@ -47,9 +76,7 @@ func Compile(spec config.RendererSpec) (*Renderer, error) {
 	return r, nil
 }
 
-// Applies reports whether the renderer is allowed to act on the given group
-// and path. AND semantics: both groups (if set) and paths (if set) must
-// match.
+// Applies reports whether the renderer's applies_to scope admits group+path.
 func (r *Renderer) Applies(group, path string) bool {
 	if r.groups != nil && !r.groups[group] {
 		return false
@@ -68,10 +95,14 @@ func (r *Renderer) Applies(group, path string) bool {
 	return false
 }
 
-// Match runs the line through the regex. Returns the capture slice (with
-// index 0 = full match) or nil if no match.
-func (r *Renderer) Match(line string) []string {
-	return r.lineRegex.FindStringSubmatch(line)
+// Match runs the matcher against path+line. Returns the capture slice
+// (index 0 = full match) or nil if it does not match.
+func (r *Renderer) Match(path, line string) []string {
+	caps, ok := r.matcher.Match(path, line)
+	if !ok {
+		return nil
+	}
+	return caps
 }
 
 // Event is the typed renderer output. It includes the original raw line plus
@@ -97,13 +128,13 @@ type Pipeline struct {
 	drop      bool
 }
 
-// NewPipeline compiles all specs into a Pipeline. The order is preserved as
-// declared. Each renderer starts enabled, except those whose spec carries
-// `StartOff: true` (from YAML `off: true`).
-func NewPipeline(specs []config.RendererSpec, dropUnmatched bool) (*Pipeline, error) {
+// NewPipeline compiles renderer specs (resolving matcher references against
+// the matchers library) and mute specs into a Pipeline. Renderer order is
+// preserved. Each renderer starts enabled unless its spec sets StartOff.
+func NewPipeline(specs []config.RendererSpec, matchers map[string]config.MatcherSpec, mutes []config.MuteSpec, dropUnmatched bool) (*Pipeline, error) {
 	p := &Pipeline{drop: dropUnmatched}
 	for _, s := range specs {
-		r, err := Compile(s)
+		r, err := Compile(s, matchers)
 		if err != nil {
 			return nil, err
 		}
@@ -112,6 +143,7 @@ func NewPipeline(specs []config.RendererSpec, dropUnmatched bool) (*Pipeline, er
 		p.renderers = append(p.renderers, r)
 		p.enabled = append(p.enabled, flag)
 	}
+	_ = mutes // compiled in a later task
 	return p, nil
 }
 
@@ -129,7 +161,7 @@ func (p *Pipeline) Render(now time.Time, group, path, raw string) (Event, bool) 
 		if !r.Applies(group, path) {
 			continue
 		}
-		caps := r.Match(raw)
+		caps := r.Match(path, raw)
 		if caps == nil {
 			continue
 		}
