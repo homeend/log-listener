@@ -6,13 +6,15 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-// clearSearch wipes any active search state — term, hit pointer, and
-// any pending wrap prompt — so highlights vanish on the next render.
+// clearSearch wipes the active search state — term, hit pointer, pending
+// wrap prompt, and the filter toggle — so highlights vanish on the next
+// render. lastQuery is intentionally preserved so "/"+Enter can repeat it.
 func (m *model) clearSearch() {
 	m.searchTerm = ""
 	m.searchQuery = ""
 	m.searchHit = -1
 	m.wrapPrompt = 0
+	m.filterMode = false
 }
 
 // commitSearch turns the typed query into the active term and jumps to
@@ -24,9 +26,14 @@ func (m *model) clearSearch() {
 func (m *model) commitSearch() {
 	q := strings.TrimSpace(m.searchQuery)
 	if q == "" {
-		m.clearSearch()
-		return
+		if m.lastQuery == "" {
+			m.clearSearch()
+			return
+		}
+		q = m.lastQuery // "/"+Enter repeats the last term
 	}
+	m.lastQuery = q
+	m.searchQuery = q
 	m.searchTerm = strings.ToLower(q)
 	start := m.streamTop
 	if m.tailMode {

@@ -282,6 +282,11 @@ type model struct {
 	searchTerm  string
 	searchHit   int
 	wrapPrompt  rune
+	// lastQuery is the most recently committed query (original case),
+	// preserved across clears so "/"+Enter repeats it. filterMode is the
+	// `t` "show only matching entries" toggle (used by later tasks).
+	lastQuery  string
+	filterMode bool
 
 	// Renderer enable/disable — toggled with the shifted-digit chars
 	// (!@#$%^&*( for 1-9). Ctrl+E opens the renderers panel. The

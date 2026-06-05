@@ -292,6 +292,39 @@ func TestModelSearchHighlightInView(t *testing.T) {
 	}
 }
 
+func TestSearchRepeatLastTerm(t *testing.T) {
+	m := seedSearchModel(t, 5, map[int]bool{2: true, 4: true})
+	m = typeQuery(t, m, "needle")
+	if m.searchTerm != "needle" {
+		t.Fatalf("term = %q", m.searchTerm)
+	}
+	m.clearSearch()
+	if m.searchTerm != "" {
+		t.Fatal("clear should drop the active term")
+	}
+	m2, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'/'}})
+	m = m2.(*model)
+	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	m = m2.(*model)
+	if m.searchTerm != "needle" {
+		t.Fatalf("empty-Enter should repeat last term, got %q", m.searchTerm)
+	}
+	if m.searchQuery != "needle" {
+		t.Fatalf("footer query should reflect the repeated term, got %q", m.searchQuery)
+	}
+}
+
+func TestSearchEmptyEnterNoPriorTermClears(t *testing.T) {
+	m := seedSearchModel(t, 3, nil)
+	m2, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'/'}})
+	m = m2.(*model)
+	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	m = m2.(*model)
+	if m.searchTerm != "" {
+		t.Fatalf("empty Enter with no prior term should set no term, got %q", m.searchTerm)
+	}
+}
+
 // TestClipLinePreservesANSIOnHorizontalScroll guards the bug where panning
 // Left/Right wiped the search highlight (and all color): horizontal scroll
 // used to stripANSI the whole line before slicing, discarding every escape
