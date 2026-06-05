@@ -400,6 +400,22 @@ func TestMuteAppliesToScopesByGroup(t *testing.T) {
 	}
 }
 
+func TestMuteAppliesToScopesByPathGlob(t *testing.T) {
+	mutes := []config.MuteSpec{{
+		ID:          "noise",
+		MatcherSpec: config.MatcherSpec{LineRegex: "DEBUG"},
+		AppliesTo:   &config.AppliesToSpec{Paths: []string{"*.app.log"}},
+	}}
+	p, _ := NewPipeline(nil, nil, mutes, false)
+	// Glob is tried against the basename, so a full path under any dir matches.
+	if _, ok := p.Render(time.Time{}, "g", "/var/log/x.app.log", "DEBUG x"); ok {
+		t.Fatal("DEBUG in *.app.log should be muted")
+	}
+	if _, ok := p.Render(time.Time{}, "g", "/var/log/other.txt", "DEBUG x"); !ok {
+		t.Fatal("DEBUG outside the path glob should NOT be muted")
+	}
+}
+
 func TestMutePrecedesDropUnmatched(t *testing.T) {
 	mutes := []config.MuteSpec{{ID: "h", MatcherSpec: config.MatcherSpec{LineRegex: "X"}}}
 	p, _ := NewPipeline(nil, nil, mutes, true)
