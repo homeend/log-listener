@@ -982,7 +982,7 @@ func (m *model) View() string {
 	if m.height == 0 {
 		return ""
 	}
-	header := headerBg.Width(m.width).Render(" log-listener — q quit · Tab files · Ctrl+G groups · Ctrl+E rend · 1-9 grp · m collapse · Ctrl+P/L cols · Ctrl+R clear · / search · n/p ")
+	header := headerBg.Width(m.width).Render(" log-listener — q quit · Tab files · Ctrl+G groups · Ctrl+E rend · 1-9 grp · m collapse · Ctrl+P/L cols · Ctrl+R clear · / search · n/p · t filter ")
 	contentH := m.contentHeight()
 
 	var body string
@@ -1046,6 +1046,9 @@ func (m *model) renderFooter() string {
 	search := ""
 	if m.searchTerm != "" {
 		search = fmt.Sprintf(" · /%s", m.searchQuery)
+		if m.filterMode {
+			search += " filter"
+		}
 	}
 	return dimStyle.Width(m.width).Render(fmt.Sprintf(" events: %d · %s · col: %d%s · %s%s · files: %d%s ",
 		len(m.lines), pos, m.horizScroll, cols, groupStat, rendStat, len(m.files), search))

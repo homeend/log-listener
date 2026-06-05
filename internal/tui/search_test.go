@@ -526,3 +526,15 @@ func TestCollectVisibleFilterModeOnlyShowsFiltered(t *testing.T) {
 		}
 	}
 }
+
+func TestFooterShowsFilterTag(t *testing.T) {
+	m := seedSearchModel(t, 3, map[int]bool{1: true})
+	m = typeQuery(t, m, "needle")
+	if strings.Contains(stripANSI(m.renderFooter()), "filter") {
+		t.Fatal("filter tag should be absent when filterMode is off")
+	}
+	m.filterMode = true
+	if !strings.Contains(stripANSI(m.renderFooter()), "filter") {
+		t.Fatalf("expected filter tag in footer:\n%s", stripANSI(m.renderFooter()))
+	}
+}
