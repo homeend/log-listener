@@ -125,6 +125,7 @@ type Event struct {
 type Pipeline struct {
 	renderers []*Renderer
 	enabled   []*atomic.Bool
+	mutes     []*MuteRule
 	drop      bool
 }
 
@@ -143,7 +144,13 @@ func NewPipeline(specs []config.RendererSpec, matchers map[string]config.Matcher
 		p.renderers = append(p.renderers, r)
 		p.enabled = append(p.enabled, flag)
 	}
-	_ = mutes // compiled in a later task
+	for _, ms := range mutes {
+		mr, err := compileMute(ms, matchers)
+		if err != nil {
+			return nil, err
+		}
+		p.mutes = append(p.mutes, mr)
+	}
 	return p, nil
 }
 
@@ -153,6 +160,11 @@ func NewPipeline(specs []config.RendererSpec, matchers map[string]config.Matcher
 // matching one (or to raw text, or to drop). Returns ok=false when no
 // renderer matched and the pipeline was configured to drop unmatched lines.
 func (p *Pipeline) Render(now time.Time, group, path, raw string) (Event, bool) {
+	for _, mr := range p.mutes {
+		if mr.Mutes(group, path, raw) {
+			return Event{}, false
+		}
+	}
 	ev := Event{Ts: now, File: path, Group: group, Raw: raw}
 	for i, r := range p.renderers {
 		if !p.enabled[i].Load() {
@@ -205,4 +217,84 @@ func (p *Pipeline) RendererName(i int) string {
 		return ""
 	}
 	return p.renderers[i].Name
+}
+
+// MuteRule drops a line before rendering when its matcher matches and its
+// applies_to scope (group ids + path globs, AND) admits the line.
+type MuteRule struct {
+	id        string
+	matcher   *match.Matcher
+	groups    map[string]bool
+	pathGlobs []string
+}
+
+// Mutes reports whether the rule drops the given line.
+func (mr *MuteRule) Mutes(group, path, line string) bool {
+	if mr.groups != nil && !mr.groups[group] {
+		return false
+	}
+	if len(mr.pathGlobs) > 0 {
+		matched := false
+		for _, g := range mr.pathGlobs {
+			if ok, _ := filepath.Match(g, path); ok {
+				matched = true
+				break
+			}
+			if ok, _ := filepath.Match(g, filepath.Base(path)); ok {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			return false
+		}
+	}
+	_, ok := mr.matcher.Match(path, line)
+	return ok
+}
+
+func inlineEmpty(s config.MatcherSpec) bool {
+	return s.Line == "" && s.LineRegex == "" &&
+		s.Name == "" && s.NameRegex == "" &&
+		s.Path == "" && s.PathRegex == ""
+}
+
+func compileMute(ms config.MuteSpec, matchers map[string]config.MatcherSpec) (*MuteRule, error) {
+	id := ms.ID
+	if id == "" {
+		id = "(unnamed)"
+	}
+	hasRef := ms.Matcher != ""
+	hasInline := !inlineEmpty(ms.MatcherSpec)
+	if hasRef == hasInline {
+		return nil, fmt.Errorf("mute %q: set exactly one of matcher (reference) or inline matcher fields", id)
+	}
+
+	var spec match.Spec
+	if hasRef {
+		cm, ok := matchers[ms.Matcher]
+		if !ok {
+			return nil, fmt.Errorf("mute %q: unknown matcher %q", id, ms.Matcher)
+		}
+		spec = toMatchSpec(cm)
+	} else {
+		spec = toMatchSpec(ms.MatcherSpec)
+	}
+
+	m, err := match.Compile(spec)
+	if err != nil {
+		return nil, fmt.Errorf("mute %q: %w", id, err)
+	}
+
+	mr := &MuteRule{id: ms.ID, matcher: m}
+	if ms.AppliesTo != nil {
+		if len(ms.AppliesTo.Groups) > 0 {
+			mr.groups = make(map[string]bool, len(ms.AppliesTo.Groups))
+			for _, g := range ms.AppliesTo.Groups {
+				mr.groups[g] = true
+			}
+		}
+		mr.pathGlobs = append([]string(nil), ms.AppliesTo.Paths...)
+	}
+	return mr, nil
 }

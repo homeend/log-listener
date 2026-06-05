@@ -358,3 +358,70 @@ func TestRendererUnknownMatcherRef(t *testing.T) {
 		t.Fatal("expected error for unknown matcher reference")
 	}
 }
+
+func TestMuteDropsLine(t *testing.T) {
+	matchers := map[string]config.MatcherSpec{"health": {LineRegex: "GET /health"}}
+	mutes := []config.MuteSpec{{ID: "h", Matcher: "health"}}
+	p, err := NewPipeline(nil, matchers, mutes, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := p.Render(time.Time{}, "g", "/f", "GET /health 200"); ok {
+		t.Fatal("muted line should be dropped (ok=false)")
+	}
+	if _, ok := p.Render(time.Time{}, "g", "/f", "GET /api 200"); !ok {
+		t.Fatal("non-muted line should pass through")
+	}
+}
+
+func TestMuteInlineFields(t *testing.T) {
+	mutes := []config.MuteSpec{{ID: "dbg", MatcherSpec: config.MatcherSpec{Line: "DEBUG"}}}
+	p, _ := NewPipeline(nil, nil, mutes, false)
+	if _, ok := p.Render(time.Time{}, "g", "/f", "DEBUG"); ok {
+		t.Fatal("inline mute should drop exact line")
+	}
+	if _, ok := p.Render(time.Time{}, "g", "/f", "DEBUG: x"); !ok {
+		t.Fatal("exact-literal mute must not drop substring")
+	}
+}
+
+func TestMuteAppliesToScopesByGroup(t *testing.T) {
+	mutes := []config.MuteSpec{{
+		ID:          "dbg",
+		MatcherSpec: config.MatcherSpec{LineRegex: "DEBUG"},
+		AppliesTo:   &config.AppliesToSpec{Groups: []string{"app"}},
+	}}
+	p, _ := NewPipeline(nil, nil, mutes, false)
+	if _, ok := p.Render(time.Time{}, "app", "/f", "DEBUG x"); ok {
+		t.Fatal("DEBUG in group app should be muted")
+	}
+	if _, ok := p.Render(time.Time{}, "other", "/f", "DEBUG x"); !ok {
+		t.Fatal("DEBUG outside group app should NOT be muted")
+	}
+}
+
+func TestMutePrecedesDropUnmatched(t *testing.T) {
+	mutes := []config.MuteSpec{{ID: "h", MatcherSpec: config.MatcherSpec{LineRegex: "X"}}}
+	p, _ := NewPipeline(nil, nil, mutes, true)
+	if _, ok := p.Render(time.Time{}, "g", "/f", "X"); ok {
+		t.Fatal("muted line dropped")
+	}
+}
+
+func TestMuteRequiresExactlyOneOfRefOrInline(t *testing.T) {
+	both := []config.MuteSpec{{ID: "x", Matcher: "m", MatcherSpec: config.MatcherSpec{Line: "y"}}}
+	if _, err := NewPipeline(nil, map[string]config.MatcherSpec{"m": {Line: "z"}}, both, false); err == nil {
+		t.Fatal("expected error: both ref and inline set")
+	}
+	neither := []config.MuteSpec{{ID: "x"}}
+	if _, err := NewPipeline(nil, nil, neither, false); err == nil {
+		t.Fatal("expected error: neither ref nor inline set")
+	}
+}
+
+func TestMuteUnknownMatcherRef(t *testing.T) {
+	mutes := []config.MuteSpec{{ID: "x", Matcher: "ghost"}}
+	if _, err := NewPipeline(nil, nil, mutes, false); err == nil {
+		t.Fatal("expected error for unknown matcher reference")
+	}
+}
