@@ -139,8 +139,10 @@ func parseRenderCall(src string, i int) (group, end int, err error) {
 
 // Execute renders the template against the given regex captures. captures[0]
 // is the full match; captures[1..N] are the parenthesized groups. Out-of-range
-// $N references expand to empty string.
-func (t *Template) Execute(captures []string) []Part {
+// $N references expand to empty string. ok=false means a json()/xml() call
+// could not parse its capture — the caller should treat the renderer as not
+// matching and fall through.
+func (t *Template) Execute(captures []string) ([]Part, bool) {
 	var parts []Part
 	var text strings.Builder
 	flushText := func() {
@@ -163,12 +165,20 @@ func (t *Template) Execute(captures []string) []Part {
 			text.WriteString(capture(p.group))
 		case partRenderJSON:
 			flushText()
-			parts = append(parts, renderJSON(capture(p.group)))
+			part, ok := renderJSON(capture(p.group))
+			if !ok {
+				return nil, false
+			}
+			parts = append(parts, part)
 		case partRenderXML:
 			flushText()
-			parts = append(parts, renderXML(capture(p.group)))
+			part, ok := renderXML(capture(p.group))
+			if !ok {
+				return nil, false
+			}
+			parts = append(parts, part)
 		}
 	}
 	flushText()
-	return parts
+	return parts, true
 }

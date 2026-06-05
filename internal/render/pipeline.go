@@ -177,9 +177,14 @@ func (p *Pipeline) Render(now time.Time, group, path, raw string) (Event, bool) 
 		if caps == nil {
 			continue
 		}
+		parts, ok := r.template.Execute(caps)
+		if !ok {
+			// A json()/xml() call couldn't parse — the renderer doesn't apply.
+			continue
+		}
 		ev.Renderer = r.Name
 		ev.Captures = caps
-		ev.Rendered = r.template.Execute(caps)
+		ev.Rendered = parts
 		return ev, true
 	}
 	if p.drop {

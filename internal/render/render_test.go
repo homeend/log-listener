@@ -13,7 +13,7 @@ func TestParseTemplateBasic(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	parts := tpl.Execute([]string{"FULL", "2026-05-28", "ERROR", `{"u":"bob"}`})
+	parts, _ := tpl.Execute([]string{"FULL", "2026-05-28", "ERROR", `{"u":"bob"}`})
 	if len(parts) != 2 {
 		t.Fatalf("want 2 parts, got %d: %+v", len(parts), parts)
 	}
@@ -31,7 +31,7 @@ func TestParseTemplateBasic(t *testing.T) {
 
 func TestParseTemplateEscapes(t *testing.T) {
 	tpl, _ := ParseTemplate(`pre\\$1\tlit$$end`)
-	parts := tpl.Execute([]string{"_", "X"})
+	parts, _ := tpl.Execute([]string{"_", "X"})
 	if len(parts) != 1 || parts[0].Type != "text" {
 		t.Fatalf("parts: %+v", parts)
 	}
@@ -46,7 +46,7 @@ func TestParseTemplateXMLCall(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	parts := tpl.Execute([]string{"_", `<a><b>1</b></a>`})
+	parts, _ := tpl.Execute([]string{"_", `<a><b>1</b></a>`})
 	if len(parts) != 1 || parts[0].Type != "xml" {
 		t.Fatalf("parts: %+v", parts)
 	}
@@ -167,25 +167,23 @@ func TestPipelineUnmatchedFallsThroughAsText(t *testing.T) {
 	}
 }
 
-func TestJSONRendererInvalidFallsBackToText(t *testing.T) {
+func TestJSONRendererInvalidReportsNotOK(t *testing.T) {
 	tpl, _ := ParseTemplate(`json($1)`)
-	parts := tpl.Execute([]string{"_", "not-json"})
-	if len(parts) != 1 || parts[0].Type != "text" {
-		t.Fatalf("invalid json must fall back to text: %+v", parts)
+	if _, ok := tpl.Execute([]string{"_", "not-json"}); ok {
+		t.Fatal("unparseable JSON must make Execute report ok=false")
 	}
 }
 
-func TestXMLRendererInvalidFallsBackToText(t *testing.T) {
+func TestXMLRendererInvalidReportsNotOK(t *testing.T) {
 	tpl, _ := ParseTemplate(`xml($1)`)
-	parts := tpl.Execute([]string{"_", "<broken"})
-	if len(parts) != 1 || parts[0].Type != "text" {
-		t.Fatalf("invalid xml must fall back to text: %+v", parts)
+	if _, ok := tpl.Execute([]string{"_", "<broken"}); ok {
+		t.Fatal("unparseable XML must make Execute report ok=false")
 	}
 }
 
 func TestCaptureOutOfRange(t *testing.T) {
 	tpl, _ := ParseTemplate(`pre-$5-post`)
-	parts := tpl.Execute([]string{"only", "one"})
+	parts, _ := tpl.Execute([]string{"only", "one"})
 	if len(parts) != 1 || parts[0].Type != "text" {
 		t.Fatalf("expected single text part: %+v", parts)
 	}
@@ -439,5 +437,40 @@ func TestMuteUnknownMatcherRef(t *testing.T) {
 	mutes := []config.MuteSpec{{ID: "x", Matcher: "ghost"}}
 	if _, err := NewPipeline(nil, nil, mutes, false); err == nil {
 		t.Fatal("expected error for unknown matcher reference")
+	}
+}
+
+func TestPipelineRendererFallsThroughOnUnparseableJSON(t *testing.T) {
+	specs := []config.RendererSpec{
+		{Name: "trailing-json", LineRegex: `^(.*?\s)(\{.+\})\s*$`, Template: `$1\njson($2)`},
+	}
+	p, err := NewPipeline(specs, nil, nil, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ev, ok := p.Render(time.Now(), "g", "/idea.log", "msg: {DB=C:\\x}")
+	if !ok {
+		t.Fatal("non-drop mode must still emit the raw line")
+	}
+	if ev.Renderer != "" {
+		t.Fatalf("renderer should fall through on unparseable JSON, got %q", ev.Renderer)
+	}
+	if len(ev.Rendered) != 1 || ev.Rendered[0].Type != "text" ||
+		ev.Rendered[0].Value.(string) != "msg: {DB=C:\\x}" {
+		t.Fatalf("expected raw passthrough, got %+v", ev.Rendered)
+	}
+	ev, ok = p.Render(time.Now(), "g", "/idea.log", `msg: {"a":1}`)
+	if !ok || ev.Renderer != "trailing-json" {
+		t.Fatalf("valid JSON should render, got ok=%v renderer=%q", ok, ev.Renderer)
+	}
+}
+
+func TestPipelineUnparseableJSONDroppedWhenDropUnmatched(t *testing.T) {
+	specs := []config.RendererSpec{
+		{Name: "trailing-json", LineRegex: `^(.*?\s)(\{.+\})\s*$`, Template: `$1\njson($2)`},
+	}
+	p, _ := NewPipeline(specs, nil, nil, true)
+	if _, ok := p.Render(time.Now(), "g", "/idea.log", "msg: {DB=x}"); ok {
+		t.Fatal("regex-matched but unparseable render-call must drop under drop_unmatched")
 	}
 }
