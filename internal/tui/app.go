@@ -471,6 +471,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.tailMode = true
 			m.horizScroll = 0
 			m.searchHit = -1
+			// Filtering an emptied buffer would render blank; drop it.
+			m.filterMode = false
 		case "1", "2", "3", "4", "5", "6", "7", "8", "9":
 			idx := int(msg.String()[0] - '1')
 			if idx < len(m.groupOrder) {
@@ -930,11 +932,7 @@ func (m *model) filteredIndices() []int {
 		n := len(e.lines)
 		matched := false
 		for _, dl := range e.lines {
-			hay := dl.body
-			if dl.isBlock {
-				hay = stripANSI(hay)
-			}
-			if strings.Contains(strings.ToLower(hay), m.searchTerm) {
+			if strings.Contains(strings.ToLower(matchHaystack(dl)), m.searchTerm) {
 				matched = true
 				break
 			}

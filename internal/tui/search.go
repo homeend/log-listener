@@ -162,6 +162,17 @@ func (m *model) handleWrapPromptKey(msg tea.KeyMsg) tea.Model {
 	return m
 }
 
+// matchHaystack returns the searchable text of dl: block bodies are
+// dim-styled, so ANSI is stripped first to keep matching consistent with the
+// plain-text heads. Shared by findHit, filteredIndices, and hitColumn so the
+// match surface can't drift between them.
+func matchHaystack(dl displayLine) string {
+	if dl.isBlock {
+		return stripANSI(dl.body)
+	}
+	return dl.body
+}
+
 // findHit returns the absolute index of the next event matching
 // m.searchTerm, walking from `start` in direction `dir` (+1 forward,
 // -1 backward). Returns -1 if no match exists in that range.
@@ -190,14 +201,7 @@ func (m *model) findHit(start, dir int) int {
 		if !m.lineEnabled(ev) {
 			continue
 		}
-		// Body for blocks is dim-styled; the search term is plain text,
-		// so strip ANSI before matching to keep results consistent
-		// across head and block lines.
-		hay := ev.body
-		if ev.isBlock {
-			hay = stripANSI(hay)
-		}
-		if strings.Contains(strings.ToLower(hay), m.searchTerm) {
+		if strings.Contains(strings.ToLower(matchHaystack(ev)), m.searchTerm) {
 			return i
 		}
 	}
@@ -255,10 +259,7 @@ func (m *model) hitColumn(idx int) int {
 		return -1
 	}
 	dl := m.lines[idx]
-	body := dl.body
-	if dl.isBlock {
-		body = stripANSI(body)
-	}
+	body := matchHaystack(dl)
 	bi := strings.Index(strings.ToLower(body), m.searchTerm)
 	if bi < 0 {
 		return -1

@@ -538,3 +538,58 @@ func TestFooterShowsFilterTag(t *testing.T) {
 		t.Fatalf("expected filter tag in footer:\n%s", stripANSI(m.renderFooter()))
 	}
 }
+
+func TestJumpToHitCentersInFilterMode(t *testing.T) {
+	m := newModel(1000)
+	m.groupOrder = []string{"g"}
+	m.groupEnabled["g"] = true
+	// 20 single-line entries; even indices match. m.lines idx == entry idx.
+	for i := 0; i < 20; i++ {
+		body := fmt.Sprintf("line %d", i)
+		if i%2 == 0 {
+			body += " needle"
+		}
+		m.appendEvent(render.Event{Group: "g", File: "/x.log",
+			Rendered: []render.Part{{Type: "text", Value: body}}})
+	}
+	m2, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 6}) // contentHeight = 4
+	m = m2.(*model)
+	m = typeQuery(t, m, "needle")
+	m.filterMode = true
+	m.jumpToHit(10) // fil = [0,2,...,18]; pos(10)=5; top=5-4/2=3 -> fil[3]=6
+	if m.streamTop != 6 {
+		t.Fatalf("filter-mode centering: streamTop=%d want 6 (fil=%v)", m.streamTop, m.filteredIndices())
+	}
+}
+
+func TestHitColumnWithFilePrefix(t *testing.T) {
+	m := newModel(1000)
+	m.groupOrder = []string{"g"}
+	m.groupEnabled["g"] = true
+	m.showGroup = false
+	m.showFile = true // "x.log: " = 7 columns
+	m.appendEvent(render.Event{Group: "g", File: "/dir/x.log",
+		Rendered: []render.Part{{Type: "text", Value: "NEEDLE"}}})
+	m2, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 10})
+	m = m2.(*model)
+	m.searchTerm = "needle"
+	if got := m.hitColumn(0); got != 7 {
+		t.Fatalf("hitColumn with file prefix = %d, want 7", got)
+	}
+}
+
+func TestHitColumnWithGroupAndFilePrefix(t *testing.T) {
+	m := newModel(1000)
+	m.groupOrder = []string{"g"}
+	m.groupEnabled["g"] = true
+	m.showGroup = true // "[g] " = 4
+	m.showFile = true  // "x.log: " = 7
+	m.appendEvent(render.Event{Group: "g", File: "/dir/x.log",
+		Rendered: []render.Part{{Type: "text", Value: "NEEDLE"}}})
+	m2, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 10})
+	m = m2.(*model)
+	m.searchTerm = "needle"
+	if got := m.hitColumn(0); got != 11 {
+		t.Fatalf("hitColumn group+file = %d, want 11", got)
+	}
+}
