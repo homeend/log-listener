@@ -320,6 +320,57 @@ func TestLoadNoYAMLHasEmptySourcePath(t *testing.T) {
 	}
 }
 
+func TestLoadCarriesMatchersAndMute(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "log-listener.yml")
+	yaml := `
+directories:
+  - id: app
+    paths: ["/var/log"]
+matchers:
+  health:
+    line_regex: 'GET /health'
+  idea-file:
+    name: idea.log
+mute:
+  - id: drop-health
+    matcher: health
+  - id: silence-debug
+    line: DEBUG
+    applies_to: { groups: [app] }
+renderers:
+  - name: idea-json
+    matcher: idea-file
+    template: 'json($1)'
+`
+	if err := os.WriteFile(path, []byte(yaml), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := loadWithFS([]string{"--config", path}, time.Now(), defaultHomeDir)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if len(cfg.Matchers) != 2 || cfg.Matchers["health"].LineRegex != "GET /health" {
+		t.Fatalf("matchers not carried: %+v", cfg.Matchers)
+	}
+	if cfg.Matchers["idea-file"].Name != "idea.log" {
+		t.Fatalf("idea-file matcher: %+v", cfg.Matchers["idea-file"])
+	}
+	if len(cfg.MuteSpecs) != 2 {
+		t.Fatalf("mute specs = %d, want 2", len(cfg.MuteSpecs))
+	}
+	if cfg.MuteSpecs[0].ID != "drop-health" || cfg.MuteSpecs[0].Matcher != "health" {
+		t.Fatalf("mute[0] = %+v", cfg.MuteSpecs[0])
+	}
+	if cfg.MuteSpecs[1].Line != "DEBUG" || cfg.MuteSpecs[1].AppliesTo == nil ||
+		len(cfg.MuteSpecs[1].AppliesTo.Groups) != 1 {
+		t.Fatalf("mute[1] = %+v", cfg.MuteSpecs[1])
+	}
+	if len(cfg.RendererSpecs) != 1 || cfg.RendererSpecs[0].Matcher != "idea-file" {
+		t.Fatalf("renderer matcher not carried: %+v", cfg.RendererSpecs)
+	}
+}
+
 func TestLoadYAMLDisabledAndOff(t *testing.T) {
 	dir := t.TempDir()
 	yml := writeYAML(t, dir, "log.yml", `

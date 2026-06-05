@@ -21,6 +21,7 @@ type RendererSpec struct {
 	Name      string
 	LineRegex string
 	Template  string
+	Matcher   string // optional: name of a matcher in the matchers library
 	AppliesTo *AppliesTo
 	// StartOff is the soft-disable flag from YAML's `off: true`. The
 	// renderer is registered in the pipeline but its atomic-enabled flag
@@ -41,12 +42,14 @@ type AppliesTo struct {
 // File is the YAML config schema, shared by the loader (readYAMLFile /
 // mergeYAMLInto) and the emitter (emit.go). One struct set = no read/write drift.
 type File struct {
-	Directories      []DirGroup  `yaml:"directories,omitempty"`
-	Files            []FileGroup `yaml:"files,omitempty"`
-	GlobalFileFilter *Filter     `yaml:"global_file_filter,omitempty"`
-	Renderers        []Renderer  `yaml:"renderers,omitempty"`
-	Output           *Output     `yaml:"output,omitempty"`
-	TUI              *TUI        `yaml:"tui,omitempty"`
+	Directories      []DirGroup             `yaml:"directories,omitempty"`
+	Files            []FileGroup            `yaml:"files,omitempty"`
+	GlobalFileFilter *Filter                `yaml:"global_file_filter,omitempty"`
+	Matchers         map[string]MatcherSpec `yaml:"matchers,omitempty"`
+	Mute             []MuteSpec             `yaml:"mute,omitempty"`
+	Renderers        []Renderer             `yaml:"renderers,omitempty"`
+	Output           *Output                `yaml:"output,omitempty"`
+	TUI              *TUI                   `yaml:"tui,omitempty"`
 }
 
 type DirGroup struct {
@@ -77,8 +80,9 @@ type Filter struct {
 
 type Renderer struct {
 	Name      string         `yaml:"name"`
-	LineRegex string         `yaml:"line_regex"`
+	LineRegex string         `yaml:"line_regex,omitempty"`
 	Template  string         `yaml:"template"`
+	Matcher   string         `yaml:"matcher,omitempty"`
 	AppliesTo *AppliesToSpec `yaml:"applies_to,omitempty"`
 	Disabled  bool           `yaml:"disabled,omitempty"`
 	Off       bool           `yaml:"off,omitempty"`
@@ -89,6 +93,28 @@ type Renderer struct {
 type AppliesToSpec struct {
 	Groups []string `yaml:"groups,omitempty"`
 	Paths  []string `yaml:"paths,omitempty"`
+}
+
+// MatcherSpec is a reusable matcher definition from the `matchers:` map. For
+// each dimension set either the literal key or the *_regex key.
+type MatcherSpec struct {
+	Line      string `yaml:"line,omitempty"`
+	LineRegex string `yaml:"line_regex,omitempty"`
+	Name      string `yaml:"name,omitempty"`
+	NameRegex string `yaml:"name_regex,omitempty"`
+	Path      string `yaml:"path,omitempty"`
+	PathRegex string `yaml:"path_regex,omitempty"`
+}
+
+// MuteSpec is one entry in the `mute:` list. It sets exactly one of `matcher`
+// (a named reference) or inline matcher fields (embedded MatcherSpec). `id` is
+// an optional identity used in diagnostic messages; it is named `id` (not
+// `name`) to avoid colliding with the matcher's inline `name` field.
+type MuteSpec struct {
+	ID          string         `yaml:"id,omitempty"`
+	Matcher     string         `yaml:"matcher,omitempty"`
+	MatcherSpec `yaml:",inline"`
+	AppliesTo   *AppliesToSpec `yaml:"applies_to,omitempty"`
 }
 
 type Output struct {
@@ -283,6 +309,7 @@ func mergeYAMLInto(cfg *Config, yc *File, now time.Time) error {
 			Name:      yr.Name,
 			LineRegex: yr.LineRegex,
 			Template:  yr.Template,
+			Matcher:   yr.Matcher,
 			StartOff:  yr.Off,
 		}
 		if yr.AppliesTo != nil {
@@ -293,6 +320,16 @@ func mergeYAMLInto(cfg *Config, yc *File, now time.Time) error {
 		}
 		cfg.RendererSpecs = append(cfg.RendererSpecs, spec)
 	}
+
+	// matchers / mute — YAML-only, carried through verbatim (validated at
+	// pipeline build). Map decoding already rejects duplicate matcher names.
+	if yc.Matchers != nil {
+		cfg.Matchers = make(map[string]MatcherSpec, len(yc.Matchers))
+		for k, v := range yc.Matchers {
+			cfg.Matchers[k] = v
+		}
+	}
+	cfg.MuteSpecs = append(cfg.MuteSpecs, yc.Mute...)
 
 	// output
 	if yc.Output != nil {

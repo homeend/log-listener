@@ -35,6 +35,8 @@ type Config struct {
 	DropUnmatched bool
 	TUIScrollback int // 0 = use the default (10000); set by tui.scrollback in YAML
 	RendererSpecs []RendererSpec
+	Matchers      map[string]MatcherSpec
+	MuteSpecs     []MuteSpec
 
 	indexDir    map[string]int
 	indexFile   map[string]int
