@@ -325,6 +325,44 @@ func TestSearchEmptyEnterNoPriorTermClears(t *testing.T) {
 	}
 }
 
+func TestSearchUpDownNavigateHits(t *testing.T) {
+	m := seedSearchModel(t, 6, map[int]bool{1: true, 3: true, 5: true})
+	m = typeQuery(t, m, "needle") // tail-mode commit lands on the last hit (5)
+	if m.searchHit < 0 {
+		t.Fatal("expected a current hit after commit")
+	}
+	m2, _ := m.Update(tea.KeyMsg{Type: tea.KeyUp})
+	m = m2.(*model)
+	prev := m.searchHit
+	if prev >= 5 {
+		t.Fatalf("Up should move to an earlier hit, got %d", prev)
+	}
+	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyDown})
+	m = m2.(*model)
+	if m.searchHit <= prev {
+		t.Fatalf("Down should advance to a later hit, got %d (prev %d)", m.searchHit, prev)
+	}
+}
+
+func TestUpDownScrollWhenNoSearch(t *testing.T) {
+	m := newModel(1000)
+	m.groupOrder = []string{"g"}
+	m.groupEnabled["g"] = true
+	for i := 0; i < 50; i++ {
+		m.appendEvent(render.Event{Group: "g", File: "/x.log",
+			Rendered: []render.Part{{Type: "text", Value: fmt.Sprintf("line %d", i)}}})
+	}
+	m2, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 20})
+	m = m2.(*model)
+	m.tailMode = false
+	m.streamTop = 20
+	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyUp})
+	m = m2.(*model)
+	if m.streamTop != 19 {
+		t.Fatalf("Up with no active search should scroll one line: streamTop=%d want 19", m.streamTop)
+	}
+}
+
 // TestClipLinePreservesANSIOnHorizontalScroll guards the bug where panning
 // Left/Right wiped the search highlight (and all color): horizontal scroll
 // used to stripANSI the whole line before slicing, discarding every escape

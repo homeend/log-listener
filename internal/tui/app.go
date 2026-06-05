@@ -475,6 +475,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.filesScroll > 0 {
 					m.filesScroll--
 				}
+			} else if m.searchTerm != "" {
+				m.searchPrev()
 			} else {
 				m.unstickFromTail()
 				m.streamTop--
@@ -487,6 +489,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.filesScroll < len(m.files)-1 {
 					m.filesScroll++
 				}
+			} else if m.searchTerm != "" {
+				m.searchNext()
 			} else if !m.tailMode {
 				m.streamTop++
 				m.maybeReStick()
