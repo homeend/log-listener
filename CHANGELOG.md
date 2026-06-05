@@ -7,6 +7,17 @@ and this project adheres to phased delivery per `PLAN.md`.
 
 ## [Unreleased]
 
+### TUI search: filter, hit navigation, auto-scroll, repeat
+- **`t` filter**: show only entries containing the search term; a match inside
+  a rendered JSON/XML block shows the whole block alongside its source line
+  (whole-entry filtering). A `filter` tag appears in the footer while active.
+- **Up/Down navigate hits**: while a term is active, Up/Down (and `k`/`j`) jump
+  to the previous/next hit; PgUp/PgDn and Ctrl+arrows still scroll.
+- **Horizontal auto-scroll**: jumping to a hit pans the view so an off-screen
+  matched term becomes visible.
+- **Repeat search**: `/` then Enter re-runs the last committed term, which is
+  remembered across clears.
+
 ### Matchers and mute
 - **Reusable matchers**: a global `matchers:` library of named predicates over
   a log line's content, the source file's basename, and its full path. Each

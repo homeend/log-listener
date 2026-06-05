@@ -579,14 +579,29 @@ background; the **current hit** is marked with a brighter red
 background. The viewport jumps to (and centers) the current hit row.
 
 Use **`n`** to walk forward through hits and **`p`** to walk
-backward. When there are no further hits in the requested direction,
-the footer asks `No more hits — wrap to top/bottom? (y/n)`. Press
-**y** to wrap, **n** or **Esc** to dismiss without moving.
+backward. While a search term is active, **↑/↓** (and **`k`/`j`**) also
+jump to the previous/next hit — `PgUp`/`PgDn` and `Ctrl/Shift+arrows`
+still scroll, as an escape hatch. When there are no further hits in the
+requested direction, the footer asks
+`No more hits — wrap to top/bottom? (y/n)`. Press **y** to wrap, **n**
+or **Esc** to dismiss without moving. Jumping to a hit also pans the
+view horizontally when the matched term is off-screen, so the term is
+always brought into view.
+
+Press **`t`** to toggle **filter mode**: the stream collapses to only
+the entries that contain the term. Filtering is whole-entry — if the
+match is inside a rendered JSON/XML block, the entire block is shown
+alongside its source line, so matched structured content is never
+truncated. The footer shows a `filter` tag while it's on.
+
+Pressing **`/`** then **Enter** with nothing typed re-runs the last
+search term; the last term is remembered even after you clear the
+active search.
 
 Press **Esc** with no overlay open to clear the active search (term
-goes away, highlights vanish). Pressing **End** / **G** to return to
-tail mode keeps the search term active, so the next **n** continues
-walking forward.
+goes away, highlights vanish, filter mode turns off). Pressing **End**
+/ **G** to return to tail mode keeps the search term active, so the
+next **n** continues walking forward.
 
 ### Tail mode vs browsing
 
@@ -616,8 +631,9 @@ browsing, so you can see at a glance whether the view is live.
 | **`/`**             | **Start a search. Type the term, Enter to find, Esc to cancel.** |
 | **`n`**             | **Jump to the next hit (prompts to wrap if none below).** |
 | **`p`**             | **Jump to the previous hit (prompts to wrap if none above).** |
-| ↑ / `k`             | Scroll one line up (unsticks tail).                   |
-| ↓ / `j`             | Scroll one line down.                                 |
+| **`t`**             | **Toggle filter mode: show only entries containing the search term (whole JSON/XML blocks kept).** |
+| ↑ / `k`             | Prev hit when searching; otherwise scroll one line up (unsticks tail). |
+| ↓ / `j`             | Next hit when searching; otherwise scroll one line down. |
 | Ctrl+↑ / Shift+↑    | Scroll up 10 lines.                                   |
 | Ctrl+↓ / Shift+↓    | Scroll down 10 lines.                                 |
 | PgUp / Ctrl+B       | Scroll up by one screen.                              |
@@ -634,8 +650,8 @@ browsing, so you can see at a glance whether the view is live.
 | **`m`**             | **Collapse multiline entries to one line + `[...]`.** |
 
 When you pan horizontally (`←` / `→`), the visible window is clipped from
-the left and ANSI styling is dropped for the scrolled portion — that's a
-tradeoff to keep the implementation simple and reliable.
+the left while ANSI styling (colors and the search highlight) is preserved
+across the scrolled portion.
 
 The stream view is a bounded ring buffer of pre-rendered display lines
 (default 10000, configurable via `tui.scrollback` in YAML). Older lines
