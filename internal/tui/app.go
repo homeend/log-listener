@@ -17,43 +17,14 @@ import (
 	"log-listener/internal/render"
 )
 
-// ansiRE matches CSI / OSC escape sequences emitted by lipgloss. Good enough
-// for stripping styling when horizontal scroll is active — we don't need to
-// preserve colors in the scrolled view, just the underlying text.
+// ansiRE matches CSI / OSC escape sequences emitted by lipgloss. Used both
+// to strip styling (stripANSI) and to walk it while preserving it during
+// horizontal-scroll slicing (clipANSIWindow).
 var ansiRE = regexp.MustCompile(`\x1b\[[0-9;]*[A-Za-z]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)`)
 
 func stripANSI(s string) string { return ansiRE.ReplaceAllString(s, "") }
 
 func runeLen(s string) int { return utf8.RuneCountInString(s) }
-
-// runeSliceLeft returns s with the first n runes dropped.
-func runeSliceLeft(s string, n int) string {
-	if n <= 0 {
-		return s
-	}
-	for i := range s {
-		if n == 0 {
-			return s[i:]
-		}
-		n--
-	}
-	return ""
-}
-
-// runeTruncate returns the first n runes of s.
-func runeTruncate(s string, n int) string {
-	if n <= 0 {
-		return ""
-	}
-	count := 0
-	for i := range s {
-		if count == n {
-			return s[:i]
-		}
-		count++
-	}
-	return s
-}
 
 // Note: an earlier version had init() calls into lipgloss.SetColorProfile
 // and SetHasDarkBackground. Removed — those weren't needed (the
@@ -1248,35 +1219,81 @@ func (m *model) blankRows(n int) string {
 	return strings.Join(rows, "\n")
 }
 
-// clipLine applies horizontal scroll + width clamping to a single rendered
-// line. Two responsibilities, in this order:
+// clipLine fits a rendered line into exactly one terminal row of width
+// m.width. Two responsibilities:
 //
-//  1. If horizScroll > 0, strip ANSI and slice runewise to expose the
-//     scrolled-right portion. Otherwise the styled line is kept verbatim.
+//  1. Expose the horizontal window [horizScroll, horizScroll+width) and
+//     truncate anything past the right edge. A row must never exceed the
+//     terminal width — an over-wide row wraps, overflows the viewport, and
+//     scrolls the header off the top (the vanishing-header glitch, hit most
+//     often when a wide rendered-JSON block sits at the top during
+//     PgUp/PgDn or search).
 //  2. Pad with trailing spaces to exactly m.width so the terminal repaints
-//     the entire row — without this, switching to a shorter line during
+//     the whole row — without this, switching to a shorter line during
 //     PgUp/PgDn leaves the previous row's tail visible (the "ghost row"
 //     glitch the user reported).
 //
-// visW is the unstyled visual width of the line. Callers compute it once
-// in renderDisplayLine so we don't need stripANSI on the hot path.
+// Slicing is ANSI-aware: escape sequences (colors, the search-term
+// highlight) are zero-width and copied through, so styling survives both
+// horizontal scroll and right-edge truncation.
+//
+// visW is the unstyled visual width of the line. Callers compute it once in
+// renderDisplayLine, letting the common case (no scroll, fits the width)
+// skip the per-rune ANSI walk entirely.
 func (m *model) clipLine(line string, visW int) string {
 	if m.width <= 0 {
 		return line
 	}
-	if m.horizScroll == 0 {
-		if visW >= m.width {
-			return line
-		}
+	if m.horizScroll == 0 && visW <= m.width {
 		return line + strings.Repeat(" ", m.width-visW)
 	}
-	plain := stripANSI(line)
-	plain = runeSliceLeft(plain, m.horizScroll)
-	plain = runeTruncate(plain, m.width)
-	if w := runeLen(plain); w < m.width {
-		plain += strings.Repeat(" ", m.width-w)
+	return clipANSIWindow(line, m.horizScroll, m.width)
+}
+
+// clipANSIWindow returns the horizontal window [skip, skip+width) of line,
+// measured in visible runes, with all ANSI escape sequences preserved.
+// Escape sequences are zero-width: they're copied verbatim wherever they
+// fall, so a styled span that straddles the left edge keeps its opening
+// code and one truncated at the right edge is closed by a trailing reset
+// (added so an open style can't bleed into the trailing pad). The result is
+// right-padded with spaces to exactly width.
+func clipANSIWindow(line string, skip, width int) string {
+	if width <= 0 {
+		return ""
 	}
-	return plain
+	spans := ansiRE.FindAllStringIndex(line, -1)
+	var sb strings.Builder
+	styled := false
+	visible, emitted := 0, 0
+	si, i := 0, 0
+	for i < len(line) {
+		if si < len(spans) && spans[si][0] == i {
+			// Escape sequence at the cursor — copy verbatim, zero width.
+			sb.WriteString(line[spans[si][0]:spans[si][1]])
+			styled = true
+			i = spans[si][1]
+			si++
+			continue
+		}
+		_, sz := utf8.DecodeRuneInString(line[i:])
+		if visible >= skip {
+			if emitted >= width {
+				break // past the right edge
+			}
+			sb.WriteString(line[i : i+sz])
+			emitted++
+		}
+		visible++
+		i += sz
+	}
+	out := sb.String()
+	if styled {
+		out += "\x1b[0m"
+	}
+	if emitted < width {
+		out += strings.Repeat(" ", width-emitted)
+	}
+	return out
 }
 
 func (m *model) renderFiles(rows int) string {

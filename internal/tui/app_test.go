@@ -405,6 +405,39 @@ func TestModelScrollbackTrimAdjustsStreamTop(t *testing.T) {
 	}
 }
 
+// TestStreamRowsNeverExceedWidth guards the bug where the header bar
+// vanished while browsing (PgUp/PgDn or search) and the top row was a wide
+// rendered-JSON block. clipLine returned over-wide rows verbatim at
+// horizScroll==0, so the terminal wrapped them, overflowed the viewport,
+// and scrolled the header off the top. No rendered stream row may exceed
+// the terminal width.
+func TestStreamRowsNeverExceedWidth(t *testing.T) {
+	m := newModel(1000)
+	m.groupOrder = []string{"g"}
+	m.groupEnabled["g"] = true
+	m.appendEvent(render.Event{
+		Group: "g", File: "/x.log",
+		Rendered: []render.Part{
+			{Type: "text", Value: "head line"},
+			{Type: "json", Value: map[string]any{
+				"averylongkeyname": strings.Repeat("v", 200)}},
+		},
+	})
+	m2, _ := m.Update(tea.WindowSizeMsg{Width: 40, Height: 10})
+	m = m2.(*model)
+	// Browse from the very top so the wide JSON block row is on screen.
+	m.tailMode = false
+	m.streamTop = 0
+
+	body := m.renderStream(m.contentHeight())
+	for i, ln := range strings.Split(body, "\n") {
+		if w := runeLen(stripANSI(ln)); w > m.width {
+			t.Fatalf("stream row %d width %d exceeds terminal width %d: %q",
+				i, w, m.width, stripANSI(ln))
+		}
+	}
+}
+
 func TestModelHorizontalScroll(t *testing.T) {
 	m := newModel(100)
 	// A line wider than the viewport

@@ -291,3 +291,35 @@ func TestModelSearchHighlightInView(t *testing.T) {
 		t.Fatalf("highlighted view missing 'needle':\n%s", view)
 	}
 }
+
+// TestClipLinePreservesANSIOnHorizontalScroll guards the bug where panning
+// Left/Right wiped the search highlight (and all color): horizontal scroll
+// used to stripANSI the whole line before slicing, discarding every escape
+// sequence. clipLine must now keep the styling that falls in the window.
+//
+// Tested at the clipLine layer because lipgloss renders with an Ascii (no
+// color) profile under `go test`, so a View()-level assertion on highlight
+// bytes can't distinguish "styled" from "plain".
+func TestClipLinePreservesANSIOnHorizontalScroll(t *testing.T) {
+	m := newModel(10)
+	m.width = 20
+	m.horizScroll = 5
+	const esc = "\x1b[31m"
+	const reset = "\x1b[0m"
+	// 10 plain runes, a styled "WORD", then a plain tail.
+	line := "0123456789" + esc + "WORD" + reset + "tail"
+	visW := runeLen(stripANSI(line)) // 10 + 4 + 4 = 18
+
+	got := m.clipLine(line, visW)
+
+	// The styled span survives intact inside the scrolled window.
+	if !strings.Contains(got, esc+"WORD"+reset) {
+		t.Fatalf("clipLine dropped ANSI styling under horizontal scroll: %q", got)
+	}
+	// Visible text is the window [5, 5+20), right-padded to width.
+	wantText := "56789WORDtail"
+	wantPadded := wantText + strings.Repeat(" ", m.width-runeLen(wantText))
+	if stripANSI(got) != wantPadded {
+		t.Fatalf("visible text wrong:\n got %q\nwant %q", stripANSI(got), wantPadded)
+	}
+}

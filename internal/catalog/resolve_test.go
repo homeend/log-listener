@@ -87,6 +87,37 @@ func TestResolveGoland_NewSchemeExists(t *testing.T) {
 	}
 }
 
+func TestResolveNamesAreCaseInsensitive(t *testing.T) {
+	c := testCatalog(t)
+	env := Env{OS: "linux", Home: "/home/me", Getenv: func(string) string { return "" },
+		Exists: func(string) bool { return false }}
+
+	// App name in a different case than the catalog key ("goland").
+	f, err := c.Resolve([]string{"GoLand"}, env)
+	if err != nil {
+		t.Fatalf("Resolve app with mixed case: %v", err)
+	}
+	if len(f.Directories) == 0 || f.Directories[0].ID != "goland" {
+		t.Fatalf("mixed-case app did not resolve to canonical group: %+v", f.Directories)
+	}
+
+	// Bundle name in a different case than the catalog key ("jetbrains").
+	f, err = c.Resolve([]string{"JETBRAINS"}, env)
+	if err != nil {
+		t.Fatalf("Resolve bundle with mixed case: %v", err)
+	}
+	if len(f.Directories) == 0 {
+		t.Fatal("mixed-case bundle resolved to nothing")
+	}
+
+	// A genuinely unknown name still errors, echoing what the user typed.
+	if _, err := c.Resolve([]string{"nope"}, env); err == nil {
+		t.Fatal("expected error for unknown name")
+	} else if !strings.Contains(err.Error(), "nope") {
+		t.Fatalf("error should name the unknown input: %v", err)
+	}
+}
+
 func TestResolveFallbackToNewestWhenNoneExist(t *testing.T) {
 	c := testCatalog(t)
 	env := Env{OS: "linux", Home: "/home/me", Getenv: func(string) string { return "" },

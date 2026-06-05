@@ -19,3 +19,5 @@ Thumbs.db
 
 # Local config overrides
 log-listener.local.yml
+
+log-listener.yml

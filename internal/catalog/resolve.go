@@ -79,6 +79,8 @@ func (c *Catalog) Resolve(names []string, env Env) (*config.File, error) {
 }
 
 // expandNames flattens bundles into a deduped, order-preserving app list.
+// User-supplied names are matched case-insensitively (see resolveName), so
+// `init GoLand` resolves the same app as `init goland`.
 func (c *Catalog) expandNames(names []string) ([]string, error) {
 	var out []string
 	seen := map[string]bool{}
@@ -89,22 +91,48 @@ func (c *Catalog) expandNames(names []string) ([]string, error) {
 		}
 	}
 	for _, n := range names {
-		_, isApp := c.Apps[n]
+		canon, isApp, isBundle := c.resolveName(n)
 		switch {
-		case c.Bundles[n] != nil:
-			for _, app := range c.Bundles[n] {
-				if _, ok := c.Apps[app]; !ok {
-					return nil, fmt.Errorf("bundle %q references unknown app %q", n, app)
+		case isBundle:
+			for _, app := range c.Bundles[canon] {
+				appCanon, appIsApp, _ := c.resolveName(app)
+				if !appIsApp {
+					return nil, fmt.Errorf("bundle %q references unknown app %q", canon, app)
 				}
-				add(app)
+				add(appCanon)
 			}
 		case isApp:
-			add(n)
+			add(canon)
 		default:
 			return nil, fmt.Errorf("unknown app or bundle %q (see `log-listener init --list`)", n)
 		}
 	}
 	return out, nil
+}
+
+// resolveName maps a user-supplied app/bundle name to its canonical catalog
+// key, case-insensitively. An exact match wins so a catalog that (unusually)
+// declares case-variant keys stays deterministic; otherwise the first
+// case-insensitive match is taken. Bundles take precedence over apps, matching
+// expandNames' resolution order.
+func (c *Catalog) resolveName(n string) (canonical string, isApp, isBundle bool) {
+	if c.Bundles[n] != nil {
+		return n, false, true
+	}
+	if _, ok := c.Apps[n]; ok {
+		return n, true, false
+	}
+	for name := range c.Bundles {
+		if strings.EqualFold(name, n) {
+			return name, false, true
+		}
+	}
+	for name := range c.Apps {
+		if strings.EqualFold(name, n) {
+			return name, true, false
+		}
+	}
+	return "", false, false
 }
 
 // emitSource probe-and-picks a source's drift candidates and appends a
