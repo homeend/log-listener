@@ -222,6 +222,58 @@ func (m *model) jumpToHit(idx int) {
 		top = len(m.lines) - 1
 	}
 	m.streamTop = top
+	m.adjustHorizToHit(idx)
+}
+
+// hitColumn returns the on-screen column (visible rune offset) of the first
+// occurrence of the search term on line idx, accounting for the
+// "[group] file:" prefix on head lines (blocks have no prefix). Returns -1
+// if the term is not present on that line.
+func (m *model) hitColumn(idx int) int {
+	if idx < 0 || idx >= len(m.lines) || m.searchTerm == "" {
+		return -1
+	}
+	dl := m.lines[idx]
+	body := dl.body
+	if dl.isBlock {
+		body = stripANSI(body)
+	}
+	bi := strings.Index(strings.ToLower(body), m.searchTerm)
+	if bi < 0 {
+		return -1
+	}
+	col := runeLen(body[:bi])
+	if !dl.isBlock {
+		if m.showGroup {
+			col += runeLen(dl.group) + 3 // "[" id "]" + space
+		}
+		if m.showFile {
+			col += runeLen(dl.file) + 2 // ": "
+		}
+	}
+	return col
+}
+
+// adjustHorizToHit pans the view horizontally so the match on line idx is
+// visible. If the match already lies within the current window it is left
+// alone; otherwise horizScroll moves so the match starts a small margin in
+// from the left edge.
+func (m *model) adjustHorizToHit(idx int) {
+	if m.width <= 0 {
+		return
+	}
+	start := m.hitColumn(idx)
+	if start < 0 {
+		return
+	}
+	end := start + runeLen(m.searchTerm)
+	if start < m.horizScroll || end > m.horizScroll+m.width {
+		ns := start - hitMargin
+		if ns < 0 {
+			ns = 0
+		}
+		m.horizScroll = ns
+	}
 }
 
 // highlightMatches wraps every case-insensitive occurrence of term in

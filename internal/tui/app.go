@@ -324,6 +324,7 @@ const (
 	horizStep      = 10 // columns moved per Left/Right keypress
 	horizFastStep  = 50 // columns moved per Ctrl+Left/Right
 	vertFastStep   = 10 // lines moved per Ctrl+Up/Down
+	hitMargin      = horizStep / 2 // left-margin columns when panning to a hit
 )
 
 func newModel(scrollback int) *model {

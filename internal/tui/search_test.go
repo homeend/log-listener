@@ -371,6 +371,58 @@ func TestUpDownScrollWhenNoSearch(t *testing.T) {
 // Tested at the clipLine layer because lipgloss renders with an Ascii (no
 // color) profile under `go test`, so a View()-level assertion on highlight
 // bytes can't distinguish "styled" from "plain".
+func TestJumpToHitScrollsHorizontallyToMatch(t *testing.T) {
+	m := newModel(1000)
+	m.groupOrder = []string{"g"}
+	m.groupEnabled["g"] = true
+	m.showGroup = false
+	m.showFile = false
+	body := strings.Repeat("x", 100) + "NEEDLE" + strings.Repeat("y", 20)
+	m.appendEvent(render.Event{Group: "g", File: "/x.log",
+		Rendered: []render.Part{{Type: "text", Value: body}}})
+	m2, _ := m.Update(tea.WindowSizeMsg{Width: 40, Height: 10})
+	m = m2.(*model)
+	m = typeQuery(t, m, "needle") // match starts at column 100, far right
+	if m.horizScroll == 0 {
+		t.Fatal("expected horizScroll to move to the off-screen match")
+	}
+	if 100 < m.horizScroll || 100 >= m.horizScroll+m.width {
+		t.Fatalf("match col 100 not in view [%d,%d)", m.horizScroll, m.horizScroll+m.width)
+	}
+}
+
+func TestJumpToHitKeepsHorizWhenMatchVisible(t *testing.T) {
+	m := newModel(1000)
+	m.groupOrder = []string{"g"}
+	m.groupEnabled["g"] = true
+	m.showGroup = false
+	m.showFile = false
+	m.appendEvent(render.Event{Group: "g", File: "/x.log",
+		Rendered: []render.Part{{Type: "text", Value: "early NEEDLE here"}}})
+	m2, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 10})
+	m = m2.(*model)
+	m = typeQuery(t, m, "needle")
+	if m.horizScroll != 0 {
+		t.Fatalf("match already visible; horizScroll should stay 0, got %d", m.horizScroll)
+	}
+}
+
+func TestHitColumnAccountsForPrefix(t *testing.T) {
+	m := newModel(1000)
+	m.groupOrder = []string{"g"}
+	m.groupEnabled["g"] = true
+	m.showGroup = true // prefix "[g] " = 4 columns
+	m.showFile = false
+	m.appendEvent(render.Event{Group: "g", File: "/x.log",
+		Rendered: []render.Part{{Type: "text", Value: "NEEDLE"}}})
+	m2, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 10})
+	m = m2.(*model)
+	m.searchTerm = "needle"
+	if got := m.hitColumn(0); got != 4 {
+		t.Fatalf("hitColumn with [g] prefix = %d, want 4", got)
+	}
+}
+
 func TestClipLinePreservesANSIOnHorizontalScroll(t *testing.T) {
 	m := newModel(10)
 	m.width = 20
