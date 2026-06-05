@@ -802,11 +802,26 @@ func decomposeEvent(ev render.Event) []displayLine {
 	}
 	base := filepath.Base(ev.File)
 	text := strings.TrimRight(textBuf.String(), "\n")
+	// A text part may carry embedded newlines (a template "\n" literal). Each
+	// physical line must be its own displayLine so the "one displayLine = one
+	// terminal row" invariant holds — otherwise the row wraps and breaks the
+	// layout. The first line is the head (keeps the [group] file: prefix);
+	// the rest render as block continuation rows, exactly like JSON/XML lines.
+	textLines := strings.Split(text, "\n")
 	out := []displayLine{{
 		group: ev.Group, file: base,
-		body:      text,
-		bodyWidth: runeLen(text),
+		body:      textLines[0],
+		bodyWidth: runeLen(textLines[0]),
 	}}
+	for _, ln := range textLines[1:] {
+		out = append(out, displayLine{
+			group:     ev.Group,
+			file:      base,
+			body:      dimStyle.Render(ln),
+			bodyWidth: runeLen(ln),
+			isBlock:   true,
+		})
+	}
 	for _, b := range blocks {
 		for _, ln := range strings.Split(b, "\n") {
 			out = append(out, displayLine{
@@ -980,7 +995,7 @@ func (m *model) View() string {
 	if m.height == 0 {
 		return ""
 	}
-	header := headerBg.Width(m.width).Render(" log-listener — q quit · Tab files · Ctrl+G groups · Ctrl+E rend · 1-9 grp · m collapse · Ctrl+P/L cols · Ctrl+R clear · / search · n/p · t filter ")
+	header := headerBg.Width(m.width).MaxHeight(1).Render(" log-listener — q quit · Tab files · Ctrl+G groups · Ctrl+E rend · 1-9 grp · m collapse · Ctrl+P/L cols · Ctrl+R clear · / search · n/p · t filter ")
 	contentH := m.contentHeight()
 
 	var body string
@@ -1009,14 +1024,14 @@ func (m *model) View() string {
 //     plus a "/term" suffix when a committed search term is active.
 func (m *model) renderFooter() string {
 	if m.searchInput {
-		return headerBg.Width(m.width).Render(" /" + m.searchQuery + "_")
+		return headerBg.Width(m.width).MaxHeight(1).Render(" /" + m.searchQuery + "_")
 	}
 	if m.wrapPrompt != 0 {
 		text := " No more hits — wrap to top? (y/n) "
 		if m.wrapPrompt == 'p' {
 			text = " No more hits — wrap to bottom? (y/n) "
 		}
-		return headerBg.Width(m.width).Render(text)
+		return headerBg.Width(m.width).MaxHeight(1).Render(text)
 	}
 	pos := "tail"
 	if !m.tailMode {
@@ -1048,7 +1063,7 @@ func (m *model) renderFooter() string {
 			search += " filter"
 		}
 	}
-	return dimStyle.Width(m.width).Render(fmt.Sprintf(" events: %d · %s · col: %d%s · %s%s · files: %d%s ",
+	return dimStyle.Width(m.width).MaxHeight(1).Render(fmt.Sprintf(" events: %d · %s · col: %d%s · %s%s · files: %d%s ",
 		len(m.lines), pos, m.horizScroll, cols, groupStat, rendStat, len(m.files), search))
 }
 

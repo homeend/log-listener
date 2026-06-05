@@ -151,3 +151,45 @@ func TestModelMultilineCollapseLastLineNoSuffix(t *testing.T) {
 		t.Fatalf("lone head must not show [...] in collapsed mode:\n%s", view)
 	}
 }
+
+// TestDecomposeNeverLeavesEmbeddedNewline guards the bug where a renderer
+// emitted a text part containing a '\n' (e.g. idea-trailing-json's
+// "$1\njson($2)" template when $2 is not valid JSON and json() falls back to
+// text). The embedded newline ended up inside a single displayLine.body,
+// which then rendered as multiple terminal rows — breaking the one-row-per-
+// displayLine invariant (header overflow, broken horizontal scroll).
+func TestDecomposeNeverLeavesEmbeddedNewline(t *testing.T) {
+	// Mirrors the fallback shape: "$1\n" text part + non-JSON "{...}" text part.
+	ev := render.Event{Group: "goland", File: "/idea.log", Rendered: []render.Part{
+		{Type: "text", Value: "2026 INFO Saved path macros: \n"},
+		{Type: "text", Value: "{DB_ARTIFACTS_BUNDLE=C:\\x\\artifacts}"},
+	}}
+	lines := decomposeEvent(ev)
+	for i, dl := range lines {
+		if strings.Contains(dl.body, "\n") {
+			t.Fatalf("displayLine[%d].body has an embedded newline: %q", i, dl.body)
+		}
+	}
+	if len(lines) < 2 {
+		t.Fatalf("expected the line to split into >=2 display rows, got %d", len(lines))
+	}
+}
+
+func TestEmbeddedNewlineKeepsHeaderRow(t *testing.T) {
+	m := newModel(1000)
+	m.groupOrder = []string{"goland"}
+	m.groupEnabled["goland"] = true
+	m.appendEvent(render.Event{Group: "goland", File: "/idea.log", Rendered: []render.Part{
+		{Type: "text", Value: "INFO Saved path macros: \n"},
+		{Type: "text", Value: "{DB_ARTIFACTS_BUNDLE=C:\\x\\artifacts}"},
+	}})
+	m2, _ := m.Update(tea.WindowSizeMsg{Width: 40, Height: 10})
+	m = m2.(*model)
+	rows := strings.Split(m.View(), "\n")
+	if len(rows) != 10 {
+		t.Fatalf("View must be exactly height(10) rows, got %d", len(rows))
+	}
+	if !strings.Contains(rows[0], "log-listener") {
+		t.Fatalf("header row missing/overflowed: %q", rows[0])
+	}
+}
