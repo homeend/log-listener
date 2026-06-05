@@ -450,6 +450,13 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.searchNext()
 		case "p":
 			m.searchPrev()
+		case "t":
+			if m.searchTerm != "" {
+				m.filterMode = !m.filterMode
+				if m.filterMode {
+					m.tailMode = false
+				}
+			}
 		case "ctrl+p":
 			m.showGroup = !m.showGroup
 		case "ctrl+l":
@@ -885,14 +892,10 @@ func (m *model) renderDisplayLineCore(dl displayLine, isCurrent bool) (string, i
 	return sb.String(), visW
 }
 
-// lineEnabled reports whether dl should appear in the stream window
-// given the current per-group toggles AND the multiline-collapse
-// toggle. Block lines inherit their head's group, so they're filtered
-// consistently.
-func (m *model) lineEnabled(dl displayLine) bool {
-	if m.collapseMultiline && isContinuation(dl) {
-		return false
-	}
+// groupEnabledLine reports whether dl's group is enabled (ignores the
+// collapse-multiline toggle). Used by the search filter, which shows whole
+// matching entries including their block lines.
+func (m *model) groupEnabledLine(dl displayLine) bool {
 	if dl.group == "" {
 		return true
 	}
@@ -901,6 +904,52 @@ func (m *model) lineEnabled(dl displayLine) bool {
 		return true // unknown groups (shouldn't happen) default to visible
 	}
 	return enabled
+}
+
+// lineEnabled reports whether dl appears in the normal stream window given
+// the per-group toggles AND the multiline-collapse toggle.
+func (m *model) lineEnabled(dl displayLine) bool {
+	if m.collapseMultiline && isContinuation(dl) {
+		return false
+	}
+	return m.groupEnabledLine(dl)
+}
+
+// filteredIndices returns the absolute m.lines indices shown when the search
+// filter is active: every group-enabled line of every entry that has at
+// least one line containing the term. Whole entries are kept so a matched
+// JSON/XML block appears in full alongside its head line. Returns nil when no
+// term is set. Collapse-multiline is intentionally ignored here.
+func (m *model) filteredIndices() []int {
+	if m.searchTerm == "" {
+		return nil
+	}
+	var out []int
+	off := 0
+	for _, e := range m.entries {
+		n := len(e.lines)
+		matched := false
+		for _, dl := range e.lines {
+			hay := dl.body
+			if dl.isBlock {
+				hay = stripANSI(hay)
+			}
+			if strings.Contains(strings.ToLower(hay), m.searchTerm) {
+				matched = true
+				break
+			}
+		}
+		if matched {
+			for k := 0; k < n; k++ {
+				idx := off + k
+				if m.groupEnabledLine(m.lines[idx]) {
+					out = append(out, idx)
+				}
+			}
+		}
+		off += n
+	}
+	return out
 }
 
 // isContinuation reports whether dl looks like a follow-on row of a
@@ -1163,6 +1212,24 @@ func pluralS(n int) string {
 func (m *model) collectVisible(rows int) []int {
 	if rows <= 0 || len(m.lines) == 0 {
 		return nil
+	}
+	if m.filterMode {
+		fil := m.filteredIndices()
+		if len(fil) == 0 {
+			return nil
+		}
+		start := 0
+		for start < len(fil) && fil[start] < m.streamTop {
+			start++
+		}
+		if start >= len(fil) {
+			start = len(fil) - 1
+		}
+		end := start + rows
+		if end > len(fil) {
+			end = len(fil)
+		}
+		return append([]int(nil), fil[start:end]...)
 	}
 	out := make([]int, 0, rows)
 	if m.tailMode {

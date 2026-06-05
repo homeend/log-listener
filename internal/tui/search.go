@@ -204,9 +204,9 @@ func (m *model) findHit(start, dir int) int {
 	return -1
 }
 
-// jumpToHit centers the viewport on the given event index (clamped at
-// buffer bounds) and exits tail mode. The hit index becomes the active
-// one used by n/p.
+// jumpToHit positions the viewport on event index idx, exits tail mode, and
+// pans horizontally so the match is visible. In filter mode it centers within
+// the filtered list; otherwise it centers on the absolute index.
 func (m *model) jumpToHit(idx int) {
 	if idx < 0 || idx >= len(m.lines) {
 		return
@@ -214,14 +214,35 @@ func (m *model) jumpToHit(idx int) {
 	m.searchHit = idx
 	m.tailMode = false
 	rows := m.contentHeight()
-	top := idx - rows/2
-	if top < 0 {
-		top = 0
+	if m.filterMode {
+		fil := m.filteredIndices()
+		pos := -1
+		for i, fi := range fil {
+			if fi == idx {
+				pos = i
+				break
+			}
+		}
+		if pos >= 0 {
+			top := pos - rows/2
+			if top < 0 {
+				top = 0
+			}
+			if top > len(fil)-1 {
+				top = len(fil) - 1
+			}
+			m.streamTop = fil[top]
+		}
+	} else {
+		top := idx - rows/2
+		if top < 0 {
+			top = 0
+		}
+		if top > len(m.lines)-1 {
+			top = len(m.lines) - 1
+		}
+		m.streamTop = top
 	}
-	if top > len(m.lines)-1 {
-		top = len(m.lines) - 1
-	}
-	m.streamTop = top
 	m.adjustHorizToHit(idx)
 }
 

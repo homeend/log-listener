@@ -446,3 +446,83 @@ func TestClipLinePreservesANSIOnHorizontalScroll(t *testing.T) {
 		t.Fatalf("visible text wrong:\n got %q\nwant %q", stripANSI(got), wantPadded)
 	}
 }
+
+func TestFilterShowsWholeMatchingEntries(t *testing.T) {
+	m := newModel(1000)
+	m.groupOrder = []string{"g"}
+	m.groupEnabled["g"] = true
+	m.appendEvent(render.Event{Group: "g", File: "/x.log",
+		Rendered: []render.Part{{Type: "text", Value: "boring line"}}})
+	m.appendEvent(render.Event{Group: "g", File: "/x.log",
+		Rendered: []render.Part{
+			{Type: "text", Value: "request received"},
+			{Type: "json", Value: map[string]any{"userId": 42}},
+		}})
+	m.appendEvent(render.Event{Group: "g", File: "/x.log",
+		Rendered: []render.Part{{Type: "text", Value: "userId in plain line"}}})
+	m2, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 20})
+	m = m2.(*model)
+	m = typeQuery(t, m, "userId")
+	m.filterMode = true
+
+	e0 := len(m.entries[0].lines)
+	e1 := len(m.entries[1].lines)
+	e2 := len(m.entries[2].lines)
+	if e1 < 2 {
+		t.Fatalf("setup: entry1 should have a multi-line json block, got %d lines", e1)
+	}
+	fil := m.filteredIndices()
+	if len(fil) != e1+e2 {
+		t.Fatalf("filtered = %d, want %d (whole entry1 %d + entry2 %d)", len(fil), e1+e2, e1, e2)
+	}
+	for _, idx := range fil {
+		if idx < e0 {
+			t.Fatalf("entry0 (no match) line %d must be excluded", idx)
+		}
+	}
+}
+
+func TestFilterTNoopWithoutTerm(t *testing.T) {
+	m := seedSearchModel(t, 3, map[int]bool{1: true})
+	m2, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'t'}})
+	m = m2.(*model)
+	if m.filterMode {
+		t.Fatal("t must be a no-op with no active search term")
+	}
+	m = typeQuery(t, m, "needle")
+	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'t'}})
+	m = m2.(*model)
+	if !m.filterMode {
+		t.Fatal("t should enable the filter when a term is active")
+	}
+}
+
+func TestCollectVisibleFilterModeOnlyShowsFiltered(t *testing.T) {
+	m := newModel(1000)
+	m.groupOrder = []string{"g"}
+	m.groupEnabled["g"] = true
+	m.appendEvent(render.Event{Group: "g", File: "/x.log",
+		Rendered: []render.Part{{Type: "text", Value: "boring"}}})
+	m.appendEvent(render.Event{Group: "g", File: "/x.log",
+		Rendered: []render.Part{{Type: "text", Value: "needle one"}}})
+	m.appendEvent(render.Event{Group: "g", File: "/x.log",
+		Rendered: []render.Part{{Type: "text", Value: "needle two"}}})
+	m2, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 20})
+	m = m2.(*model)
+	m = typeQuery(t, m, "needle")
+	m.filterMode = true
+	m.streamTop = 0
+	vis := m.collectVisible(m.contentHeight())
+	filSet := map[int]bool{}
+	for _, i := range m.filteredIndices() {
+		filSet[i] = true
+	}
+	if len(vis) == 0 {
+		t.Fatal("expected visible filtered rows")
+	}
+	for _, i := range vis {
+		if !filSet[i] {
+			t.Fatalf("visible idx %d is not in the filtered set", i)
+		}
+	}
+}
