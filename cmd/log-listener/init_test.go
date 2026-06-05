@@ -38,7 +38,7 @@ func TestInitOutputLoadsAndBuildsPipeline(t *testing.T) {
 	if len(cfg.Groups) == 0 {
 		t.Fatal("generated config has no groups")
 	}
-	if _, err := render.NewPipeline(cfg.RendererSpecs, cfg.DropUnmatched); err != nil {
+	if _, err := render.NewPipeline(cfg.RendererSpecs, cfg.Matchers, cfg.MuteSpecs, cfg.DropUnmatched); err != nil {
 		t.Fatalf("generated renderers failed to compile: %v", err)
 	}
 }

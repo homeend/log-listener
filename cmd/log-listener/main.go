@@ -51,7 +51,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
-	pipeline, err := render.NewPipeline(cfg.RendererSpecs, cfg.DropUnmatched)
+	pipeline, err := render.NewPipeline(cfg.RendererSpecs, cfg.Matchers, cfg.MuteSpecs, cfg.DropUnmatched)
 	if err != nil {
 		fmt.Fprintln(stderr, "log-listener:", err)
 		return 2
@@ -142,7 +142,7 @@ func loadRuntime(args []string, dropUnmatched bool, now time.Time) (*runtime, er
 	if err != nil {
 		return nil, err
 	}
-	pipeline, err := render.NewPipeline(cfg.RendererSpecs, dropUnmatched)
+	pipeline, err := render.NewPipeline(cfg.RendererSpecs, cfg.Matchers, cfg.MuteSpecs, dropUnmatched)
 	if err != nil {
 		return nil, err
 	}

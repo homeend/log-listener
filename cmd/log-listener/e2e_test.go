@@ -632,3 +632,60 @@ func waitForHTTP(url string, timeout time.Duration) error {
 	}
 	return fmt.Errorf("timeout waiting for %s", url)
 }
+
+// TestE2EMuteDropsLine verifies that a mute rule suppresses matching lines
+// while passing through non-matching lines.
+func TestE2EMuteDropsLine(t *testing.T) {
+	dir := t.TempDir()
+
+	// Write a log file with three lines: two to keep, one to mute.
+	logPath := filepath.Join(dir, "app.log")
+	if err := os.WriteFile(logPath, []byte("KEEP one\nGET /health 200\nKEEP two\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Write a YAML config pointing at the log file with a mute rule.
+	cfgPath := filepath.Join(dir, "test.yml")
+	cfg := fmt.Sprintf(`files:
+  - id: app
+    paths: [%q]
+mute:
+  - id: h
+    line_regex: 'GET /health'
+`, logPath)
+	if err := os.WriteFile(cfgPath, []byte(cfg), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Run in one-shot mode so the process exits after draining the file.
+	s := startListener(t, "--config", cfgPath, "--once", "--no-tui", "--no-color")
+
+	// Collect all output until the stream closes (process exits).
+	var allLines []string
+	timer := time.NewTimer(10 * time.Second)
+	defer timer.Stop()
+collect:
+	for {
+		select {
+		case line, ok := <-s.ch:
+			if !ok {
+				break collect
+			}
+			allLines = append(allLines, line)
+		case <-timer.C:
+			t.Fatal("timed out waiting for log-listener to exit")
+		}
+	}
+
+	output := strings.Join(allLines, "\n")
+
+	if strings.Contains(output, "/health") {
+		t.Errorf("muted line leaked into output; got:\n  %s", strings.Join(allLines, "\n  "))
+	}
+	if !strings.Contains(output, "KEEP one") {
+		t.Errorf("expected 'KEEP one' in output; got:\n  %s", strings.Join(allLines, "\n  "))
+	}
+	if !strings.Contains(output, "KEEP two") {
+		t.Errorf("expected 'KEEP two' in output; got:\n  %s", strings.Join(allLines, "\n  "))
+	}
+}
