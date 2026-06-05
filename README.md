@@ -153,6 +153,41 @@ you want the renderer pipeline to act as a filter as well as a formatter.
 globs are tried against the full path and the basename, so both
 `*.app.log` and `/var/log/foo/*.app.log` work.
 
+### Matchers and mute
+
+A **matcher** is a reusable named predicate over three dimensions of an
+event. For each dimension set **either** the literal key **or** the regex
+key — never both — and set **at least one** dimension. All set dimensions
+must match (**AND**).
+
+| Dimension | Literal key | Regex key    | Target                |
+|-----------|-------------|--------------|-----------------------|
+| Content   | `line`      | `line_regex` | the raw log line      |
+| File name | `name`      | `name_regex` | the file basename     |
+| File path | `path`      | `path_regex` | the full file path    |
+
+Literals match **exactly** (`name` equals the basename, `path` equals the
+full path, `line` equals the whole line) and skip the regex engine — use a
+literal when you don't need a pattern. Regex keys use Go `regexp` (RE2).
+
+Define matchers once under `matchers:` and reference them by name, or write
+the same fields inline where a single matcher is needed.
+
+**`mute:`** drops matching lines *before* they reach any sink — stdout, the
+SSE broadcast, and the TUI. A mute entry sets exactly one of `matcher:` (a
+named reference) or inline matcher fields, an optional `id:` (used in error
+messages), and an optional `applies_to:` (group ids + path globs, AND) to
+scope it. Mute is checked first, ahead of every renderer and of
+`output.drop_unmatched`. A mute whose matcher sets only `name`/`path` drops
+*all* lines from the matching files.
+
+**Renderers** may reference a matcher with `matcher:` instead of an inline
+`line_regex`. The matcher's `line_regex` supplies the template captures
+(`$1`, `$2`, …) and any `name`/`path` criteria additionally gate the
+renderer. A renderer must set exactly one of `line_regex` or `matcher`, and
+a matcher used by a renderer must carry a `line_regex` (otherwise there is
+nothing to capture). All of these are validated at startup.
+
 ---
 
 ## CLI
@@ -260,6 +295,20 @@ files:
 global_file_filter:
   younger: 7d
 
+# Matchers — a reusable library of named predicates. See "Matchers and mute".
+matchers:
+  health-noise: { line_regex: 'GET /health' }   # regex over the log line
+  idea-file:    { name: idea.log }              # exact basename literal
+  app-json:     { name_regex: '\.app\.log$', line_regex: '(\{.*\})' }
+
+# Mute — drop matching lines before any sink (stdout / SSE / TUI).
+mute:
+  - id: drop-health
+    matcher: health-noise           # reference a named matcher
+  - id: silence-debug
+    line_regex: 'DEBUG'             # OR inline matcher fields
+    applies_to: { groups: [1] }     # optional scope: group ids + path globs
+
 # Renderers — see "Renderer pipeline" below for the template DSL
 renderers:
   - name: app-json
@@ -268,6 +317,9 @@ renderers:
     applies_to:
       groups: [1]
       paths: ['*.app.log']
+  - name: idea-json                 # use a named matcher instead of line_regex
+    matcher: app-json               # the matcher's line_regex feeds $1
+    template: 'json($1)'
   - name: pretty-xml                # registered but starts off
     line_regex: '.+'
     template: 'xml($0)'

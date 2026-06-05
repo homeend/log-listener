@@ -7,6 +7,22 @@ and this project adheres to phased delivery per `PLAN.md`.
 
 ## [Unreleased]
 
+### Matchers and mute
+- **Reusable matchers**: a global `matchers:` library of named predicates over
+  a log line's content, the source file's basename, and its full path. Each
+  dimension matches by an exact literal (`line`/`name`/`path`) or a regex
+  (`line_regex`/`name_regex`/`path_regex`); at least one dimension is required
+  and all set dimensions are AND-combined.
+- **`mute:`**: drop matching lines before any sink (stdout / SSE / TUI). Each
+  entry references a named matcher or sets inline matcher fields, with an
+  optional `id` and `applies_to` (group ids + path globs) scope. Mute is
+  applied ahead of every renderer and of `output.drop_unmatched`.
+- **Renderer `matcher:`**: renderers may reference a named matcher instead of
+  an inline `line_regex`; the matcher's `line_regex` supplies the template
+  captures and any name/path criteria additionally gate the renderer. Matcher
+  references, exactly-one-of constraints, and capture availability are
+  validated at startup. New `internal/match` package.
+
 ### Template auto-configuration
 - **`log-listener init <apps...>`**: generate a `log-listener.yml` from an
   embedded, OS-aware catalog of application log templates (JetBrains family +
