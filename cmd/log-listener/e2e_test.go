@@ -689,3 +689,76 @@ collect:
 		t.Errorf("expected 'KEEP two' in output; got:\n  %s", strings.Join(allLines, "\n  "))
 	}
 }
+
+// TestE2ENonJSONBracesRenderRaw verifies that a line whose braces contain
+// non-JSON content (e.g. IntelliJ-style path macros) falls through the
+// json()/xml() render function and is emitted intact on one line, while a
+// valid trailing-JSON line on the same run still pretty-prints.
+func TestE2ENonJSONBracesRenderRaw(t *testing.T) {
+	dir := t.TempDir()
+
+	// Write a log file with two lines: one with non-JSON braces, one with valid JSON.
+	logPath := filepath.Join(dir, "app.log")
+	// Use a raw string literal so backslashes are literal (C:\x\artifacts).
+	logContent := "2026 INFO Saved path macros: {DB_ARTIFACTS_BUNDLE=C:\\x\\artifacts}\n" +
+		`2026 INFO payload: {"a":1}` + "\n"
+	if err := os.WriteFile(logPath, []byte(logContent), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Write a YAML config with two renderers:
+	//   1. json-line: matches a whole-line brace expression and json()-renders it.
+	//   2. idea-trailing-json: matches text followed by a brace expression;
+	//      the template uses literal \n (not a real newline) to split prefix and JSON block.
+	// Both renderers' json() calls fall through to raw when the braces aren't valid JSON.
+	cfgPath := filepath.Join(dir, "test.yml")
+	cfg := fmt.Sprintf(`files:
+  - id: app
+    paths: [%q]
+renderers:
+  - name: json-line
+    line_regex: '^\s*(\{.*\})\s*$'
+    template: 'json($1)'
+  - name: idea-trailing-json
+    line_regex: '^(.*?\s)(\{.+\})\s*$'
+    template: '$1\njson($2)'
+`, logPath)
+	if err := os.WriteFile(cfgPath, []byte(cfg), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Run in one-shot mode so the process exits after draining the file.
+	s := startListener(t, "--config", cfgPath, "--once", "--no-tui", "--no-color")
+
+	// Collect all output until the stream closes (process exits).
+	var allLines []string
+	timer := time.NewTimer(10 * time.Second)
+	defer timer.Stop()
+collectNonJSON:
+	for {
+		select {
+		case line, ok := <-s.ch:
+			if !ok {
+				break collectNonJSON
+			}
+			allLines = append(allLines, line)
+		case <-timer.C:
+			t.Fatal("timed out waiting for log-listener to exit")
+		}
+	}
+
+	output := strings.Join(allLines, "\n")
+
+	// The macro line must appear intact (non-JSON braces fell through to raw).
+	if !strings.Contains(output, `Saved path macros: {DB_ARTIFACTS_BUNDLE=C:\x\artifacts}`) {
+		t.Errorf("expected macro line intact in output; got:\n  %s", strings.Join(allLines, "\n  "))
+	}
+	// The macro braces must NOT have been pretty-printed as JSON.
+	if strings.Contains(output, `DB_ARTIFACTS_BUNDLE":`) {
+		t.Errorf("macro braces were incorrectly JSON-rendered; got:\n  %s", strings.Join(allLines, "\n  "))
+	}
+	// The valid JSON payload must have been pretty-printed (2-space indent).
+	if !strings.Contains(output, `"a": 1`) {
+		t.Errorf("expected pretty-printed JSON '\"a\": 1' in output; got:\n  %s", strings.Join(allLines, "\n  "))
+	}
+}
