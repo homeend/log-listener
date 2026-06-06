@@ -230,3 +230,51 @@ func TestTabLineDoesNotOverflowWidth(t *testing.T) {
 		}
 	}
 }
+
+// TestWideCharWidth guards double-width (CJK) handling: a rune is not always
+// one column, so width math must use display width, not rune count.
+func TestWideCharWidth(t *testing.T) {
+	if w := dispWidth("中文语言包"); w != 10 {
+		t.Fatalf("dispWidth(5 CJK) = %d, want 10", w)
+	}
+	if w := runeWidth('中'); w != 2 {
+		t.Fatalf("runeWidth(中) = %d, want 2", w)
+	}
+	if w := dispWidth("abc"); w != 3 {
+		t.Fatalf("dispWidth(ascii) = %d, want 3", w)
+	}
+}
+
+// TestWideCharLineDoesNotOverflowWidth guards the bug where a line of CJK
+// characters (each 2 columns, counted as 1 rune) overflowed the row width and
+// wrapped, corrupting the layout. No rendered row may exceed the terminal
+// display width.
+func TestWideCharLineDoesNotOverflowWidth(t *testing.T) {
+	m := newModel(1000)
+	m.groupOrder = []string{"g"}
+	m.groupEnabled["g"] = true
+	m.showGroup = false
+	m.showFile = false
+	m.appendEvent(render.Event{Group: "g", File: "/x.log",
+		Rendered: []render.Part{{Type: "text", Value: strings.Repeat("中", 30)}}}) // 60 cols
+	m2, _ := m.Update(tea.WindowSizeMsg{Width: 40, Height: 8})
+	m = m2.(*model)
+	for i, row := range strings.Split(m.View(), "\n") {
+		if w := dispWidth(stripANSI(row)); w > 40 {
+			t.Fatalf("rendered row %d display width %d exceeds terminal width 40: %q", i, w, stripANSI(row))
+		}
+	}
+}
+
+// TestClipANSIWindowWideCharColumns checks the horizontal window is measured in
+// display columns: skipping/limiting must account for 2-column runes.
+func TestClipANSIWindowWideCharColumns(t *testing.T) {
+	line := strings.Repeat("中", 10) // 20 columns
+	got := clipANSIWindow(line, 0, 6) // first 6 columns = 3 wide runes
+	if w := dispWidth(got); w != 6 {
+		t.Fatalf("clip to 6 cols: display width %d, want 6 (%q)", w, got)
+	}
+	if r := []rune(strings.TrimRight(got, " ")); len(r) != 3 {
+		t.Fatalf("6 columns should be 3 wide runes, got %d", len(r))
+	}
+}

@@ -7,6 +7,15 @@ and this project adheres to phased delivery per `PLAN.md`.
 
 ## [Unreleased]
 
+### TUI display-width fixes
+- **Tabs** in log lines (e.g. Java stack-trace frames, `\tat …`) are expanded to
+  8-column tab stops, and **wide/CJK characters** are measured at their true
+  cell width (2 columns) instead of one. Both previously made the width math
+  underestimate, so the row overflowed and wrapped — pushing the header
+  off-screen and leaving stale fragments bleeding through. Rows are now clamped
+  to the terminal's display width, including ANSI- and wide-char-aware
+  horizontal scrolling.
+
 ### Renderer validity & multi-line rendering fixes
 - **JSON/XML detection is validity-based**: a renderer matches only when its
   `json()`/`xml()` call actually parses. Lines that match a renderer's regex

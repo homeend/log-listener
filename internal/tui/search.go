@@ -264,13 +264,13 @@ func (m *model) hitColumn(idx int) int {
 	if bi < 0 {
 		return -1
 	}
-	col := runeLen(body[:bi])
+	col := dispWidth(body[:bi])
 	if !dl.isBlock {
 		if m.showGroup {
-			col += runeLen(dl.group) + 3 // "[" id "]" + space
+			col += dispWidth(dl.group) + 3 // "[" id "]" + space
 		}
 		if m.showFile {
-			col += runeLen(dl.file) + 2 // ": "
+			col += dispWidth(dl.file) + 2 // ": "
 		}
 	}
 	return col
@@ -288,7 +288,7 @@ func (m *model) adjustHorizToHit(idx int) {
 	if start < 0 {
 		return
 	}
-	end := start + runeLen(m.searchTerm)
+	end := start + dispWidth(m.searchTerm)
 	if start < m.horizScroll || end > m.horizScroll+m.width {
 		ns := start - hitMargin
 		if ns < 0 {
@@ -300,12 +300,12 @@ func (m *model) adjustHorizToHit(idx int) {
 
 // highlightMatches wraps every case-insensitive occurrence of term in
 // body with the supplied style. Returns the styled string and the
-// total visual width (unstyled rune count, identical to the original
+// total visual width (unstyled display width, identical to the original
 // body's width since ANSI is zero-width). Callers handle the
 // edge cases of empty term / no match by skipping the call.
 func highlightMatches(body, term string, style func(strs ...string) string) (string, int) {
 	if term == "" || body == "" {
-		return body, runeLen(body)
+		return body, dispWidth(body)
 	}
 	lower := strings.ToLower(body)
 	tl := strings.ToLower(term)
@@ -322,5 +322,5 @@ func highlightMatches(body, term string, style func(strs ...string) string) (str
 		lower = lower[i+len(tl):]
 	}
 	out := sb.String()
-	return out, runeLen(stripANSI(out))
+	return out, dispWidth(out)
 }

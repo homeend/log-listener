@@ -26,6 +26,15 @@ func stripANSI(s string) string { return ansiRE.ReplaceAllString(s, "") }
 
 func runeLen(s string) int { return utf8.RuneCountInString(s) }
 
+// dispWidth is the terminal cell width of s — wide (CJK) runes count as 2,
+// zero-width/combining as 0 — with any ANSI stripped. Width/clip math must use
+// this, not runeLen: a rune is not always one column, and counting it as one
+// makes a row of wide characters overflow and wrap, corrupting the layout.
+func dispWidth(s string) int { return lipgloss.Width(s) }
+
+// runeWidth is the cell width of a single rune (0, 1, or 2).
+func runeWidth(r rune) int { return lipgloss.Width(string(r)) }
+
 // expandTabs replaces tabs with spaces to 8-column tab stops so a body's rune
 // count equals its terminal display width. Without this a tab (1 rune, up to 8
 // columns) makes the width math underestimate, and the row overflows and wraps
@@ -839,7 +848,7 @@ func decomposeEvent(ev render.Event) []displayLine {
 	out := []displayLine{{
 		group: ev.Group, file: base,
 		body:      head,
-		bodyWidth: runeLen(head),
+		bodyWidth: dispWidth(head),
 	}}
 	for _, ln := range textLines[1:] {
 		ln = expandTabs(ln)
@@ -847,7 +856,7 @@ func decomposeEvent(ev render.Event) []displayLine {
 			group:     ev.Group,
 			file:      base,
 			body:      dimStyle.Render(ln),
-			bodyWidth: runeLen(ln),
+			bodyWidth: dispWidth(ln),
 			isBlock:   true,
 		})
 	}
@@ -857,7 +866,7 @@ func decomposeEvent(ev render.Event) []displayLine {
 				group:     ev.Group,
 				file:      base,
 				body:      dimStyle.Render(ln),
-				bodyWidth: runeLen(ln),
+				bodyWidth: dispWidth(ln),
 				isBlock:   true,
 			})
 		}
@@ -890,7 +899,7 @@ func (m *model) renderDisplayLineAt(idx int) (string, int) {
 		// text yields the correct visible width.
 		const marker = " [...]"
 		dl.body = dl.body + dimStyle.Render(marker)
-		dl.bodyWidth += runeLen(marker)
+		dl.bodyWidth += dispWidth(marker)
 	}
 	return m.renderDisplayLineCore(dl, isCurrent)
 }
@@ -927,12 +936,12 @@ func (m *model) renderDisplayLineCore(dl displayLine, isCurrent bool) (string, i
 	if m.showGroup {
 		sb.WriteString(groupStyle.Render("[" + dl.group + "]"))
 		sb.WriteByte(' ')
-		visW += runeLen(dl.group) + 3 // "[" + id + "]" + " "
+		visW += dispWidth(dl.group) + 3 // "[" + id + "]" + " "
 	}
 	if m.showFile {
 		sb.WriteString(fileStyle.Render(dl.file))
 		sb.WriteString(": ")
-		visW += runeLen(dl.file) + 2 // ": "
+		visW += dispWidth(dl.file) + 2 // ": "
 	}
 	sb.WriteString(body)
 	return sb.String(), visW
@@ -1236,7 +1245,7 @@ func (m *model) padRow(s string) string {
 	if m.width <= 0 {
 		return s
 	}
-	w := runeLen(stripANSI(s))
+	w := dispWidth(s)
 	if w >= m.width {
 		return s
 	}
@@ -1373,12 +1382,14 @@ func (m *model) clipLine(line string, visW int) string {
 }
 
 // clipANSIWindow returns the horizontal window [skip, skip+width) of line,
-// measured in visible runes, with all ANSI escape sequences preserved.
-// Escape sequences are zero-width: they're copied verbatim wherever they
-// fall, so a styled span that straddles the left edge keeps its opening
-// code and one truncated at the right edge is closed by a trailing reset
-// (added so an open style can't bleed into the trailing pad). The result is
-// right-padded with spaces to exactly width.
+// measured in display columns, with all ANSI escape sequences preserved.
+// Columns (not runes): a wide CJK rune counts as 2. Escape sequences are
+// zero-width and copied verbatim wherever they fall, so a styled span that
+// straddles the left edge keeps its opening code and one truncated at the
+// right edge is closed by a trailing reset (added so an open style can't bleed
+// into the trailing pad). A wide rune that would straddle the left edge or
+// overflow the right edge is dropped and replaced by a filler space so the
+// result is always exactly width columns.
 func clipANSIWindow(line string, skip, width int) string {
 	if width <= 0 {
 		return ""
@@ -1386,7 +1397,7 @@ func clipANSIWindow(line string, skip, width int) string {
 	spans := ansiRE.FindAllStringIndex(line, -1)
 	var sb strings.Builder
 	styled := false
-	visible, emitted := 0, 0
+	visible, emitted := 0, 0 // display columns consumed from the start / written
 	si, i := 0, 0
 	for i < len(line) {
 		if si < len(spans) && spans[si][0] == i {
@@ -1397,15 +1408,23 @@ func clipANSIWindow(line string, skip, width int) string {
 			si++
 			continue
 		}
-		_, sz := utf8.DecodeRuneInString(line[i:])
+		r, sz := utf8.DecodeRuneInString(line[i:])
+		w := runeWidth(r)
 		if visible >= skip {
-			if emitted >= width {
-				break // past the right edge
+			if emitted+w > width {
+				break // would overflow the right edge (incl. a wide rune)
 			}
 			sb.WriteString(line[i : i+sz])
-			emitted++
+			emitted += w
+		} else if visible+w > skip {
+			// A wide rune straddles the left edge — can't show half of it.
+			// Emit a filler space so the visible columns stay aligned.
+			if emitted < width {
+				sb.WriteByte(' ')
+				emitted++
+			}
 		}
-		visible++
+		visible += w
 		i += sz
 	}
 	out := sb.String()
