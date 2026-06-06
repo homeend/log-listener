@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -129,5 +130,45 @@ func TestSaveKeyWritesFileAndFlashes(t *testing.T) {
 	m = m2.(*model)
 	if m.flash != "" {
 		t.Errorf("flash should clear on next key, got %q", m.flash)
+	}
+}
+
+func TestSaveResultErrorFlashes(t *testing.T) {
+	m := newModel(100)
+	m2, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 30})
+	m = m2.(*model)
+	m2, _ = m.Update(saveResultMsg{err: errors.New("disk full")})
+	m = m2.(*model)
+	if !strings.Contains(m.flash, "save failed:") || !strings.Contains(m.flash, "disk full") {
+		t.Errorf("flash = %q, want a 'save failed: disk full' message", m.flash)
+	}
+	if !strings.Contains(m.renderFooter(), "save failed:") {
+		t.Errorf("footer should show the error flash: %q", m.renderFooter())
+	}
+}
+
+func TestSaveViewportKeyWritesFile(t *testing.T) {
+	m := newModel(100)
+	m.saveDir = t.TempDir()
+	m2, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 30})
+	m = m2.(*model)
+	m.appendEvent(render.Event{Group: "g", File: "/x/a.log",
+		Rendered: []render.Part{{Type: "text", Value: "VIEWPORT-ROW"}}})
+
+	m2, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}})
+	m = m2.(*model)
+	if cmd == nil {
+		t.Fatal("s (save viewport) should return a tea.Cmd")
+	}
+	res, ok := cmd().(saveResultMsg)
+	if !ok {
+		t.Fatal("cmd should produce a saveResultMsg")
+	}
+	if res.err != nil {
+		t.Fatalf("save failed: %v", res.err)
+	}
+	got, _ := os.ReadFile(res.path)
+	if !strings.Contains(string(got), "VIEWPORT-ROW") {
+		t.Errorf("viewport file content = %q", string(got))
 	}
 }
