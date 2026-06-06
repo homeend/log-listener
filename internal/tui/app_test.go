@@ -746,3 +746,17 @@ func TestMultiRuneDigitDoesNotToggleGroup(t *testing.T) {
 			"1x", m.groupEnabled["g0"], m.groupEnabled["g1"])
 	}
 }
+
+func TestHeaderUsesKeymapDisplay(t *testing.T) {
+	m := newModel(100)
+	m.km = keymap.Default("darwin")
+	m.width = 200
+	m.height = 10
+	view := m.View()
+	if !strings.Contains(view, "⌃G") { // mac glyph for toggle_groups
+		t.Errorf("darwin header should show ⌃G; view header missing it")
+	}
+	if strings.Contains(view, "Ctrl+G") {
+		t.Errorf("darwin header should not show linux-style Ctrl+G")
+	}
+}

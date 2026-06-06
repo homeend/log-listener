@@ -1031,11 +1031,42 @@ func (m *model) contentHeight() int {
 	return h
 }
 
+// hint renders "<keys> <label>" for an action using the model's keymap, e.g.
+// "⌃G groups" on macOS or "Ctrl+G groups" elsewhere.
+func (m *model) hint(a keymap.Action, label string) string {
+	return m.keyDisplay(a) + " " + label
+}
+
+// keyDisplay returns the per-OS label for an action's keys (e.g. "⌃G"),
+// nil-safe so render paths that build a model without an explicit keymap fall
+// back to the built-in defaults instead of panicking.
+func (m *model) keyDisplay(a keymap.Action) string {
+	km := m.km
+	if km == nil {
+		km = keymap.Default(runtime.GOOS)
+	}
+	return km.Display(a)
+}
+
 func (m *model) View() string {
 	if m.height == 0 {
 		return ""
 	}
-	header := headerBg.Width(m.width).MaxHeight(1).Render(" log-listener — q quit · Tab files · Ctrl+G groups · Ctrl+E rend · 1-9 grp · m collapse · Ctrl+P/L cols · Ctrl+R clear · / search · n/p · t filter ")
+	hints := []string{
+		m.hint(keymap.ActionQuit, "quit"),
+		m.hint(keymap.ActionToggleFiles, "files"),
+		m.hint(keymap.ActionToggleGroups, "groups"),
+		m.hint(keymap.ActionToggleRenderers, "rend"),
+		"1-9 grp",
+		m.hint(keymap.ActionCollapseAll, "collapse"),
+		m.hint(keymap.ActionToggleGroupCol, "grpcol"),
+		m.hint(keymap.ActionToggleFileCol, "filecol"),
+		m.hint(keymap.ActionClear, "clear"),
+		m.hint(keymap.ActionSearch, "search"),
+		m.hint(keymap.ActionNextMatch, "next") + "/" + m.hint(keymap.ActionPrevMatch, "prev"),
+		m.hint(keymap.ActionFilter, "filter"),
+	}
+	header := headerBg.Width(m.width).MaxHeight(1).Render(" log-listener — " + strings.Join(hints, " · ") + " ")
 	contentH := m.contentHeight()
 
 	var body string
@@ -1145,7 +1176,7 @@ func (m *model) toggleRenderer(i int) {
 
 func (m *model) renderGroupsPanel(rows int) string {
 	out := make([]string, 0, rows)
-	out = append(out, headerBg.Width(m.width).MaxHeight(1).Render(" Groups (Ctrl+G or Esc to close · 1-9 to toggle) "))
+	out = append(out, headerBg.Width(m.width).MaxHeight(1).Render(" Groups ("+m.keyDisplay(keymap.ActionToggleGroups)+" or "+m.keyDisplay(keymap.ActionCloseOverlay)+" to close · 1-9 to toggle) "))
 	if len(m.groupOrder) == 0 {
 		out = append(out, m.padRow(dimStyle.Render("  (no groups defined)")))
 		for i := 2; i < rows; i++ {
@@ -1202,7 +1233,7 @@ func rendererShiftChar(i int) string {
 
 func (m *model) renderRenderersPanel(rows int) string {
 	out := make([]string, 0, rows)
-	out = append(out, headerBg.Width(m.width).MaxHeight(1).Render(" Renderers (Ctrl+E or Esc to close · !-( to toggle) "))
+	out = append(out, headerBg.Width(m.width).MaxHeight(1).Render(" Renderers ("+m.keyDisplay(keymap.ActionToggleRenderers)+" or "+m.keyDisplay(keymap.ActionCloseOverlay)+" to close · !-( to toggle) "))
 	if len(m.rendererOrder) == 0 {
 		out = append(out, m.padRow(dimStyle.Render("  (no renderers defined)")))
 		for i := 2; i < rows; i++ {
@@ -1441,7 +1472,7 @@ func clipANSIWindow(line string, skip, width int) string {
 
 func (m *model) renderFiles(rows int) string {
 	out := make([]string, 0, rows)
-	out = append(out, headerBg.Width(m.width).MaxHeight(1).Render(" Watched files (Ctrl+I or Esc to close) "))
+	out = append(out, headerBg.Width(m.width).MaxHeight(1).Render(" Watched files ("+m.keyDisplay(keymap.ActionToggleFiles)+" or "+m.keyDisplay(keymap.ActionCloseOverlay)+" to close) "))
 	if len(m.files) == 0 {
 		out = append(out, m.padRow(dimStyle.Render("  (no files yet)")))
 		for i := 2; i < rows; i++ {
