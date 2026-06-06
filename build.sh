@@ -9,6 +9,7 @@
 #   vet           go vet ./...
 #   race          go test -race ./...
 #   cover         coverage summary
+#   keybindings-docs  regenerate docs/KEYBINDINGS.md from the keymap
 #   clean         remove built binary
 #   help          show this list
 set -eu
@@ -46,12 +47,16 @@ case "$target" in
   vet)   go vet "$PKG" ;;
   race)  go test -race "$PKG" ;;
   cover) go test -cover "$PKG" ;;
+  keybindings-docs)
+    go run "$CMD" --keybindings-doc > docs/KEYBINDINGS.md
+    echo "wrote ./docs/KEYBINDINGS.md"
+    ;;
   clean)
     rm -f "$BINARY"
     echo "removed ./$BINARY"
     ;;
   help|-h|--help)
-    sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'
     ;;
   *)
     echo "unknown target: $target (try ./build.sh help)" >&2

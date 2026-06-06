@@ -9,6 +9,7 @@ rem   test          go test ./...
 rem   vet           go vet ./...
 rem   race          go test -race ./...
 rem   cover         coverage summary
+rem   keybindings-docs  regenerate docs/KEYBINDINGS.md from the keymap
 rem   clean         remove built binary
 rem   help          show this list
 setlocal
@@ -28,6 +29,7 @@ if /i "%TARGET%"=="test"         goto test
 if /i "%TARGET%"=="vet"          goto vet
 if /i "%TARGET%"=="race"         goto race
 if /i "%TARGET%"=="cover"        goto cover
+if /i "%TARGET%"=="keybindings-docs" goto keybindings_docs
 if /i "%TARGET%"=="clean"        goto clean
 if /i "%TARGET%"=="help"         goto help
 if /i "%TARGET%"=="-h"           goto help
@@ -65,6 +67,11 @@ goto ok
 go test -cover "%PKG%" || goto fail
 goto ok
 
+:keybindings_docs
+go run "%CMD%" --keybindings-doc > docs\KEYBINDINGS.md || goto fail
+echo wrote .\docs\KEYBINDINGS.md
+goto ok
+
 :clean
 if exist "%BINARY%" del /q "%BINARY%"
 echo removed .\%BINARY%
@@ -78,6 +85,7 @@ echo   test          go test ./...
 echo   vet           go vet ./...
 echo   race          go test -race ./...
 echo   cover         coverage summary
+echo   keybindings-docs  regenerate docs/KEYBINDINGS.md from the keymap
 echo   clean         remove built binary
 echo   help          show this list
 goto ok

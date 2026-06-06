@@ -462,3 +462,34 @@ renderers:
 		t.Errorf("sleeping renderer should have StartOff=true: %+v", cfg.RendererSpecs[1])
 	}
 }
+
+func TestYAMLKeybindingsCarriedThrough(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "log-listener.yml")
+	yml := `
+files:
+  - id: app
+    paths: ["/tmp/app.log"]
+keybindings:
+  default:
+    search: ["?"]
+  darwin:
+    fast_down: ["shift+down"]
+`
+	if err := os.WriteFile(path, []byte(yml), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := loadWithFS([]string{"--config", path}, time.Now(), func() (string, error) { return dir, nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Keybindings == nil {
+		t.Fatal("Keybindings not carried through")
+	}
+	if got := cfg.Keybindings.Default["search"]; len(got) != 1 || got[0] != "?" {
+		t.Errorf("default.search = %v, want [?]", got)
+	}
+	if got := cfg.Keybindings.Darwin["fast_down"]; len(got) != 1 || got[0] != "shift+down" {
+		t.Errorf("darwin.fast_down = %v, want [shift+down]", got)
+	}
+}

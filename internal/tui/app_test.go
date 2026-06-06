@@ -7,6 +7,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"log-listener/internal/keymap"
 	"log-listener/internal/render"
 )
 
@@ -702,5 +703,84 @@ func TestModelStreamRowsPadToWidth(t *testing.T) {
 			t.Errorf("row %d visible width = %d, want %d (line=%q)",
 				i, got, width, stripANSI(ln))
 		}
+	}
+}
+
+func TestCustomQuitBinding(t *testing.T) {
+	km, err := keymap.Resolve("linux", map[string][]string{"quit": {"x"}}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := newModel(100)
+	m.km = km
+	// 'x' should now quit (returns tea.Quit), and 'q' should NOT.
+	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("x")})
+	if cmd == nil {
+		t.Errorf("custom binding 'x' did not trigger quit")
+	}
+	_, cmd = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("q")})
+	if cmd != nil {
+		t.Errorf("'q' should no longer quit after rebind")
+	}
+}
+
+func TestPositionalGroupToggleStillWorks(t *testing.T) {
+	m := newModel(100)
+	m.km = keymap.Default("linux")
+	m.groupOrder = []string{"g0", "g1"}
+	m.groupEnabled = map[string]bool{"g0": true, "g1": true}
+	m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("1")})
+	if m.groupEnabled["g0"] {
+		t.Errorf("digit '1' should have toggled group g0 off")
+	}
+}
+
+func TestMultiRuneDigitDoesNotToggleGroup(t *testing.T) {
+	m := newModel(100)
+	m.km = keymap.Default("linux")
+	m.groupOrder = []string{"g0", "g1"}
+	m.groupEnabled = map[string]bool{"g0": true, "g1": true}
+	m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("1x")})
+	if !m.groupEnabled["g0"] || !m.groupEnabled["g1"] {
+		t.Errorf("multi-rune key %q must not toggle any group: g0=%v g1=%v",
+			"1x", m.groupEnabled["g0"], m.groupEnabled["g1"])
+	}
+}
+
+func TestHeaderUsesKeymapDisplay(t *testing.T) {
+	m := newModel(100)
+	m.km = keymap.Default("darwin")
+	m.width = 200
+	m.height = 10
+	view := m.View()
+	if !strings.Contains(view, "⌃G") { // mac glyph for toggle_groups
+		t.Errorf("darwin header should show ⌃G; view header missing it")
+	}
+	if strings.Contains(view, "Ctrl+G") {
+		t.Errorf("darwin header should not show linux-style Ctrl+G")
+	}
+}
+
+func TestGroupsOverlayHeaderUsesKeymapGlyphs(t *testing.T) {
+	m := newModel(100)
+	m.km = keymap.Default("darwin")
+	m.width = 200
+	m.height = 20
+	m.showGroupsPanel = true
+	m.groupOrder = []string{"g0"}
+	m.groupEnabled = map[string]bool{"g0": true}
+
+	out := m.renderGroupsPanel(10)
+	if !strings.Contains(out, "⌃G") { // mac glyph for toggle_groups
+		t.Errorf("darwin overlay header should show ⌃G; missing it")
+	}
+	if !strings.Contains(out, "⎋") { // mac glyph for close_overlay (Esc)
+		t.Errorf("darwin overlay header should show ⎋ for close_overlay; missing it")
+	}
+	if strings.Contains(out, "Ctrl+G") {
+		t.Errorf("darwin overlay header should not show linux-style Ctrl+G")
+	}
+	if strings.Contains(out, "Esc") {
+		t.Errorf("darwin overlay header should not show literal Esc")
 	}
 }

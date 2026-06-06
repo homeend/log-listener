@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 )
@@ -154,5 +155,33 @@ renderers:
 	}
 	if !contains(out, `"u": "bob"`) {
 		t.Fatalf("pretty-printed JSON missing in:\n%s", out)
+	}
+}
+
+func TestKeybindingsDocFlagPrintsAndExitsZero(t *testing.T) {
+	var out, errb bytes.Buffer
+	code := run([]string{"--keybindings-doc"}, &out, &errb)
+	if code != 0 {
+		t.Fatalf("exit code = %d, stderr=%s", code, errb.String())
+	}
+	if !strings.Contains(out.String(), "# Keybindings") {
+		t.Errorf("doc not printed; got: %q", out.String())
+	}
+}
+
+func TestBadKeybindingExitsNonZero(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "log-listener.yml")
+	yml := "files:\n  - id: a\n    paths: [\"/tmp/a.log\"]\nkeybindings:\n  default:\n    clear: [\"n\"]\n"
+	if err := os.WriteFile(path, []byte(yml), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var out, errb bytes.Buffer
+	code := run([]string{"--no-tui", "--once", "--config", path}, &out, &errb)
+	if code == 0 {
+		t.Fatalf("expected non-zero exit for colliding keybinding")
+	}
+	if !strings.Contains(errb.String(), "clear") {
+		t.Errorf("stderr should explain the collision; got %q", errb.String())
 	}
 }
