@@ -14,6 +14,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	goruntime "runtime"
 	"strings"
 	"sync/atomic"
 	"syscall"
@@ -22,6 +23,7 @@ import (
 	"log-listener/internal/config"
 	"log-listener/internal/configwatch"
 	"log-listener/internal/discover"
+	"log-listener/internal/keymap"
 	"log-listener/internal/render"
 	"log-listener/internal/sink"
 	"log-listener/internal/tui"
@@ -39,10 +41,38 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return runInit(args[1:], os.Stdin, sink.IsTTY(os.Stdin), stdout, stderr)
 	}
 
+	if len(args) > 0 && args[0] == "--keybindings-doc" {
+		fmt.Fprint(stdout, keymap.RenderMarkdownDoc())
+		return 0
+	}
+
 	cfg, err := config.Load(args, time.Now())
 	if err != nil {
 		fmt.Fprintln(stderr, "log-listener:", err)
 		return 2
+	}
+
+	// Resolve keybindings now so a bad binding fails fast in every mode
+	// (--once, --no-tui, and TUI), not just when the TUI starts.
+	var km *keymap.Keymap
+	{
+		var userDefault, userOS map[string][]string
+		if cfg.Keybindings != nil {
+			userDefault = cfg.Keybindings.Default
+			switch goruntime.GOOS {
+			case "darwin":
+				userOS = cfg.Keybindings.Darwin
+			case "windows":
+				userOS = cfg.Keybindings.Windows
+			default:
+				userOS = cfg.Keybindings.Linux
+			}
+		}
+		km, err = keymap.Resolve(goruntime.GOOS, userDefault, userOS)
+		if err != nil {
+			fmt.Fprintln(stderr, "log-listener:", err)
+			return 2
+		}
 	}
 
 	assignments, err := discover.Assign(cfg.Groups, cfg.GlobalFilter)
@@ -100,7 +130,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 
 	if useTUI {
-		if err := runWatchTUI(cfg, args, cfg.DropUnmatched, assignments, &pipePtr, sseHub, stderr); err != nil {
+		if err := runWatchTUI(cfg, args, cfg.DropUnmatched, assignments, &pipePtr, sseHub, km, stderr); err != nil {
 			fmt.Fprintln(stderr, "log-listener:", err)
 			return 1
 		}
@@ -316,7 +346,7 @@ func emit(pipePtr *atomic.Pointer[render.Pipeline], stdoutSink *sink.Stdout, sse
 // terminal on the main goroutine, while a background goroutine pumps watcher
 // events through the renderer pipeline into app.Push() and (if configured)
 // the SSE hub.
-func runWatchTUI(cfg *config.Config, args []string, dropUnmatched bool, assignments []discover.Assignment, pipePtr *atomic.Pointer[render.Pipeline], sseHub *sink.SSEHub, stderr io.Writer) error {
+func runWatchTUI(cfg *config.Config, args []string, dropUnmatched bool, assignments []discover.Assignment, pipePtr *atomic.Pointer[render.Pipeline], sseHub *sink.SSEHub, km *keymap.Keymap, stderr io.Writer) error {
 	w, err := buildWatcher(cfg, assignments, stderr)
 	if err != nil {
 		return err
@@ -343,6 +373,7 @@ func runWatchTUI(cfg *config.Config, args []string, dropUnmatched bool, assignme
 		InitialFiles: initial,
 		Groups:       groups,
 		Renderers:    renderers,
+		Keymap:       km,
 		SetRendererOn: func(i int, on bool) { pipePtr.Load().SetRendererEnabled(i, on) },
 		RenderFn: func(group, file, raw string) (render.Event, bool) {
 			return pipePtr.Load().Render(time.Now(), group, file, raw)
