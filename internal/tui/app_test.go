@@ -734,3 +734,15 @@ func TestPositionalGroupToggleStillWorks(t *testing.T) {
 		t.Errorf("digit '1' should have toggled group g0 off")
 	}
 }
+
+func TestMultiRuneDigitDoesNotToggleGroup(t *testing.T) {
+	m := newModel(100)
+	m.km = keymap.Default("linux")
+	m.groupOrder = []string{"g0", "g1"}
+	m.groupEnabled = map[string]bool{"g0": true, "g1": true}
+	m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("1x")})
+	if !m.groupEnabled["g0"] || !m.groupEnabled["g1"] {
+		t.Errorf("multi-rune key %q must not toggle any group: g0=%v g1=%v",
+			"1x", m.groupEnabled["g0"], m.groupEnabled["g1"])
+	}
+}

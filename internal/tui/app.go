@@ -456,7 +456,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Positional toggles are not part of the action keymap (they are
 		// inherently 1-9 / shifted-1-9 by position). Handle them first.
-		if key >= "1" && key <= "9" {
+		if len(key) == 1 && key[0] >= '1' && key[0] <= '9' {
 			idx := int(key[0] - '1')
 			if idx < len(m.groupOrder) {
 				gid := m.groupOrder[idx]
