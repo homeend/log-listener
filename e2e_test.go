@@ -105,6 +105,14 @@ func startListener(t *testing.T, args ...string) *stream {
 	t.Cleanup(cancel)
 
 	cmd := exec.CommandContext(ctx, bin, args...)
+	// Isolate from ambient config discovery: the binary auto-loads
+	// ./log-listener.yml and ~/.log-listener.yml. Run from a throwaway dir
+	// with HOME/USERPROFILE pointed there so a developer's local config in the
+	// repo root (gitignored) can't perturb e2e assertions. All e2e args use
+	// absolute paths, so the working directory is otherwise irrelevant.
+	isoHome := t.TempDir()
+	cmd.Dir = isoHome
+	cmd.Env = append(os.Environ(), "HOME="+isoHome, "USERPROFILE="+isoHome)
 	cmd.Stderr = os.Stderr
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {

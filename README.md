@@ -48,21 +48,24 @@ linker flag.
 
 Requires Go 1.26+.
 
+Install the binary straight from the module path:
+
 ```bash
-git clone <this-repo> && cd log-listener
-make build              # ./log-listener
-make build-static       # CGO_ENABLED=0, stripped
+go install github.com/homeend/log-listener@latest   # → $GOBIN/log-listener
 ```
 
-On Linux, `make build-static` produces a fully static binary
+Or build from a clone:
+
+```bash
+git clone https://github.com/homeend/log-listener && cd log-listener
+./build.sh build         # ./log-listener
+./build.sh build-static  # CGO_ENABLED=0, stripped
+```
+
+On Linux, `build-static` produces a fully static binary
 (`-extldflags "-static"`). On macOS the static linker flag is a no-op but
-the resulting binary is still CGO-free and reproducible.
-
-A self-contained smoke test:
-
-```bash
-make demo               # creates a tempdir, seeds a log line, tails it
-```
+the resulting binary is still CGO-free and reproducible. (`build.cmd` is the
+Windows equivalent of `build.sh`.)
 
 ---
 
@@ -813,19 +816,25 @@ payloads — both are tested.
 
 ## Development
 
+There is no Makefile — `build.sh` (Unix) / `build.cmd` (Windows) wrap the
+common `go` commands:
+
 ```bash
-make test          # unit tests (8 packages)
-make vet           # go vet
-make race          # go test -race
-make build         # local binary
-make build-static  # CGO_ENABLED=0 stripped binary
-make demo          # self-contained tail of a tempdir
+./build.sh test              # go test ./...
+./build.sh vet               # go vet ./...
+./build.sh race              # go test -race ./...
+./build.sh build             # local binary
+./build.sh build-static      # CGO_ENABLED=0 stripped binary
+./build.sh keybindings-docs  # regenerate KEYBINDINGS.md from the keymap
 ```
+
+Plain `go test ./...` works too; a single package is `go test ./internal/<pkg>/`
+and a single test is `go test -run TestName ./internal/<pkg>/`.
 
 Layout:
 
 ```
-cmd/log-listener/          entry point + signal handling + sink/TUI wiring
+main.go, init.go           entry point + signal handling + sink/TUI wiring (package main, repo root)
 internal/timeparse/        ISO 8601 + relative duration parser
 internal/discover/         directory walk + file filter + group assignment
 internal/watch/            fsnotify watcher + rotation-safe tailer

@@ -12,7 +12,7 @@ import (
 
 	"github.com/mattn/go-isatty"
 
-	"log-listener/internal/render"
+	"github.com/homeend/log-listener/internal/render"
 )
 
 // ANSI SGR codes used for terminal colors. Empty strings are substituted when

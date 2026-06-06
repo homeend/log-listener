@@ -16,8 +16,8 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/mattn/go-runewidth"
 
-	"log-listener/internal/keymap"
-	"log-listener/internal/render"
+	"github.com/homeend/log-listener/internal/keymap"
+	"github.com/homeend/log-listener/internal/render"
 )
 
 // ansiRE matches CSI / OSC escape sequences emitted by lipgloss. Used both

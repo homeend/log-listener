@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"log-listener/internal/discover"
+	"github.com/homeend/log-listener/internal/discover"
 )
 
 var refNow = time.Date(2026, 5, 28, 12, 0, 0, 0, time.UTC)

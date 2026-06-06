@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"log-listener/internal/config"
+	"github.com/homeend/log-listener/internal/config"
 )
 
 func TestParseTemplateBasic(t *testing.T) {

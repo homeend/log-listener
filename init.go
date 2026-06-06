@@ -8,8 +8,8 @@ import (
 	"sort"
 	"strings"
 
-	"log-listener/internal/catalog"
-	"log-listener/internal/config"
+	"github.com/homeend/log-listener/internal/catalog"
+	"github.com/homeend/log-listener/internal/config"
 )
 
 // initFetcher is a seam so tests can inject a fake remote catalog. The url is

@@ -20,14 +20,14 @@ import (
 	"syscall"
 	"time"
 
-	"log-listener/internal/config"
-	"log-listener/internal/configwatch"
-	"log-listener/internal/discover"
-	"log-listener/internal/keymap"
-	"log-listener/internal/render"
-	"log-listener/internal/sink"
-	"log-listener/internal/tui"
-	"log-listener/internal/watch"
+	"github.com/homeend/log-listener/internal/config"
+	"github.com/homeend/log-listener/internal/configwatch"
+	"github.com/homeend/log-listener/internal/discover"
+	"github.com/homeend/log-listener/internal/keymap"
+	"github.com/homeend/log-listener/internal/render"
+	"github.com/homeend/log-listener/internal/sink"
+	"github.com/homeend/log-listener/internal/tui"
+	"github.com/homeend/log-listener/internal/watch"
 )
 
 func main() {

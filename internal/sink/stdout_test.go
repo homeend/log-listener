@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"log-listener/internal/render"
+	"github.com/homeend/log-listener/internal/render"
 )
 
 func makeEvent(parts ...render.Part) render.Event {

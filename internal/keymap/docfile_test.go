@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"log-listener/internal/keymap"
+	"github.com/homeend/log-listener/internal/keymap"
 )
 
 // TestDocsUpToDate fails if KEYBINDINGS.md drifts from RenderMarkdownDoc.

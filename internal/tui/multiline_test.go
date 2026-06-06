@@ -7,8 +7,8 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"log-listener/internal/config"
-	"log-listener/internal/render"
+	"github.com/homeend/log-listener/internal/config"
+	"github.com/homeend/log-listener/internal/render"
 )
 
 // pushRawLine appends an event that contains exactly one text part with

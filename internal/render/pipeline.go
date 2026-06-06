@@ -6,8 +6,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"log-listener/internal/config"
-	"log-listener/internal/match"
+	"github.com/homeend/log-listener/internal/config"
+	"github.com/homeend/log-listener/internal/match"
 )
 
 // toMatchSpec converts a config matcher spec into a match.Spec.

@@ -4,16 +4,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Build, test, run
 
+No Makefile — use `build.sh` (Unix) / `build.cmd` (Windows), which wrap `go`:
+
 ```bash
-make build         # local binary
-make build-static  # CGO_ENABLED=0 static binary
-make test          # go test ./...
-make vet           # go vet ./...
-make race          # go test -race ./...
+./build.sh build         # local binary
+./build.sh build-static  # CGO_ENABLED=0 static binary
+./build.sh test          # go test ./...
+./build.sh vet           # go vet ./...
+./build.sh race          # go test -race ./...
+./build.sh keybindings-docs  # regenerate KEYBINDINGS.md
 ```
 
+Plain `go test ./...` works too.
 Run a single package's tests: `go test ./internal/<pkg>/...`
 Run a single test: `go test -run TestName ./internal/<pkg>/`
+Installable via `go install github.com/homeend/log-listener@latest` (the
+`package main` entry point lives at the repo root).
 
 ## Architecture (big picture)
 
@@ -33,7 +39,7 @@ Authoritative design + per-phase history lives in `PLAN.md` and `CHANGELOG.md`.
 | `internal/sink`            | Colorized stdout + SSE hub.                                   |
 | `internal/tui`             | bubbletea app: streaming view + Ctrl+I file overlay.          |
 | `internal/keymap`          | Actions ↔ per-OS keys, glyph display, override resolve, doc gen. |
-| `cmd/log-listener`         | Entry point; wires config → discover → watch → pipeline → sinks/TUI. |
+| `.` (repo root)            | `package main` entry point; wires config → discover → watch → pipeline → sinks/TUI. |
 
 ### Data flow
 

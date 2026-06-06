@@ -6,7 +6,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"log-listener/internal/render"
+	"github.com/homeend/log-listener/internal/render"
 )
 
 // fakePipeline records SetRendererOn calls and produces a configurable

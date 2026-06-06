@@ -1,4 +1,4 @@
-module log-listener
+module github.com/homeend/log-listener
 
 go 1.26
 

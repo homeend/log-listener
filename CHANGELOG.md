@@ -7,6 +7,17 @@ and this project adheres to phased delivery per `PLAN.md`.
 
 ## [Unreleased]
 
+### Installable via `go install`
+- The module path is now `github.com/homeend/log-listener` (was the bare
+  `log-listener`), and the `package main` entry point moved from
+  `cmd/log-listener/` to the **repo root**, so
+  `go install github.com/homeend/log-listener@latest` produces the
+  `log-listener` binary. All internal imports were rewritten to the new module
+  path; `build.sh`/`build.cmd` now build the root package (`.`).
+- E2E tests are isolated from ambient config discovery (the spawned binary runs
+  from a throwaway dir with `HOME`/`USERPROFILE` redirected), so a developer's
+  gitignored `./log-listener.yml` no longer perturbs assertions.
+
 ### OS-aware keybindings (translation + override layer)
 - **`internal/keymap`** is now the single source of truth for TUI keys: every
   function is a named *action* mapped to a per-OS list of keys, so behavior and

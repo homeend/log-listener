@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"log-listener/internal/discover"
-	"log-listener/internal/timeparse"
+	"github.com/homeend/log-listener/internal/discover"
+	"github.com/homeend/log-listener/internal/timeparse"
 )
 
 // Config is the merged CLI + YAML configuration.

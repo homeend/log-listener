@@ -16,7 +16,7 @@ set -eu
 
 BINARY="log-listener"
 PKG="./..."
-CMD="./cmd/log-listener"
+CMD="."
 
 # Resolve to the script's own directory so it works from anywhere.
 cd "$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"

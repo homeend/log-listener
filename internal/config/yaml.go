@@ -10,8 +10,8 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"log-listener/internal/discover"
-	"log-listener/internal/timeparse"
+	"github.com/homeend/log-listener/internal/discover"
+	"github.com/homeend/log-listener/internal/timeparse"
 )
 
 // RendererSpec is the renderer definition as loaded from YAML. Phase 3 will

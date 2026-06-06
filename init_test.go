@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"log-listener/internal/catalog"
-	"log-listener/internal/config"
-	"log-listener/internal/render"
+	"github.com/homeend/log-listener/internal/catalog"
+	"github.com/homeend/log-listener/internal/config"
+	"github.com/homeend/log-listener/internal/render"
 )
 
 // TestInitOutputLoadsAndBuildsPipeline is the end-to-end guard: a generated

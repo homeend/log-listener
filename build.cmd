@@ -15,7 +15,7 @@ rem   help          show this list
 setlocal
 set "BINARY=log-listener.exe"
 set "PKG=./..."
-set "CMD=./cmd/log-listener"
+set "CMD=."
 
 rem Run from the script's own directory so it works from anywhere.
 pushd "%~dp0"

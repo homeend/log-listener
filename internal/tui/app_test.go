@@ -7,8 +7,8 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"log-listener/internal/keymap"
-	"log-listener/internal/render"
+	"github.com/homeend/log-listener/internal/keymap"
+	"github.com/homeend/log-listener/internal/render"
 )
 
 func TestModelToggleGroupColumn(t *testing.T) {

@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"log-listener/internal/render"
+	"github.com/homeend/log-listener/internal/render"
 )
 
 // SSEHub is an HTTP/SSE broadcast hub. Each client connection opens a

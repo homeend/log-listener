@@ -7,7 +7,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"log-listener/internal/render"
+	"github.com/homeend/log-listener/internal/render"
 )
 
 // seedSearchModel pushes n events labelled "line-i". Indices where

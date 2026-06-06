@@ -7,7 +7,7 @@ import (
 	"runtime"
 	"strings"
 
-	"log-listener/internal/config"
+	"github.com/homeend/log-listener/internal/config"
 )
 
 // Env carries the host facts resolution depends on. Injected for testability;
