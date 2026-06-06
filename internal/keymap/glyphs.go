@@ -13,12 +13,19 @@ var knownBase = map[string]bool{
 	"tab": true, "esc": true, "enter": true,
 }
 
+// modOrder defines bubbletea's canonical modifier order: alt → ctrl → shift.
+// Confirmed from bubbletea@v1.3.10 key.go:70 (Key.String writes "alt+" as an
+// unconditional leading prefix) and key.go:311-312 (keyNames entries for
+// KeyCtrlShiftHome/End are "ctrl+shift+…", alt never appears between ctrl and shift).
+var modOrder = map[string]int{"alt": 0, "ctrl": 1, "shift": 2}
+
 // normalizeKey canonicalizes a user-supplied key string to the vocabulary the
 // dispatcher and bubbletea use. Modifiers (ctrl/alt/shift) are lowercased and
-// ordered as written; the base is lowercased if it is a known named key, or
-// kept verbatim if it is a single rune (so "G" stays "G"). The space key is
-// the single string " " (also accepts "space"/"Space"). Unmappable tokens are
-// an error — never a silent no-fire.
+// sorted into bubbletea's canonical order (alt → ctrl → shift); the base is
+// lowercased if it is a known named key, or kept verbatim if it is a single
+// rune (so "G" stays "G"). The space key is the single string " " (also
+// accepts "space"/"Space"). Unmappable tokens are an error — never a silent
+// no-fire.
 func normalizeKey(s string) (string, error) {
 	if s == " " {
 		return " ", nil
@@ -27,6 +34,8 @@ func normalizeKey(s string) (string, error) {
 		return " ", nil
 	}
 	parts := strings.Split(s, "+")
+	var mods []string
+	var base string
 	for i, p := range parts {
 		if p == "" {
 			return "", fmt.Errorf("invalid key %q (empty token)", s)
@@ -37,37 +46,49 @@ func normalizeKey(s string) (string, error) {
 			if lp != "ctrl" && lp != "alt" && lp != "shift" {
 				return "", fmt.Errorf("invalid modifier %q in key %q", p, s)
 			}
-			parts[i] = lp
+			mods = append(mods, lp)
 			continue
 		}
 		// base token
 		lp := strings.ToLower(p)
 		if knownBase[lp] {
-			parts[i] = lp
+			base = lp
 		} else if len([]rune(p)) == 1 {
 			if len(parts) > 1 {
 				// With modifiers, lowercase the base (bubbletea convention: ctrl+i not ctrl+I).
-				parts[i] = lp
+				base = lp
 			} else {
-				parts[i] = p // standalone single rune: keep case ("G" vs "g")
+				base = p // standalone single rune: keep case ("G" vs "g")
 			}
 		} else {
 			return "", fmt.Errorf("unknown key token %q in key %q", p, s)
 		}
 	}
-	return strings.Join(parts, "+"), nil
+	if len(mods) == 0 {
+		return base, nil
+	}
+	// Sort modifiers into bubbletea's canonical order (alt → ctrl → shift).
+	// Use a simple insertion sort — at most 3 elements.
+	for i := 1; i < len(mods); i++ {
+		for j := i; j > 0 && modOrder[mods[j]] < modOrder[mods[j-1]]; j-- {
+			mods[j], mods[j-1] = mods[j-1], mods[j]
+		}
+	}
+	return strings.Join(append(mods, base), "+"), nil
 }
 
 var macGlyph = map[string]string{
 	"ctrl": "⌃", "alt": "⌥", "shift": "⇧",
 	"esc": "⎋", "tab": "⇥", "enter": "↩",
 	"up": "↑", "down": "↓", "left": "←", "right": "→",
+	"home": "Home", "end": "End",
 	"pgup": "PgUp", "pgdown": "PgDn", " ": "Space",
 }
 
 var textLabel = map[string]string{
 	"esc": "Esc", "tab": "Tab", "enter": "Enter",
 	"up": "↑", "down": "↓", "left": "←", "right": "→",
+	"home": "Home", "end": "End",
 	"pgup": "PgUp", "pgdown": "PgDn", " ": "Space",
 }
 

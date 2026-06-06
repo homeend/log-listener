@@ -99,8 +99,9 @@ func (k *Keymap) Lookup(key string) (Action, bool) {
 	return a, ok
 }
 
-// Keys returns the bound keys for an action (display order).
-func (k *Keymap) Keys(a Action) []string { return k.bindings[a] }
+// Keys returns a copy of the bound keys for an action (display order).
+// Callers may modify the returned slice without affecting the keymap.
+func (k *Keymap) Keys(a Action) []string { return append([]string(nil), k.bindings[a]...) }
 
 // Display returns the per-OS label for an action's keys, e.g. "⌃G".
 func (k *Keymap) Display(a Action) string { return Display(k.bindings[a], k.goos) }
