@@ -7,6 +7,31 @@ and this project adheres to phased delivery per `PLAN.md`.
 
 ## [Unreleased]
 
+### OS-aware keybindings (translation + override layer)
+- **`internal/keymap`** is now the single source of truth for TUI keys: every
+  function is a named *action* mapped to a per-OS list of keys, so behavior and
+  on-screen help both derive from one table. The TUI dispatches by action
+  instead of hard-coded key strings.
+- **macOS-native display**: on `darwin` the header/overlay hints and the
+  reference doc render keys with Mac glyphs (`⌃ ⌥ ⇧ ⎋ ⇥`) instead of
+  `Ctrl/Alt/Shift/Esc/Tab`. Display is case-accurate (a binding on `g` shows
+  `g`, not `G`). Terminals can't see the ⌘ key, so no shortcut uses Cmd.
+- **macOS fast-scroll remap**: because `Ctrl`+Arrow is captured by macOS
+  Mission Control / Spaces before a terminal sees it, the macOS defaults
+  advertise `Shift`+Arrow first for fast scrolling (Ctrl+Arrow stays bound;
+  PgUp/PgDn remain a safety net). *(Shift+Arrow forwarding is not yet verified
+  on every macOS terminal.)*
+- **User overrides via YAML**: a new `keybindings:` block remaps any action.
+  Resolution is per-action with replace-semantics and precedence
+  current-OS section → `default` section → built-in default. Unknown action
+  names, unmappable key tokens, key collisions, and bindings that shadow the
+  positional `1`–`9` / `!@#…` toggles are all rejected at load time — no silent
+  no-fire.
+- **Generated reference**: `log-listener --keybindings-doc` prints a Markdown
+  table of every action's keys per OS; the committed `docs/KEYBINDINGS.md` is
+  produced from it (`./build.sh keybindings-docs`) and guarded by
+  `TestDocsUpToDate` so it can never drift from the code.
+
 ### TUI display-width fixes
 - **Tabs** in log lines (e.g. Java stack-trace frames, `\tat …`) are expanded to
   8-column tab stops, and **wide/CJK characters** are measured at their true

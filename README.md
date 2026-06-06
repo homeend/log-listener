@@ -35,6 +35,10 @@ linker flag.
   — useful for prettifying JSON inside historical logs) and exits.
 - **YAML configuration with CLI precedence.** Anything you can do on the CLI
   you can do in `log-listener.yml`; CLI flags win on conflict.
+- **OS-aware, customizable keybindings.** The TUI renders native key glyphs on
+  macOS (`⌃ ⌥ ⇧`) and Ctrl/Shift text on Linux/Windows, and every shortcut is
+  remappable per-OS via a `keybindings:` block. Full per-OS reference:
+  [`docs/KEYBINDINGS.md`](docs/KEYBINDINGS.md).
 - **Static binary, four runtime dependencies.** `fsnotify`, `yaml.v3`,
   `bubbletea`, `lipgloss`. No CGO.
 
@@ -626,6 +630,18 @@ browsing, so you can see at a glance whether the view is live.
 
 ### Keybindings
 
+The table below lists the **Linux/Windows** defaults. On **macOS** the same
+keys are shown with native glyphs (`⌃` Ctrl, `⌥` Option, `⇧` Shift, `⎋` Esc,
+`⇥` Tab), and fast scrolling advertises `Shift`+Arrow as its primary binding —
+`Ctrl`+Arrow is intercepted by macOS Mission Control / Spaces before a terminal
+app can see it (it stays bound as a fallback; PgUp/PgDn always page). A terminal
+can't capture the ⌘ key, so no shortcut uses Cmd.
+
+Every binding is an *action* you can remap — see **Customizing keybindings**
+below. The authoritative per-OS reference is generated from the code into
+[`docs/KEYBINDINGS.md`](docs/KEYBINDINGS.md) (regenerate with
+`./build.sh keybindings-docs`, or print it with `log-listener --keybindings-doc`).
+
 | Key                 | Action                                                |
 |---------------------|-------------------------------------------------------|
 | `q` / Ctrl+C        | Quit.                                                 |
@@ -667,6 +683,31 @@ roll off when the buffer fills.
 
 (Tab and Ctrl+I are bound to the same action because terminals transmit
 the same byte — 0x09 — for both.)
+
+### Customizing keybindings
+
+Any action can be rebound from your `log-listener.yml`. Add a `keybindings:`
+block whose sub-sections are an OS name (`darwin` / `linux` / `windows`) or
+`default` (every OS). Each maps an **action name** to the list of keys that
+trigger it; the list **replaces** the built-in default for that action.
+
+```yaml
+keybindings:
+  default:                 # applies on every OS
+    search: ["/"]
+    quit:   ["q", "ctrl+c"]
+  darwin:                  # macOS-only overrides
+    fast_down: ["shift+down"]
+  linux:
+    fast_down: ["ctrl+down"]
+```
+
+Resolution is per-action: a current-OS section wins over `default`, which wins
+over the built-in default. Giving an action a shorter key list is how you
+*drop* one of its default keys. Loading fails fast on an unknown action name, an
+unrecognized key token, a key bound to two actions, or a key that clashes with
+the positional `1`–`9` / `!@#…` toggles — so a typo never silently does nothing.
+Run `log-listener --keybindings-doc` for every action name and its defaults.
 
 ---
 
