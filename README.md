@@ -675,6 +675,8 @@ below. The authoritative per-OS reference is generated from the code into
 | **`Ctrl+E`**        | **Toggle the "renderers" overlay.**                   |
 | **`!` `@` `#` `$` `%` `^` `&` `*` `(`** | **Toggle renderer 1–9 on/off (shifted digits).** |
 | **`m`**             | **Collapse multiline entries to one line + `[...]`.** |
+| **`s`**             | **Save the visible viewport to a `screen-log-listener-*.txt` file (cwd).** |
+| **`S`**             | **Save the full scrollback buffer to a `screen-log-listener-*.txt` file (cwd).** |
 
 When you pan horizontally (`←` / `→`), the visible window is clipped from
 the left while ANSI styling (colors and the search highlight) is preserved

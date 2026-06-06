@@ -18,6 +18,14 @@ and this project adheres to phased delivery per `PLAN.md`.
   from a throwaway dir with `HOME`/`USERPROFILE` redirected), so a developer's
   gitignored `./log-listener.yml` no longer perturbs assertions.
 
+### Save view to a text file
+- **`s`** writes the currently visible rows, and **`S`** writes the entire
+  scrollback buffer, to a timestamped `screen-log-listener-<ts>.txt` file in the
+  working directory (numeric suffix on same-second collisions). Output is plain
+  text: ANSI stripped, full `[group] file:` prefixes kept regardless of column
+  toggles. A footer message confirms the path (or reports a write error) until
+  the next keypress. Both keys are remappable via the `keybindings:` block.
+
 ### OS-aware keybindings (translation + override layer)
 - **`internal/keymap`** is now the single source of truth for TUI keys: every
   function is a named *action* mapped to a per-OS list of keys, so behavior and
