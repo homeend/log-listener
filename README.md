@@ -147,6 +147,14 @@ Pass through as a single text part by default. Set
 `output.drop_unmatched: true` (YAML) to discard them silently — useful when
 you want the renderer pipeline to act as a filter as well as a formatter.
 
+A renderer matches only if its `line_regex` matches **and** its `json()` /
+`xml()` render-calls actually parse. If a render-call can't parse its capture
+(e.g. a line ending in `{KEY=value}`, which isn't JSON), the renderer is
+treated as a non-match and the line falls through to the next renderer — and
+ultimately renders as the original raw line (or is dropped under
+`output.drop_unmatched`). So a `{…}` that only *looks* like JSON is never
+split or mangled.
+
 ### `applies_to` semantics
 
 `groups` and `paths` are AND-combined; empty means vacuously true. Path

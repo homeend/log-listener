@@ -45,7 +45,10 @@ is active.
 ### Locked design rules
 
 - **First-match-wins, everywhere**: file → group assignment, and
-  line → renderer matching, both use declaration order.
+  line → renderer matching, both use declaration order. A renderer matches
+  only if its `line_regex` matches AND its `json()`/`xml()` render-calls
+  actually parse; a parse failure makes the renderer fall through to the next
+  one (or to raw / drop), so non-JSON `{…}` is never mangled.
 - **Directory `regex` matches filenames, not log lines**. Line content
   matching is the renderer's job.
 - **Lines that match no renderer** are emitted as-is unless

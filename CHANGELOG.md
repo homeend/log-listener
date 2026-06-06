@@ -7,6 +7,17 @@ and this project adheres to phased delivery per `PLAN.md`.
 
 ## [Unreleased]
 
+### Renderer validity & multi-line rendering fixes
+- **JSON/XML detection is validity-based**: a renderer matches only when its
+  `json()`/`xml()` call actually parses. Lines that match a renderer's regex
+  but carry non-JSON braces (e.g. IntelliJ's `{KEY=value}` macro dumps, or
+  exception messages ending in `{…}`) now fall through and render as the
+  original single line instead of being split/mangled.
+- **TUI row invariant**: multi-line rendered text is stored as a list of rows,
+  so an embedded newline can no longer wrap a row, push the header off-screen,
+  or corrupt horizontal scrolling. Header/footer lines are also clamped to a
+  single row so they can't wrap at narrow terminal widths.
+
 ### TUI search: filter, hit navigation, auto-scroll, repeat
 - **`t` filter**: show only entries containing the search term; a match inside
   a rendered JSON/XML block shows the whole block alongside its source line
