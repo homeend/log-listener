@@ -115,7 +115,13 @@ func displayKey(key string, goos string) string {
 		if mac {
 			if g, ok := macGlyph[tok]; ok {
 				b.WriteString(g)
+			} else if i == 0 {
+				// Standalone single-rune base: display verbatim so it matches the
+				// case-sensitive dispatched key (Shift state is encoded in the case).
+				b.WriteString(tok)
 			} else {
+				// Single-rune base following a modifier: conventional uppercase
+				// (⌃P), unaffected by Shift.
 				b.WriteString(strings.ToUpper(tok))
 			}
 			// Mac glyphs are written tight (⌃I), no "+".
@@ -130,7 +136,15 @@ func displayKey(key string, goos string) string {
 		if lbl, ok := textLabel[tok]; ok {
 			b.WriteString(lbl)
 		} else if len([]rune(tok)) == 1 {
-			b.WriteString(strings.ToUpper(tok))
+			if i == 0 {
+				// Standalone single-rune base: display verbatim so it matches the
+				// case-sensitive dispatched key (Shift state is encoded in the case).
+				b.WriteString(tok)
+			} else {
+				// Single-rune base following a modifier: conventional uppercase
+				// (Ctrl+P), unaffected by Shift.
+				b.WriteString(strings.ToUpper(tok))
+			}
 		} else {
 			b.WriteString(capitalize(tok))
 		}

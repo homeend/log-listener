@@ -7,29 +7,29 @@ A terminal TUI cannot capture the macOS Cmd (⌘) key, so macOS bindings use the
 
 | Action | Linux / Windows | macOS | Description |
 |--------|-----------------|-------|-------------|
-| Quit | Ctrl+C / Q | ⌃C / Q | Exit log-listener. |
+| Quit | Ctrl+C / q | ⌃C / q | Exit log-listener. |
 | Toggle files overlay | Ctrl+I / Tab | ⌃I / ⇥ | Show/hide the watched-files panel. |
 | Toggle groups overlay | Ctrl+G | ⌃G | Show/hide the groups panel. |
 | Toggle renderers overlay | Ctrl+E | ⌃E | Show/hide the renderers panel. |
 | Close overlay / clear search | Esc | ⎋ | Close the open overlay, or clear active search highlights. |
 | Search | / | / | Start a substring search. |
-| Next match | N | N | Jump to the next search hit. |
-| Previous match | P | P | Jump to the previous search hit. |
-| Toggle filter | T | T | Show only entries matching the search term. |
+| Next match | n | n | Jump to the next search hit. |
+| Previous match | p | p | Jump to the previous search hit. |
+| Toggle filter | t | t | Show only entries matching the search term. |
 | Toggle group column | Ctrl+P | ⌃P | Show/hide the group column. |
 | Toggle file column | Ctrl+L | ⌃L | Show/hide the file column. |
 | Clear scrollback | Ctrl+R | ⌃R | Empty the in-memory view (sources keep running). |
-| Collapse multiline | M | M | Collapse/expand multiline entries. |
-| Scroll up | ↑ / K | ↑ / K | Move up one row. |
-| Scroll down | ↓ / J | ↓ / J | Move down one row. |
+| Collapse multiline | m | m | Collapse/expand multiline entries. |
+| Scroll up | ↑ / k | ↑ / k | Move up one row. |
+| Scroll down | ↓ / j | ↓ / j | Move down one row. |
 | Page up | PgUp / Ctrl+B | PgUp / ⌃B | Move up one page. |
 | Page down | PgDn / Ctrl+F / Space | PgDn / ⌃F / Space | Move down one page. |
 | Fast scroll up | Ctrl+↑ / Shift+↑ | ⇧↑ / ⌃↑ | Move up several rows. |
 | Fast scroll down | Ctrl+↓ / Shift+↓ | ⇧↓ / ⌃↓ | Move down several rows. |
-| Jump to top | Home / G | Home / G | Go to the oldest line. |
+| Jump to top | Home / g | Home / g | Go to the oldest line. |
 | Jump to bottom | End / G | End / G | Re-stick to the latest line. |
-| Pan left | ← / H | ← / H | Scroll left. |
-| Pan right | → / L | → / L | Scroll right. |
+| Pan left | ← / h | ← / h | Scroll left. |
+| Pan right | → / l | → / l | Scroll right. |
 | Fast pan left | Ctrl+← / Shift+← | ⇧← / ⌃← | Scroll left several columns. |
 | Fast pan right | Ctrl+→ / Shift+→ | ⇧→ / ⌃→ | Scroll right several columns. |
 | Reset horizontal scroll | 0 | 0 | Return to column 0. |

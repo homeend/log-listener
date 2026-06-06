@@ -68,6 +68,29 @@ func TestDisplayHomeEndConsistent(t *testing.T) {
 	}
 }
 
+func TestDisplayStandaloneLetterPreservesCase(t *testing.T) {
+	// A standalone single-rune base must display verbatim so the advertised key
+	// matches the dispatched (case-sensitive) key. A single-rune base that
+	// follows a modifier keeps the conventional uppercase form.
+	cases := []struct {
+		keys []string
+		goos string
+		want string
+	}{
+		{[]string{"home", "g"}, "linux", "Home / g"},
+		{[]string{"end", "G"}, "linux", "End / G"},
+		{[]string{"n"}, "linux", "n"},
+		{[]string{"n"}, "darwin", "n"},
+		{[]string{"ctrl+c"}, "linux", "Ctrl+C"},
+		{[]string{"ctrl+c"}, "darwin", "⌃C"},
+	}
+	for _, c := range cases {
+		if got := Display(c.keys, c.goos); got != c.want {
+			t.Errorf("Display(%v, %q) = %q; want %q", c.keys, c.goos, got, c.want)
+		}
+	}
+}
+
 func TestDisplayPerOS(t *testing.T) {
 	mac := Display([]string{"ctrl+i", "tab"}, "darwin")
 	if mac != "⌃I / ⇥" {

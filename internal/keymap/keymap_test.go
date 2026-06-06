@@ -53,6 +53,22 @@ func TestResolveUnknownActionIsError(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "frobnicate") {
 		t.Fatalf("expected unknown-action error, got %v", err)
 	}
+	// The error must list valid action names so the user can correct it.
+	if !strings.Contains(err.Error(), "quit") {
+		t.Fatalf("unknown-action error should list valid actions (e.g. quit), got %v", err)
+	}
+}
+
+func TestResolveRejectsReservedPositionalKey(t *testing.T) {
+	// Keys 1-9 and !@#$%^&*( are handled by the TUI positional pre-check
+	// before keymap lookup, so binding one is a silent no-fire.
+	_, err := Resolve("linux", map[string][]string{"search": {"5"}}, nil)
+	if err == nil {
+		t.Fatal("expected reserved-positional-key error")
+	}
+	if !strings.Contains(err.Error(), "5") || !strings.Contains(err.Error(), "search") {
+		t.Errorf("reserved-key error should name the key and action: %v", err)
+	}
 }
 
 func TestResolveBadKeyTokenIsError(t *testing.T) {

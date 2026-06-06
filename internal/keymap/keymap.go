@@ -3,7 +3,31 @@ package keymap
 import (
 	"fmt"
 	"sort"
+	"strings"
 )
+
+// reservedPositionalKeys are keys the TUI handles in its positional pre-check
+// (group/renderer toggles) BEFORE keymap lookup. Binding one of these would
+// pass Resolve but never fire, so a user override that uses them is an error.
+// 1-9 toggle groups; !@#$%^&*( (the shifts of 1-9) toggle renderers. No
+// default binds these, so checking the merged map can't false-positive.
+var reservedPositionalKeys = map[string]bool{
+	"1": true, "2": true, "3": true, "4": true, "5": true,
+	"6": true, "7": true, "8": true, "9": true,
+	"!": true, "@": true, "#": true, "$": true, "%": true,
+	"^": true, "&": true, "*": true, "(": true,
+}
+
+// validActionList returns the sorted, comma-separated list of valid action
+// names for use in error messages.
+func validActionList() string {
+	names := make([]string, 0, len(AllActions))
+	for _, d := range AllActions {
+		names = append(names, string(d.Action))
+	}
+	sort.Strings(names)
+	return strings.Join(names, ", ")
+}
 
 // Keymap is a resolved, validated action↔keys mapping plus a reverse index
 // for dispatch. Construct with Resolve or Default; do not build literally.
@@ -42,7 +66,7 @@ func Resolve(goos string, userDefault, userOS map[string][]string) (*Keymap, err
 		sort.Strings(names)
 		for _, name := range names {
 			if !IsAction(name) {
-				return fmt.Errorf("keybindings: unknown action %q", name)
+				return fmt.Errorf("keybindings: unknown action %q (valid actions: %s)", name, validActionList())
 			}
 			raw := layer[name]
 			norm := make([]string, 0, len(raw))
@@ -84,6 +108,9 @@ func buildLookup(bindings map[Action][]string) (map[string]Action, error) {
 	lookup := map[string]Action{}
 	for _, a := range actions {
 		for _, k := range bindings[a] {
+			if reservedPositionalKeys[k] {
+				return nil, fmt.Errorf("keybindings: key %q (action %q) is reserved for positional group/renderer toggles", k, a)
+			}
 			if other, dup := lookup[k]; dup && other != a {
 				return nil, fmt.Errorf("keybindings: key %q is bound to both %q and %q", k, other, a)
 			}
