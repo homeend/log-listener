@@ -780,10 +780,12 @@ func (m *model) reRenderAll() {
 }
 
 // decomposeEvent splits one render.Event into the per-line display rows
-// used by the model. Each event becomes a single head row carrying the
-// plain text body, plus zero-or-more pre-dim-styled block rows for
-// JSON/XML pretty-prints. The styled prefix is NOT baked in here so
-// column toggles take effect without rebuilding the cache.
+// used by the model. The text body becomes a head row plus one dim block row
+// per embedded newline (a template "\n" literal), then zero-or-more
+// pre-dim-styled block rows for JSON/XML pretty-prints. Splitting on newlines
+// keeps the "one displayLine = one terminal row" invariant. The styled prefix
+// is NOT baked in here so column toggles take effect without rebuilding the
+// cache.
 func decomposeEvent(ev render.Event) []displayLine {
 	var textBuf strings.Builder
 	var blocks []string
@@ -1105,7 +1107,7 @@ func (m *model) toggleRenderer(i int) {
 
 func (m *model) renderGroupsPanel(rows int) string {
 	out := make([]string, 0, rows)
-	out = append(out, headerBg.Width(m.width).Render(" Groups (Ctrl+G or Esc to close · 1-9 to toggle) "))
+	out = append(out, headerBg.Width(m.width).MaxHeight(1).Render(" Groups (Ctrl+G or Esc to close · 1-9 to toggle) "))
 	if len(m.groupOrder) == 0 {
 		out = append(out, m.padRow(dimStyle.Render("  (no groups defined)")))
 		for i := 2; i < rows; i++ {
@@ -1162,7 +1164,7 @@ func rendererShiftChar(i int) string {
 
 func (m *model) renderRenderersPanel(rows int) string {
 	out := make([]string, 0, rows)
-	out = append(out, headerBg.Width(m.width).Render(" Renderers (Ctrl+E or Esc to close · !-( to toggle) "))
+	out = append(out, headerBg.Width(m.width).MaxHeight(1).Render(" Renderers (Ctrl+E or Esc to close · !-( to toggle) "))
 	if len(m.rendererOrder) == 0 {
 		out = append(out, m.padRow(dimStyle.Render("  (no renderers defined)")))
 		for i := 2; i < rows; i++ {
@@ -1391,7 +1393,7 @@ func clipANSIWindow(line string, skip, width int) string {
 
 func (m *model) renderFiles(rows int) string {
 	out := make([]string, 0, rows)
-	out = append(out, headerBg.Width(m.width).Render(" Watched files (Ctrl+I or Esc to close) "))
+	out = append(out, headerBg.Width(m.width).MaxHeight(1).Render(" Watched files (Ctrl+I or Esc to close) "))
 	if len(m.files) == 0 {
 		out = append(out, m.padRow(dimStyle.Render("  (no files yet)")))
 		for i := 2; i < rows; i++ {
