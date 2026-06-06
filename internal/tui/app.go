@@ -471,10 +471,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-		km := m.km
-		if km == nil {
-			km = keymap.Default(runtime.GOOS)
-		}
+		km := m.resolvedKM()
 		action, ok := km.Lookup(key)
 		if !ok {
 			return m, nil
@@ -1037,15 +1034,21 @@ func (m *model) hint(a keymap.Action, label string) string {
 	return m.keyDisplay(a) + " " + label
 }
 
+// resolvedKM returns m.km, falling back to the built-in default for the
+// current OS when a model was constructed via newModel without a keymap
+// (only happens in tests; New always sets m.km).
+func (m *model) resolvedKM() *keymap.Keymap {
+	if m.km == nil {
+		return keymap.Default(runtime.GOOS)
+	}
+	return m.km
+}
+
 // keyDisplay returns the per-OS label for an action's keys (e.g. "⌃G"),
 // nil-safe so render paths that build a model without an explicit keymap fall
 // back to the built-in defaults instead of panicking.
 func (m *model) keyDisplay(a keymap.Action) string {
-	km := m.km
-	if km == nil {
-		km = keymap.Default(runtime.GOOS)
-	}
-	return km.Display(a)
+	return m.resolvedKM().Display(a)
 }
 
 func (m *model) View() string {

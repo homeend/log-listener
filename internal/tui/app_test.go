@@ -760,3 +760,27 @@ func TestHeaderUsesKeymapDisplay(t *testing.T) {
 		t.Errorf("darwin header should not show linux-style Ctrl+G")
 	}
 }
+
+func TestGroupsOverlayHeaderUsesKeymapGlyphs(t *testing.T) {
+	m := newModel(100)
+	m.km = keymap.Default("darwin")
+	m.width = 200
+	m.height = 20
+	m.showGroupsPanel = true
+	m.groupOrder = []string{"g0"}
+	m.groupEnabled = map[string]bool{"g0": true}
+
+	out := m.renderGroupsPanel(10)
+	if !strings.Contains(out, "⌃G") { // mac glyph for toggle_groups
+		t.Errorf("darwin overlay header should show ⌃G; missing it")
+	}
+	if !strings.Contains(out, "⎋") { // mac glyph for close_overlay (Esc)
+		t.Errorf("darwin overlay header should show ⎋ for close_overlay; missing it")
+	}
+	if strings.Contains(out, "Ctrl+G") {
+		t.Errorf("darwin overlay header should not show linux-style Ctrl+G")
+	}
+	if strings.Contains(out, "Esc") {
+		t.Errorf("darwin overlay header should not show literal Esc")
+	}
+}
