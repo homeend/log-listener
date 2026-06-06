@@ -26,6 +26,31 @@ func stripANSI(s string) string { return ansiRE.ReplaceAllString(s, "") }
 
 func runeLen(s string) int { return utf8.RuneCountInString(s) }
 
+// expandTabs replaces tabs with spaces to 8-column tab stops so a body's rune
+// count equals its terminal display width. Without this a tab (1 rune, up to 8
+// columns) makes the width math underestimate, and the row overflows and wraps
+// in the terminal — pushing the header off-screen and corrupting the layout
+// (Java stack-trace frames start with a tab). Fast-returns when there's no tab.
+func expandTabs(s string) string {
+	if !strings.ContainsRune(s, '\t') {
+		return s
+	}
+	const tabStop = 8
+	var b strings.Builder
+	col := 0
+	for _, r := range s {
+		if r == '\t' {
+			n := tabStop - col%tabStop
+			b.WriteString(strings.Repeat(" ", n))
+			col += n
+			continue
+		}
+		b.WriteRune(r)
+		col++
+	}
+	return b.String()
+}
+
 // Note: an earlier version had init() calls into lipgloss.SetColorProfile
 // and SetHasDarkBackground. Removed — those weren't needed (the
 // tea.WithEnvironment hint below already pins the profile for bubbletea's
@@ -810,12 +835,14 @@ func decomposeEvent(ev render.Event) []displayLine {
 	// layout. The first line is the head (keeps the [group] file: prefix);
 	// the rest render as block continuation rows, exactly like JSON/XML lines.
 	textLines := strings.Split(text, "\n")
+	head := expandTabs(textLines[0])
 	out := []displayLine{{
 		group: ev.Group, file: base,
-		body:      textLines[0],
-		bodyWidth: runeLen(textLines[0]),
+		body:      head,
+		bodyWidth: runeLen(head),
 	}}
 	for _, ln := range textLines[1:] {
+		ln = expandTabs(ln)
 		out = append(out, displayLine{
 			group:     ev.Group,
 			file:      base,

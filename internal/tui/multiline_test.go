@@ -193,3 +193,40 @@ func TestEmbeddedNewlineKeepsHeaderRow(t *testing.T) {
 		t.Fatalf("header row missing/overflowed: %q", rows[0])
 	}
 }
+
+// TestDecomposeExpandsTabs guards the bug where a leading tab in a log line
+// (e.g. a Java stack frame "\tat …") counted as one rune but rendered as up
+// to 8 terminal columns, so the width math underestimated and the row wrapped
+// — overflowing the viewport and corrupting the header.
+func TestDecomposeExpandsTabs(t *testing.T) {
+	lines := decomposeEvent(render.Event{Group: "g", File: "/idea.log",
+		Rendered: []render.Part{{Type: "text", Value: "\tat java.base/X(Native Method)"}}})
+	for i, dl := range lines {
+		if strings.Contains(dl.body, "\t") {
+			t.Fatalf("displayLine[%d] body still contains a tab: %q", i, dl.body)
+		}
+		if dl.bodyWidth != runeLen(stripANSI(dl.body)) {
+			t.Fatalf("displayLine[%d] bodyWidth %d != display width %d",
+				i, dl.bodyWidth, runeLen(stripANSI(dl.body)))
+		}
+	}
+}
+
+func TestTabLineDoesNotOverflowWidth(t *testing.T) {
+	m := newModel(1000)
+	m.groupOrder = []string{"g"}
+	m.groupEnabled["g"] = true
+	m.appendEvent(render.Event{Group: "g", File: "/idea.log",
+		Rendered: []render.Part{{Type: "text",
+			Value: "\tat java.base/java.net.Inet6AddressImpl.lookupAllHostAddr(Native Method)"}}})
+	m2, _ := m.Update(tea.WindowSizeMsg{Width: 40, Height: 8})
+	m = m2.(*model)
+	for i, row := range strings.Split(m.View(), "\n") {
+		if strings.Contains(row, "\t") {
+			t.Fatalf("rendered row %d contains a tab (will overflow in terminal): %q", i, row)
+		}
+		if w := runeLen(stripANSI(row)); w > 40 {
+			t.Fatalf("rendered row %d width %d exceeds terminal width 40", i, w)
+		}
+	}
+}
