@@ -1,5 +1,13 @@
 package tui
 
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+)
+
 // plainExportLine renders one displayLine to plain (unstyled) export text.
 // Head lines always carry the "[group] file: " prefix — even when the on-screen
 // group/file columns are toggled off — because the export is a complete record,
@@ -33,4 +41,34 @@ func (m *model) snapshotScrollback() []string {
 		out = append(out, plainExportLine(m.lines[i]))
 	}
 	return out
+}
+
+// writeExport writes lines to screen-log-listener-<timestamp>.txt in dir (the
+// current working directory when dir == ""), never overwriting an existing
+// file: on a name clash it appends -1, -2, … before the extension. Returns the
+// final path. now is injected so the name is deterministic in tests.
+func writeExport(dir string, lines []string, now time.Time) (string, error) {
+	if dir == "" {
+		wd, err := os.Getwd()
+		if err != nil {
+			return "", err
+		}
+		dir = wd
+	}
+	base := "screen-log-listener-" + now.Format("20060102-150405")
+	path := filepath.Join(dir, base+".txt")
+	for i := 1; ; i++ {
+		if _, err := os.Stat(path); os.IsNotExist(err) {
+			break
+		}
+		path = filepath.Join(dir, fmt.Sprintf("%s-%d.txt", base, i))
+	}
+	content := strings.Join(lines, "\n")
+	if len(lines) > 0 {
+		content += "\n"
+	}
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		return "", err
+	}
+	return path, nil
 }

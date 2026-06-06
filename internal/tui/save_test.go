@@ -1,8 +1,11 @@
 package tui
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/homeend/log-listener/internal/render"
 )
@@ -48,5 +51,34 @@ func TestSnapshotViewportMatchesVisible(t *testing.T) {
 	out := m.snapshotViewport()
 	if len(out) != m.contentHeight() {
 		t.Fatalf("viewport snapshot = %d lines, want contentHeight %d", len(out), m.contentHeight())
+	}
+}
+
+func TestWriteExportNamingAndContent(t *testing.T) {
+	dir := t.TempDir()
+	now := time.Date(2026, 6, 7, 1, 33, 55, 0, time.UTC)
+
+	p1, err := writeExport(dir, []string{"a", "b"}, now)
+	if err != nil {
+		t.Fatalf("writeExport: %v", err)
+	}
+	if base := filepath.Base(p1); base != "screen-log-listener-20260607-013355.txt" {
+		t.Errorf("base name = %q", base)
+	}
+	got, _ := os.ReadFile(p1)
+	if string(got) != "a\nb\n" {
+		t.Errorf("content = %q, want trailing newline", string(got))
+	}
+
+	// Same second → numeric suffix, no overwrite.
+	p2, err := writeExport(dir, []string{"c"}, now)
+	if err != nil {
+		t.Fatalf("writeExport 2: %v", err)
+	}
+	if base := filepath.Base(p2); base != "screen-log-listener-20260607-013355-1.txt" {
+		t.Errorf("collision base name = %q", base)
+	}
+	if first, _ := os.ReadFile(p1); string(first) != "a\nb\n" {
+		t.Errorf("first file was clobbered: %q", string(first))
 	}
 }
