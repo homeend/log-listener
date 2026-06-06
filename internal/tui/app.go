@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"sync"
 	"unicode/utf8"
@@ -15,6 +16,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/mattn/go-runewidth"
 
+	"log-listener/internal/keymap"
 	"log-listener/internal/render"
 )
 
@@ -144,6 +146,7 @@ type Options struct {
 	InitialFiles      []FileEntry
 	Groups            []GroupInfo
 	Renderers         []RendererInfo
+	Keymap            *keymap.Keymap         // resolved key bindings; nil → built-in for runtime.GOOS
 	SetRendererOn     func(idx int, on bool) // called when shift+digit toggles a renderer
 	RenderFn          RenderFunc             // called per scrollback entry when toggling triggers re-render
 }
@@ -158,6 +161,10 @@ func New(opts Options) *App {
 		scrollback = defaultScrollback
 	}
 	m := newModel(scrollback)
+	m.km = opts.Keymap
+	if m.km == nil {
+		m.km = keymap.Default(runtime.GOOS)
+	}
 	m.files = append(m.files, opts.InitialFiles...)
 	for _, g := range opts.Groups {
 		m.groupOrder = append(m.groupOrder, g.ID)
@@ -263,6 +270,7 @@ type scrollbackEvent struct {
 }
 
 type model struct {
+	km *keymap.Keymap
 	// entries is the source of truth: one per pipeline emission. lines
 	// is a derived flat cache (concat of every entry's lines) — kept in
 	// sync by appendEvent / trimToCap / reRenderAll. Everything on the
@@ -444,27 +452,54 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.wrapPrompt != 0 {
 			return m.handleWrapPromptKey(msg), nil
 		}
-		switch msg.String() {
-		case "ctrl+c", "q":
+		key := msg.String()
+
+		// Positional toggles are not part of the action keymap (they are
+		// inherently 1-9 / shifted-1-9 by position). Handle them first.
+		if key >= "1" && key <= "9" {
+			idx := int(key[0] - '1')
+			if idx < len(m.groupOrder) {
+				gid := m.groupOrder[idx]
+				m.groupEnabled[gid] = !m.groupEnabled[gid]
+			}
+			return m, nil
+		}
+		if len(key) == 1 {
+			if ri := strings.IndexByte("!@#$%^&*(", key[0]); ri >= 0 {
+				m.toggleRenderer(ri)
+				return m, nil
+			}
+		}
+
+		km := m.km
+		if km == nil {
+			km = keymap.Default(runtime.GOOS)
+		}
+		action, ok := km.Lookup(key)
+		if !ok {
+			return m, nil
+		}
+		switch action {
+		case keymap.ActionQuit:
 			return m, tea.Quit
-		case "ctrl+i", "tab":
+		case keymap.ActionToggleFiles:
 			// Ctrl+I and Tab share byte 0x09 in terminals; bubbletea
-			// usually surfaces it as "tab". Accept both so the binding
-			// works regardless of terminal handling.
+			// usually surfaces it as "tab". Both bind to this action so the
+			// binding works regardless of terminal handling.
 			m.showFiles = !m.showFiles
 			if m.showFiles {
 				m.showGroupsPanel = false
 				m.showRenderersPanel = false
 			}
 			m.filesScroll = 0
-		case "ctrl+g":
+		case keymap.ActionToggleGroups:
 			m.showGroupsPanel = !m.showGroupsPanel
 			if m.showGroupsPanel {
 				m.showFiles = false
 				m.showRenderersPanel = false
 			}
 			m.groupsScroll = 0
-		case "esc":
+		case keymap.ActionCloseOverlay:
 			if m.showFiles {
 				m.showFiles = false
 			}
@@ -479,25 +514,25 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if !m.showFiles && !m.showGroupsPanel && !m.showRenderersPanel && m.searchTerm != "" {
 				m.clearSearch()
 			}
-		case "/":
+		case keymap.ActionSearch:
 			m.searchInput = true
 			m.searchQuery = ""
-		case "n":
+		case keymap.ActionNextMatch:
 			m.searchNext()
-		case "p":
+		case keymap.ActionPrevMatch:
 			m.searchPrev()
-		case "t":
+		case keymap.ActionFilter:
 			if m.searchTerm != "" {
 				m.filterMode = !m.filterMode
 				if m.filterMode {
 					m.tailMode = false
 				}
 			}
-		case "ctrl+p":
+		case keymap.ActionToggleGroupCol:
 			m.showGroup = !m.showGroup
-		case "ctrl+l":
+		case keymap.ActionToggleFileCol:
 			m.showFile = !m.showFile
-		case "ctrl+r":
+		case keymap.ActionClear:
 			// Clear the TUI's scrollback. The watcher / sinks / SSE hub
 			// keep running; only the in-memory view is reset. Re-enter
 			// tail mode so the next event appears immediately at the top.
@@ -509,14 +544,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.searchHit = -1
 			// Filtering an emptied buffer would render blank; drop it.
 			m.filterMode = false
-		case "1", "2", "3", "4", "5", "6", "7", "8", "9":
-			idx := int(msg.String()[0] - '1')
-			if idx < len(m.groupOrder) {
-				gid := m.groupOrder[idx]
-				m.groupEnabled[gid] = !m.groupEnabled[gid]
-			}
-		// Vertical: one row
-		case "up", "k":
+		case keymap.ActionScrollUp:
 			if m.showFiles {
 				if m.filesScroll > 0 {
 					m.filesScroll--
@@ -530,7 +558,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.streamTop = 0
 				}
 			}
-		case "down", "j":
+		case keymap.ActionScrollDown:
 			if m.showFiles {
 				if m.filesScroll < len(m.files)-1 {
 					m.filesScroll++
@@ -541,9 +569,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.streamTop++
 				m.maybeReStick()
 			}
-
-		// Vertical: one page
-		case "pgup", "ctrl+b":
+		case keymap.ActionPageUp:
 			page := m.contentHeight()
 			if m.showFiles {
 				m.filesScroll -= page
@@ -557,7 +583,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.streamTop = 0
 				}
 			}
-		case "pgdown", "ctrl+f", " ":
+		case keymap.ActionPageDown:
 			page := m.contentHeight()
 			if m.showFiles {
 				m.filesScroll += page
@@ -571,9 +597,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.streamTop += page
 				m.maybeReStick()
 			}
-
-		// Vertical: fast (Ctrl/Shift)
-		case "ctrl+up", "shift+up":
+		case keymap.ActionFastUp:
 			if m.showFiles {
 				m.filesScroll -= vertFastStep
 				if m.filesScroll < 0 {
@@ -586,7 +610,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.streamTop = 0
 				}
 			}
-		case "ctrl+down", "shift+down":
+		case keymap.ActionFastDown:
 			if m.showFiles {
 				m.filesScroll += vertFastStep
 				if m.filesScroll > len(m.files)-1 {
@@ -599,16 +623,14 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.streamTop += vertFastStep
 				m.maybeReStick()
 			}
-
-		// Jump to extremes — Home/g = first line (oldest); End/G = tail.
-		case "home", "g":
+		case keymap.ActionTop:
 			if m.showFiles {
 				m.filesScroll = 0
 			} else {
 				m.tailMode = false
 				m.streamTop = 0
 			}
-		case "end", "G":
+		case keymap.ActionBottom:
 			if m.showFiles {
 				m.filesScroll = len(m.files) - 1
 				if m.filesScroll < 0 {
@@ -617,49 +639,27 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else {
 				m.tailMode = true // re-stick to the latest, even when new events arrive
 			}
-
-		// Horizontal pan
-		case "left", "h":
+		case keymap.ActionScrollLeft:
 			m.horizScroll -= horizStep
 			if m.horizScroll < 0 {
 				m.horizScroll = 0
 			}
-		case "right", "l":
+		case keymap.ActionScrollRight:
 			m.horizScroll += horizStep
-		case "ctrl+left", "shift+left":
+		case keymap.ActionFastLeft:
 			m.horizScroll -= horizFastStep
 			if m.horizScroll < 0 {
 				m.horizScroll = 0
 			}
-		case "ctrl+right", "shift+right":
+		case keymap.ActionFastRight:
 			m.horizScroll += horizFastStep
-		case "0":
+		case keymap.ActionResetHoriz:
 			m.horizScroll = 0
-		// Renderer toggles: shifted digits 1-9 → !@#$%^&*( .
-		// $ used to be "jump-to-widest-line" — removed in favor of this.
-		case "!":
-			m.toggleRenderer(0)
-		case "@":
-			m.toggleRenderer(1)
-		case "#":
-			m.toggleRenderer(2)
-		case "$":
-			m.toggleRenderer(3)
-		case "%":
-			m.toggleRenderer(4)
-		case "^":
-			m.toggleRenderer(5)
-		case "&":
-			m.toggleRenderer(6)
-		case "*":
-			m.toggleRenderer(7)
-		case "(":
-			m.toggleRenderer(8)
-		case "m":
+		case keymap.ActionCollapseAll:
 			// Collapse multiline entries (continuation rows hidden behind
 			// a "[...]" marker on the head). Toggles repeatedly.
 			m.collapseMultiline = !m.collapseMultiline
-		case "ctrl+e":
+		case keymap.ActionToggleRenderers:
 			m.showRenderersPanel = !m.showRenderersPanel
 			if m.showRenderersPanel {
 				m.showFiles = false

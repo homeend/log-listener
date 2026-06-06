@@ -7,6 +7,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"log-listener/internal/keymap"
 	"log-listener/internal/render"
 )
 
@@ -702,5 +703,34 @@ func TestModelStreamRowsPadToWidth(t *testing.T) {
 			t.Errorf("row %d visible width = %d, want %d (line=%q)",
 				i, got, width, stripANSI(ln))
 		}
+	}
+}
+
+func TestCustomQuitBinding(t *testing.T) {
+	km, err := keymap.Resolve("linux", map[string][]string{"quit": {"x"}}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := newModel(100)
+	m.km = km
+	// 'x' should now quit (returns tea.Quit), and 'q' should NOT.
+	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("x")})
+	if cmd == nil {
+		t.Errorf("custom binding 'x' did not trigger quit")
+	}
+	_, cmd = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("q")})
+	if cmd != nil {
+		t.Errorf("'q' should no longer quit after rebind")
+	}
+}
+
+func TestPositionalGroupToggleStillWorks(t *testing.T) {
+	m := newModel(100)
+	m.km = keymap.Default("linux")
+	m.groupOrder = []string{"g0", "g1"}
+	m.groupEnabled = map[string]bool{"g0": true, "g1": true}
+	m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("1")})
+	if m.groupEnabled["g0"] {
+		t.Errorf("digit '1' should have toggled group g0 off")
 	}
 }
