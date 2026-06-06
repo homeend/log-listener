@@ -762,3 +762,53 @@ collectNonJSON:
 		t.Errorf("expected pretty-printed JSON '\"a\": 1' in output; got:\n  %s", strings.Join(allLines, "\n  "))
 	}
 }
+
+// TestE2EOnceMatchesRawContent runs --once over the real testdata/some.log
+// with no renderers (pure passthrough) and asserts every emitted line, with
+// the "[group] basename: " prefix stripped, reconstructs the raw file line for
+// line — no dropping, splitting, reordering, or mangling.
+func TestE2EOnceMatchesRawContent(t *testing.T) {
+	logPath, err := filepath.Abs("testdata/some.log")
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Split the way the tailer does (on \n); drop the trailing empty element
+	// from a final newline. Normalize \r so the test is CRLF-agnostic.
+	rawLines := strings.Split(string(raw), "\n")
+	if n := len(rawLines); n > 0 && rawLines[n-1] == "" {
+		rawLines = rawLines[:n-1]
+	}
+	for i := range rawLines {
+		rawLines[i] = strings.TrimRight(rawLines[i], "\r")
+	}
+
+	s := startListener(t, "-f", logPath, "--once", "--no-tui", "--no-color")
+	// Drain to EOF: --once exits, which closes the stream.
+	_, all, _ := s.Await(20*time.Second, func(string) bool { return false })
+
+	const mid = "] some.log: " // after the "[<group>" opening
+	var bodies []string
+	for _, line := range all {
+		if !strings.HasPrefix(line, "[") {
+			continue
+		}
+		i := strings.Index(line, mid)
+		if i < 0 {
+			continue
+		}
+		bodies = append(bodies, strings.TrimRight(line[i+len(mid):], "\r"))
+	}
+
+	if len(bodies) != len(rawLines) {
+		t.Fatalf("line count mismatch: --once emitted %d, file has %d", len(bodies), len(rawLines))
+	}
+	for i := range rawLines {
+		if bodies[i] != rawLines[i] {
+			t.Fatalf("line %d differs:\n  raw: %q\n  out: %q", i, rawLines[i], bodies[i])
+		}
+	}
+}

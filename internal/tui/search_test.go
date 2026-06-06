@@ -593,3 +593,23 @@ func TestHitColumnWithGroupAndFilePrefix(t *testing.T) {
 		t.Fatalf("hitColumn group+file = %d, want 11", got)
 	}
 }
+
+// TestWrapPromptDismissedByAnyKey: the "wrap to top/bottom?" prompt should
+// disappear on any key other than y (previously unrelated keys left it stuck).
+func TestWrapPromptDismissedByAnyKey(t *testing.T) {
+	m := seedSearchModel(t, 10, map[int]bool{2: true})
+	m = typeQuery(t, m, "needle")
+	m.wrapPrompt = 'n'
+	m2, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
+	m = m2.(*model)
+	if m.wrapPrompt != 0 {
+		t.Fatalf("any non-y key should dismiss the wrap prompt, got %q", string(m.wrapPrompt))
+	}
+	// y still acts (and clears).
+	m.wrapPrompt = 'n'
+	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
+	m = m2.(*model)
+	if m.wrapPrompt != 0 {
+		t.Fatal("y should clear the wrap prompt")
+	}
+}

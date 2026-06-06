@@ -1,0 +1,1041 @@
+2026-05-05 00:49:05,180 [     12]   INFO - #c.i.p.i.b.AppStarter - ------------------------------------------------------ IDE STARTED ------------------------------------------------------
+2026-05-05 00:49:05,212 [     44]   INFO - #c.i.p.i.b.AppStarter - PID: 19156
+2026-05-05 00:49:05,225 [     57]   INFO - #c.i.p.i.b.AppStarter - JVM options: [abort, vfprintf, -XX:ErrorFile=C:\Users\homee\java_error_in_goland_%p.log, -XX:HeapDumpPath=C:\Users\homee\java_error_in_goland.hprof, -Xms128m, -Xmx2048m, -XX:JbrShrinkingGcMaxHeapFreeRatio=40, -XX:ReservedCodeCacheSize=512m, -XX:+HeapDumpOnOutOfMemoryError, -XX:-OmitStackTraceInFastThrow, -XX:CICompilerCount=2, -XX:+IgnoreUnrecognizedVMOptions, -XX:+UnlockDiagnosticVMOptions, -XX:TieredOldPercentage=100000, -ea, -Dsun.io.useCanonCaches=false, -Dsun.java2d.metal=true, -Djbr.catch.SIGABRT=true, -Djdk.http.auth.tunneling.disabledSchemes="", -Djdk.attach.allowAttachSelf=true, -Djdk.module.illegalAccess.silent=true, -Djdk.nio.maxCachedBufferSize=2097152, -Djava.util.zip.use.nio.for.zip.file.access=true, -Dkotlinx.coroutines.debug=off, -Dskiko.rendering.useScreenMenuBar=false, -Djava.nio.file.spi.DefaultFileSystemProvider=com.intellij.platform.core.nio.fs.MultiRoutingFileSystemProvider, -Dllm.show.ai.promotion.window.on.start=true, -Didea.log.debug.categories=#go-project-model,#go-indexing, -Xmx2048m, -Dide.managed.by.toolbox=C:\Users\homee\AppData\Local\JetBrains\Toolbox\bin\jetbrains-toolbox.exe, -Dtoolbox.notification.token=5b6400df-94dc-4de6-9052-54835d7567a4, -Dtoolbox.notification.portFile=C:\Users\homee\AppData\Local\JetBrains\Toolbox\cache\ports\79e26f85-b89d-44de-a238-10eedcdf7dab.port, -Djb.vmOptionsFile=C:\Users\homee\AppData\Roaming\JetBrains\GoLand2026.1\goland64.exe.vmoptions, -Xbootclasspath/a:C:\Users\homee\AppData\Local\Programs\GoLand\lib\nio-fs.jar, -Djava.system.class.loader=com.intellij.util.lang.PathClassLoader, -Didea.vendor.name=JetBrains, -Didea.paths.selector=GoLand2026.1, -Djna.boot.library.path=C:\Users\homee\AppData\Local\Programs\GoLand/lib/jna/amd64, -Djna.nosys=true, -Djna.noclasspath=true, -Dpty4j.preferred.native.folder=C:\Users\homee\AppData\Local\Programs\GoLand/lib/pty4j, -Dio.netty.allocator.type=pooled, -Dskiko.library.path=C:\Users\homee\AppData\Local\Programs\GoLand/lib/skiko-awt-runtime-all, -Dintellij.platform.runtime.repository.path=C:\Users\homee\AppData\Local\Programs\GoLand/modules/module-descriptors.dat, -Didea.platform.prefix=GoLand, -Dsplash=true, -Daether.connector.resumeDownloads=false, -Dcompose.swing.render.on.graphics=true, --enable-native-access=ALL-UNNAMED, --add-opens=java.base/java.io=ALL-UNNAMED, --add-opens=java.base/java.lang=ALL-UNNAMED, --add-opens=java.base/java.lang.ref=ALL-UNNAMED, --add-opens=java.base/java.lang.reflect=ALL-UNNAMED, --add-opens=java.base/java.net=ALL-UNNAMED, --add-opens=java.base/java.nio=ALL-UNNAMED, --add-opens=java.base/java.nio.charset=ALL-UNNAMED, --add-opens=java.base/java.text=ALL-UNNAMED, --add-opens=java.base/java.time=ALL-UNNAMED, --add-opens=java.base/java.util=ALL-UNNAMED, --add-opens=java.base/java.util.concurrent=ALL-UNNAMED, --add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED, --add-opens=java.base/java.util.concurrent.locks=ALL-UNNAMED, --add-opens=java.base/jdk.internal.ref=ALL-UNNAMED, --add-opens=java.base/jdk.internal.vm=ALL-UNNAMED, --add-opens=java.base/sun.net.dns=ALL-UNNAMED, --add-opens=java.base/sun.nio=ALL-UNNAMED, --add-opens=java.base/sun.nio.ch=ALL-UNNAMED, --add-opens=java.base/sun.nio.fs=ALL-UNNAMED, --add-opens=java.base/sun.security.ssl=ALL-UNNAMED, --add-opens=java.base/sun.security.util=ALL-UNNAMED, --add-opens=java.desktop/com.sun.java.swing=ALL-UNNAMED, --add-opens=java.desktop/java.awt=ALL-UNNAMED, --add-opens=java.desktop/java.awt.dnd.peer=ALL-UNNAMED, --add-opens=java.desktop/java.awt.event=ALL-UNNAMED, --add-opens=java.desktop/java.awt.font=ALL-UNNAMED, --add-opens=java.desktop/java.awt.image=ALL-UNNAMED, --add-opens=java.desktop/java.awt.peer=ALL-UNNAMED, --add-opens=java.desktop/javax.swing=ALL-UNNAMED, --add-opens=java.desktop/javax.swing.plaf.basic=ALL-UNNAMED, --add-opens=java.desktop/javax.swing.text=ALL-UNNAMED, --add-opens=java.desktop/javax.swing.text.html=ALL-UNNAMED, --add-opens=java.desktop/javax.swing.text.html.parser=ALL-UNNAMED, --add-opens=java.desktop/sun.awt=ALL-UNNAMED, --add-opens=java.desktop/sun.awt.datatransfer=ALL-UNNAMED, --add-opens=java.desktop/sun.awt.image=ALL-UNNAMED, --add-opens=java.desktop/sun.awt.windows=ALL-UNNAMED, --add-opens=java.desktop/sun.font=ALL-UNNAMED, --add-opens=java.desktop/sun.java2d=ALL-UNNAMED, --add-opens=java.desktop/sun.swing=ALL-UNNAMED, --add-opens=java.management/sun.management=ALL-UNNAMED, --add-opens=jdk.attach/sun.tools.attach=ALL-UNNAMED, --add-opens=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED, --add-opens=jdk.internal.jvmstat/sun.jvmstat.monitor=ALL-UNNAMED, --add-opens=jdk.jdi/com.sun.tools.jdi=ALL-UNNAMED, -Dide.native.launcher=true, -Djcef.sandbox.ptr=00000182BB485330, -Djcef.sandbox.cefVersion=122.1.9+gd14e051+chromium-122.0.6261.94]
+2026-05-05 00:49:05,226 [     58]   INFO - #c.i.p.i.b.AppStarter - args:
+2026-05-05 00:49:05,226 [     58]   INFO - #c.i.p.i.b.AppStarter - library path: C:\Users\homee\AppData\Local\Programs\GoLand\bin;C:\Windows\Sun\Java\bin;C:\Windows\system32;C:\Windows;C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem;C:\Windows\System32\WindowsPowerShell\v1.0\;C:\Windows\System32\OpenSSH\;C:\Program Files\dotnet\;C:\Program Files\Tailscale\;C:\Program Files\Docker\Docker\resources\bin;C:\Users\homee\scoop\apps\git\current\cmd;C:\Users\homee\scoop\apps\python313\current\Scripts;C:\Users\homee\scoop\apps\python313\current;C:\Users\homee\AppData\Local\pnpm;C:\Users\homee\scoop\apps\nvm\current;C:\Users\homee\scoop\apps\nvm\current\nodejs\nodejs;C:\Users\homee\scoop\apps\python312\current\Scripts;C:\Users\homee\scoop\apps\python312\current;C:\Users\homee\scoop\shims;C:\Users\homee\AppData\Local\Microsoft\WindowsApps;C:\Users\homee\bin;C:\Users\homee\.local\bin;C:\Users\homee\AppData\Local\JetBrains\Toolbox\scripts;C:\Users\homee\AppData\Local\Programs\MiKTeX\miktex\bin\x64\;C:\Users\homee\.lmstudio\bin;c:\Users\homee\sync\bin\;c:\jdks\apache-maven-3.9.12\bin\;t:\zig\zig-x86_64-windows-0.16.0-dev.3133+5ec8e45f3\;C:\Users\homee\AppData\Local\Programs\cursor\resources\app\bin;.
+2026-05-05 00:49:05,226 [     58]   INFO - #c.i.p.i.b.AppStarter - boot library path: C:\Users\homee\AppData\Local\Programs\GoLand\jbr\bin
+2026-05-05 00:49:05,230 [     62]   INFO - #c.i.p.i.b.AppStarter - locale=pl_PL JNU=UTF-8 file.encoding=UTF-8
+idea.home.path=C:\Users\homee\AppData\Local\Programs\GoLand
+idea.config.path=C:\Users\homee\AppData\Roaming\JetBrains\GoLand2026.1
+idea.system.path=C:\Users\homee\AppData\Local\JetBrains\GoLand2026.1
+idea.plugins.path=C:\Users\homee\AppData\Roaming\JetBrains\GoLand2026.1\plugins -> java.nio.file.NoSuchFileException: C:\Users\homee\AppData\Roaming\JetBrains\GoLand2026.1\plugins
+idea.log.path=C:\Users\homee\AppData\Local\JetBrains\GoLand2026.1\log
+2026-05-05 00:49:05,230 [     62]   INFO - #c.i.p.i.b.AppStarter - CPU cores: 16; ForkJoinPool.commonPool: java.util.concurrent.ForkJoinPool@2b9e6fce[Running, parallelism = 15, size = 0, active = 0, running = 0, steals = 0, tasks = 0, submissions = 0]; factory: com.intellij.concurrency.IdeaForkJoinWorkerThreadFactory@4e0d0023
+2026-05-05 00:49:05,270 [    102]   INFO - #c.i.u.s.JBUIScale - System scale factor: 2.0 (JRE-managed HiDPI)
+2026-05-05 00:49:05,273 [    105]   INFO - #c.i.u.s.JBUIScale - Computed user scale factor: 1.0 (JRE-managed HiDPI)
+2026-05-05 00:49:06,527 [     45]   INFO - #c.i.p.i.b.AppStarter - library path: C:\Users\homee\AppData\Local\Programs\GoLand\bin;C:\Windows\Sun\Java\bin;C:\Windows\system32;C:\Windows;C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem;C:\Windows\System32\WindowsPowerShell\v1.0\;C:\Windows\System32\OpenSSH\;C:\Program Files\dotnet\;C:\Program Files\Tailscale\;C:\Program Files\Docker\Docker\resources\bin;C:\Users\homee\scoop\apps\git\current\cmd;C:\Users\homee\scoop\apps\python313\current\Scripts;C:\Users\homee\scoop\apps\python313\current;C:\Users\homee\AppData\Local\pnpm;C:\Users\homee\scoop\apps\nvm\current;C:\Users\homee\scoop\apps\nvm\current\nodejs\nodejs;C:\Users\homee\scoop\apps\python312\current\Scripts;C:\Users\homee\scoop\apps\python312\current;C:\Users\homee\scoop\shims;C:\Users\homee\AppData\Local\Microsoft\WindowsApps;C:\Users\homee\bin;C:\Users\homee\.local\bin;C:\Users\homee\AppData\Local\JetBrains\Toolbox\scripts;C:\Users\homee\AppData\Local\Programs\MiKTeX\miktex\bin\x64\;C:\Users\homee\.lmstudio\bin;c:\Users\homee\sync\bin\;c:\jdks\apache-maven-3.9.12\bin\;t:\zig\zig-x86_64-windows-0.16.0-dev.3133+5ec8e45f3\;C:\Users\homee\AppData\Local\Programs\cursor\resources\app\bin;.
+2026-05-05 00:49:06,527 [     45]   INFO - #c.i.p.i.b.AppStarter - boot library path: C:\Users\homee\AppData\Local\Programs\GoLand\jbr\bin
+2026-05-05 00:49:06,530 [     48]   INFO - #c.i.p.i.b.AppStarter - locale=pl_PL JNU=UTF-8 file.encoding=UTF-8
+idea.home.path=C:\Users\homee\AppData\Local\Programs\GoLand
+idea.config.path=C:\Users\homee\AppData\Roaming\JetBrains\GoLand2026.1
+idea.system.path=C:\Users\homee\AppData\Local\JetBrains\GoLand2026.1
+idea.plugins.path=C:\Users\homee\AppData\Roaming\JetBrains\GoLand2026.1\plugins -> java.nio.file.NoSuchFileException: C:\Users\homee\AppData\Roaming\JetBrains\GoLand2026.1\plugins
+idea.log.path=C:\Users\homee\AppData\Local\JetBrains\GoLand2026.1\log
+2026-05-05 00:49:06,531 [     49]   INFO - #c.i.p.i.b.AppStarter - CPU cores: 16; ForkJoinPool.commonPool: java.util.concurrent.ForkJoinPool@727ed165[Running, parallelism = 15, size = 0, active = 0, running = 0, steals = 0, tasks = 0, submissions = 0]; factory: com.intellij.concurrency.IdeaForkJoinWorkerThreadFactory@2fd8230d
+2026-05-05 00:49:06,581 [     99]   INFO - #c.i.u.s.JBUIScale - System scale factor: 2.0 (JRE-managed HiDPI)
+2026-05-05 00:49:06,584 [    102]   INFO - #c.i.u.s.JBUIScale - Computed user scale factor: 1.0 (JRE-managed HiDPI)
+2026-05-05 00:49:06,888 [    406]   INFO - #c.i.p.i.b.AppStarter - Will import config to directory "C:\Users\homee\AppData\Roaming\JetBrains\GoLand2026.1" (exists = true). Current entries: ".lock", "early-access-registry.txt", "goland64.exe.vmoptions", "migrate.config".
+2026-05-05 00:49:06,959 [    477]   INFO - #c.i.o.a.ConfigImportHelper - Importing configs to 'C:\Users\homee\AppData\Roaming\JetBrains\GoLand2026.1'; veryFirstStart=false
+2026-05-05 00:49:06,961 [    479]   INFO - #c.i.o.a.ConfigImportHelper - Custom migration option: set-properties intellij.first.ide.session true
+2026-05-05 00:49:06,961 [    479]   INFO - #c.i.o.a.ConfigImportHelper - Custom import settings: null
+2026-05-05 00:49:06,962 [    480]   INFO - #c.i.o.a.ConfigImportHelper - Setting system properties after restart: [(intellij.first.ide.session, true)]
+2026-05-05 00:49:07,012 [    530]   INFO - #c.i.p.i.b.ClassicUiToIslandsMigration - Detect if switching to Islands needed: isNewUser=true, experimentalUi=false, allowedUserLafToMigrate=true
+2026-05-05 00:49:07,012 [    530]   INFO - #c.i.p.i.b.AppStarter - Will enter initial app wizard flow.
+2026-05-05 00:49:07,300 [    818]   INFO - #c.i.i.p.PluginManager - Plugin set resolution:
+Module intellij.textmate.frontend.split is not enabled because dependency intellij.platform.frontend.split is not available
+Module intellij.sh.frontend.split is not enabled because dependency intellij.platform.frontend.split is not available
+Module intellij.yaml.frontend.split is not enabled because dependency intellij.platform.frontend.split is not available
+Module intellij.json.frontend.split is not enabled because dependency intellij.platform.frontend.split is not available
+Module intellij.markdown.frontend.split is not enabled because dependency intellij.platform.frontend.split is not available
+Module intellij.terminal.frontend.split is not enabled because dependency intellij.platform.frontend.split is not available
+Module intellij.sh.python is not enabled because dependency com.intellij.modules.python is not available
+Module intellij.fullLine.chat is not enabled because dependency intellij.ml.llm.core is not available
+Module intellij.fullLine.rust is not enabled because dependency com.jetbrains.rust is not available
+2026-05-05 00:49:07,523 [   1041]   INFO - #c.i.c.d.g.i.DevcontainerPluginManager - Options path: C:\Users\homee\AppData\Roaming\JetBrains\GoLand2026.1\options
+2026-05-05 00:49:07,528 [   1046]   INFO - #c.i.p.e.i.f.EelMultiRoutingFileSystemBackendInitializationService - Eel MultiRoutingFileSystem backend is initialized
+2026-05-05 00:49:07,551 [   1069]   INFO - #c.i.u.i.PageCacheUtils - File page caching params:
+DEFAULT_PAGE_SIZE: 10485760
+Direct memory to use, max: 2126512128
+FilePageCache: regular
+Regular FilePageCache: 629145600 bytes
+DirectByteBuffers pool: 104857600 bytes
+2026-05-05 00:49:07,555 [   1073]   INFO - #c.i.l.u.p.AIPromoWindowAdvisor - Advisor is initialized
+2026-05-05 00:49:07,555 [   1073]   INFO - #c.i.l.u.p.AIPromoWindowAdvisor - Starting calculation of verdict for promo window
+2026-05-05 00:49:07,555 [   1073]   INFO - #c.i.d.l.LogLevelConfigurationManager - Level DEBUG is set for the following category: #go-project-model
+2026-05-05 00:49:07,555 [   1073]   INFO - #c.i.d.l.LogLevelConfigurationManager - Level DEBUG is set for the following category: go-project-model
+2026-05-05 00:49:07,555 [   1073]   INFO - #c.i.d.l.LogLevelConfigurationManager - Level DEBUG is set for the following category: #go-indexing
+2026-05-05 00:49:07,556 [   1074]   INFO - #c.i.d.l.LogLevelConfigurationManager - Level DEBUG is set for the following category: go-indexing
+2026-05-05 00:49:08,070 [   1588]   INFO - #c.i.i.s.p.i.SharedIndexMainZipStorage - Shared Indexes Storage is opened and empty
+2026-05-05 00:49:08,153 [   1671]   INFO - #c.i.p.d.c.DaemonLogger - JetBrains Daemon client v0.6.3298
+PID:         3924
+Socket:      C:\Users\homee\AppData\Local\Temp\jetbrainsd-601a6502c692c508482c4f9536c51d1e
+Executable:  C:\Users\homee\AppData\Local\JetBrains\Daemon\bundles\current\jetbrainsd\bin\jetbrainsd.exe
+Bundles dir: C:\Users\homee\AppData\Local\JetBrains\Daemon\bundles
+Logs dir:    C:\Users\homee\AppData\Local\JetBrains\Daemon\logs
+Data dir:    C:\Users\homee\AppData\Local\JetBrains\Daemon\data
+Cache dir:   C:\Users\homee\AppData\Local\JetBrains\Daemon\cache
+Working dir: C:\Users\homee
+2026-05-05 00:49:08,244 [   1762]   INFO - #c.i.p.d.c.DaemonLogger - current (attempt 1 1/3): Successfully launched "C:\Users\homee\AppData\Local\JetBrains\Daemon\bundles\current\jetbrainsd\bin\jetbrainsd.exe" "--require-version" "0.6.3298"
+2026-05-05 00:49:08,251 [   1769]   INFO - #c.i.f.n.TrigramIndexFilter - Filter exclude extensions is disabled
+2026-05-05 00:49:10,761 [   4279]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Full Line Code Completion" from "DataGrip 2025.2" is already present in "GoLand"
+2026-05-05 00:49:10,799 [   4317]   WARN - #c.i.i.p.PluginManager - Cannot load C:\Users\homee\AppData\Roaming\JetBrains\PyCharm2024.3\plugins\idea-php-dotenv-plugin\lib\idea-php-dotenv-plugin-2024.3.jar
+java.lang.RuntimeException: Plugin PluginMainDescriptor(name=.env files support, id=ru.adelf.idea.dotenv, version=2024.3, isBundled=false, path=~\AppData\Roaming\JetBrains\PyCharm2024.3\plugins\idea-php-dotenv-plugin) misses optional descriptor kotlin.xml
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginDependencyDescriptors(PluginDescriptorLoader.kt:1387)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginDependencyDescriptors(PluginDescriptorLoader.kt:1345)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginSubDescriptors(PluginDescriptorLoader.kt:271)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromStream(PluginDescriptorLoader.kt:211)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromJar(PluginDescriptorLoader.kt:158)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromJar$default(PluginDescriptorLoader.kt:141)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadFromPluginDir(PluginDescriptorLoader.kt:349)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromFileOrDir(PluginDescriptorLoader.kt:298)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromFileOrDir$default(PluginDescriptorLoader.kt:286)
+at com.intellij.ide.plugins.PluginDescriptorLoader$loadDescriptorsFromDir$descriptorsDeferred$1$1$1.invokeSuspend(PluginDescriptorLoader.kt:1237)
+at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+at kotlinx.coroutines.internal.SoftLimitedDispatcher$Worker.run(SoftLimitedDispatcher.kt:130)
+at kotlinx.coroutines.scheduling.TaskImpl.run(Tasks.kt:89)
+at kotlinx.coroutines.scheduling.CoroutineScheduler.runSafely(CoroutineScheduler.kt:610)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.executeTask(CoroutineScheduler.kt:1188)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:775)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:762)
+2026-05-05 00:49:10,803 [   4321]   WARN - #c.i.i.p.PluginManager - Plugin descriptor for content module 'intellij.vcs.gitlab' of plugin 'org.jetbrains.plugins.gitlab' has declared element 'allow-bundled-update' which has no effect there
+in ContentModuleDescriptor(id=intellij.vcs.gitlab, loadingRule=EMBEDDED, package=org.jetbrains.plugins.gitlab) <- PluginMainDescriptor(name=GitLab, id=org.jetbrains.plugins.gitlab, version=251.26927.54-IU, isBundled=false, path=~\AppData\Roaming\JetBrains\IntelliJIdea2025.1\plugins\vcs-gitlab-IU) [Plugin: org.jetbrains.plugins.gitlab]
+com.intellij.diagnostic.PluginException: Plugin descriptor for content module 'intellij.vcs.gitlab' of plugin 'org.jetbrains.plugins.gitlab' has declared element 'allow-bundled-update' which has no effect there
+in ContentModuleDescriptor(id=intellij.vcs.gitlab, loadingRule=EMBEDDED, package=org.jetbrains.plugins.gitlab) <- PluginMainDescriptor(name=GitLab, id=org.jetbrains.plugins.gitlab, version=251.26927.54-IU, isBundled=false, path=~\AppData\Roaming\JetBrains\IntelliJIdea2025.1\plugins\vcs-gitlab-IU) [Plugin: org.jetbrains.plugins.gitlab]
+at com.intellij.ide.plugins.IdeaPluginDescriptorImplKt.logUnexpectedElement(IdeaPluginDescriptorImpl.kt:107)
+at com.intellij.ide.plugins.ContentModuleDescriptor._init_$lambda$0(IdeaPluginDescriptorImpl.kt:309)
+at com.intellij.ide.plugins.IdeaPluginDescriptorImplKt.reportSubDescriptorUnexpectedElements(IdeaPluginDescriptorImpl.kt:123)
+at com.intellij.ide.plugins.ContentModuleDescriptor$Companion.reportContentModuleUnexpectedElements(IdeaPluginDescriptorImpl.kt:383)
+at com.intellij.ide.plugins.ContentModuleDescriptor.<init>(IdeaPluginDescriptorImpl.kt:309)
+at com.intellij.ide.plugins.PluginMainDescriptor.createContentModule$intellij_platform_core_impl(PluginMainDescriptor.kt:232)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginSubDescriptors(PluginDescriptorLoader.kt:257)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromStream(PluginDescriptorLoader.kt:211)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromJar(PluginDescriptorLoader.kt:158)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromJar$default(PluginDescriptorLoader.kt:141)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadFromPluginDir(PluginDescriptorLoader.kt:349)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromFileOrDir(PluginDescriptorLoader.kt:298)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromFileOrDir$default(PluginDescriptorLoader.kt:286)
+at com.intellij.ide.plugins.PluginDescriptorLoader$loadDescriptorsFromDir$descriptorsDeferred$1$1$1.invokeSuspend(PluginDescriptorLoader.kt:1237)
+at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+at kotlinx.coroutines.internal.SoftLimitedDispatcher$Worker.run(SoftLimitedDispatcher.kt:130)
+at kotlinx.coroutines.scheduling.TaskImpl.run(Tasks.kt:89)
+at kotlinx.coroutines.scheduling.CoroutineScheduler.runSafely(CoroutineScheduler.kt:610)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.executeTask(CoroutineScheduler.kt:1188)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:775)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:762)
+2026-05-05 00:49:10,885 [   4403]   WARN - #c.i.i.p.PluginManager - Plugin descriptor for 'depends' sub-descriptor 'java-features.xml' of plugin 'zielu.gittoolbox' has declared element 'url' which has no effect there
+in DependsSubDescriptor(descriptorPath=java-features.xml) <- PluginMainDescriptor(name=GitToolBox, id=zielu.gittoolbox, version=600.1.2+243, isBundled=false, path=~\AppData\Roaming\JetBrains\IntelliJIdea2025.1\plugins\gittoolbox) [Plugin: zielu.gittoolbox]
+com.intellij.diagnostic.PluginException: Plugin descriptor for 'depends' sub-descriptor 'java-features.xml' of plugin 'zielu.gittoolbox' has declared element 'url' which has no effect there
+in DependsSubDescriptor(descriptorPath=java-features.xml) <- PluginMainDescriptor(name=GitToolBox, id=zielu.gittoolbox, version=600.1.2+243, isBundled=false, path=~\AppData\Roaming\JetBrains\IntelliJIdea2025.1\plugins\gittoolbox) [Plugin: zielu.gittoolbox]
+at com.intellij.ide.plugins.IdeaPluginDescriptorImplKt.logUnexpectedElement(IdeaPluginDescriptorImpl.kt:107)
+at com.intellij.ide.plugins.DependsSubDescriptor._init_$lambda$0(IdeaPluginDescriptorImpl.kt:190)
+at com.intellij.ide.plugins.IdeaPluginDescriptorImplKt.reportSubDescriptorUnexpectedElements(IdeaPluginDescriptorImpl.kt:135)
+at com.intellij.ide.plugins.DependsSubDescriptor$Companion.reportDependsSubDescriptorUnexpectedElements(IdeaPluginDescriptorImpl.kt:265)
+at com.intellij.ide.plugins.DependsSubDescriptor.<init>(IdeaPluginDescriptorImpl.kt:190)
+at com.intellij.ide.plugins.IdeaPluginDescriptorImpl.createDependsSubDescriptor$intellij_platform_core_impl(IdeaPluginDescriptorImpl.kt:99)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginDependencyDescriptors(PluginDescriptorLoader.kt:1395)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginDependencyDescriptors(PluginDescriptorLoader.kt:1345)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginSubDescriptors(PluginDescriptorLoader.kt:271)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromStream(PluginDescriptorLoader.kt:211)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromJar(PluginDescriptorLoader.kt:158)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromJar$default(PluginDescriptorLoader.kt:141)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadFromPluginDir(PluginDescriptorLoader.kt:349)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromFileOrDir(PluginDescriptorLoader.kt:298)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromFileOrDir$default(PluginDescriptorLoader.kt:286)
+at com.intellij.ide.plugins.PluginDescriptorLoader$loadDescriptorsFromDir$descriptorsDeferred$1$1$1.invokeSuspend(PluginDescriptorLoader.kt:1237)
+at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+at kotlinx.coroutines.internal.SoftLimitedDispatcher$Worker.run(SoftLimitedDispatcher.kt:130)
+at kotlinx.coroutines.scheduling.TaskImpl.run(Tasks.kt:89)
+at kotlinx.coroutines.scheduling.CoroutineScheduler.runSafely(CoroutineScheduler.kt:610)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.executeTask(CoroutineScheduler.kt:1188)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:775)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:762)
+2026-05-05 00:49:10,886 [   4404]   WARN - #c.i.i.p.PluginManager - Plugin descriptor for 'depends' sub-descriptor 'android-features.xml' of plugin 'zielu.gittoolbox' has declared element 'url' which has no effect there
+in DependsSubDescriptor(descriptorPath=android-features.xml) <- PluginMainDescriptor(name=GitToolBox, id=zielu.gittoolbox, version=600.1.2+243, isBundled=false, path=~\AppData\Roaming\JetBrains\IntelliJIdea2025.1\plugins\gittoolbox) [Plugin: zielu.gittoolbox]
+com.intellij.diagnostic.PluginException: Plugin descriptor for 'depends' sub-descriptor 'android-features.xml' of plugin 'zielu.gittoolbox' has declared element 'url' which has no effect there
+in DependsSubDescriptor(descriptorPath=android-features.xml) <- PluginMainDescriptor(name=GitToolBox, id=zielu.gittoolbox, version=600.1.2+243, isBundled=false, path=~\AppData\Roaming\JetBrains\IntelliJIdea2025.1\plugins\gittoolbox) [Plugin: zielu.gittoolbox]
+at com.intellij.ide.plugins.IdeaPluginDescriptorImplKt.logUnexpectedElement(IdeaPluginDescriptorImpl.kt:107)
+at com.intellij.ide.plugins.DependsSubDescriptor._init_$lambda$0(IdeaPluginDescriptorImpl.kt:190)
+at com.intellij.ide.plugins.IdeaPluginDescriptorImplKt.reportSubDescriptorUnexpectedElements(IdeaPluginDescriptorImpl.kt:135)
+at com.intellij.ide.plugins.DependsSubDescriptor$Companion.reportDependsSubDescriptorUnexpectedElements(IdeaPluginDescriptorImpl.kt:265)
+at com.intellij.ide.plugins.DependsSubDescriptor.<init>(IdeaPluginDescriptorImpl.kt:190)
+at com.intellij.ide.plugins.IdeaPluginDescriptorImpl.createDependsSubDescriptor$intellij_platform_core_impl(IdeaPluginDescriptorImpl.kt:99)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginDependencyDescriptors(PluginDescriptorLoader.kt:1395)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginDependencyDescriptors(PluginDescriptorLoader.kt:1345)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginSubDescriptors(PluginDescriptorLoader.kt:271)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromStream(PluginDescriptorLoader.kt:211)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromJar(PluginDescriptorLoader.kt:158)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromJar$default(PluginDescriptorLoader.kt:141)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadFromPluginDir(PluginDescriptorLoader.kt:349)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromFileOrDir(PluginDescriptorLoader.kt:298)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromFileOrDir$default(PluginDescriptorLoader.kt:286)
+at com.intellij.ide.plugins.PluginDescriptorLoader$loadDescriptorsFromDir$descriptorsDeferred$1$1$1.invokeSuspend(PluginDescriptorLoader.kt:1237)
+at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+at kotlinx.coroutines.internal.SoftLimitedDispatcher$Worker.run(SoftLimitedDispatcher.kt:130)
+at kotlinx.coroutines.scheduling.TaskImpl.run(Tasks.kt:89)
+at kotlinx.coroutines.scheduling.CoroutineScheduler.runSafely(CoroutineScheduler.kt:610)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.executeTask(CoroutineScheduler.kt:1188)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:775)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:762)
+2026-05-05 00:49:10,889 [   4407]   WARN - #c.i.i.p.PluginManager - Plugin descriptor for 'depends' sub-descriptor 'kotlin-features.xml' of plugin 'zielu.gittoolbox' has declared element 'url' which has no effect there
+in DependsSubDescriptor(descriptorPath=kotlin-features.xml) <- PluginMainDescriptor(name=GitToolBox, id=zielu.gittoolbox, version=600.1.2+243, isBundled=false, path=~\AppData\Roaming\JetBrains\IntelliJIdea2025.1\plugins\gittoolbox) [Plugin: zielu.gittoolbox]
+com.intellij.diagnostic.PluginException: Plugin descriptor for 'depends' sub-descriptor 'kotlin-features.xml' of plugin 'zielu.gittoolbox' has declared element 'url' which has no effect there
+in DependsSubDescriptor(descriptorPath=kotlin-features.xml) <- PluginMainDescriptor(name=GitToolBox, id=zielu.gittoolbox, version=600.1.2+243, isBundled=false, path=~\AppData\Roaming\JetBrains\IntelliJIdea2025.1\plugins\gittoolbox) [Plugin: zielu.gittoolbox]
+at com.intellij.ide.plugins.IdeaPluginDescriptorImplKt.logUnexpectedElement(IdeaPluginDescriptorImpl.kt:107)
+at com.intellij.ide.plugins.DependsSubDescriptor._init_$lambda$0(IdeaPluginDescriptorImpl.kt:190)
+at com.intellij.ide.plugins.IdeaPluginDescriptorImplKt.reportSubDescriptorUnexpectedElements(IdeaPluginDescriptorImpl.kt:135)
+at com.intellij.ide.plugins.DependsSubDescriptor$Companion.reportDependsSubDescriptorUnexpectedElements(IdeaPluginDescriptorImpl.kt:265)
+at com.intellij.ide.plugins.DependsSubDescriptor.<init>(IdeaPluginDescriptorImpl.kt:190)
+at com.intellij.ide.plugins.IdeaPluginDescriptorImpl.createDependsSubDescriptor$intellij_platform_core_impl(IdeaPluginDescriptorImpl.kt:99)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginDependencyDescriptors(PluginDescriptorLoader.kt:1395)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginDependencyDescriptors(PluginDescriptorLoader.kt:1345)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginSubDescriptors(PluginDescriptorLoader.kt:271)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromStream(PluginDescriptorLoader.kt:211)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromJar(PluginDescriptorLoader.kt:158)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromJar$default(PluginDescriptorLoader.kt:141)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadFromPluginDir(PluginDescriptorLoader.kt:349)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromFileOrDir(PluginDescriptorLoader.kt:298)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromFileOrDir$default(PluginDescriptorLoader.kt:286)
+at com.intellij.ide.plugins.PluginDescriptorLoader$loadDescriptorsFromDir$descriptorsDeferred$1$1$1.invokeSuspend(PluginDescriptorLoader.kt:1237)
+at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+at kotlinx.coroutines.internal.SoftLimitedDispatcher$Worker.run(SoftLimitedDispatcher.kt:130)
+at kotlinx.coroutines.scheduling.TaskImpl.run(Tasks.kt:89)
+at kotlinx.coroutines.scheduling.CoroutineScheduler.runSafely(CoroutineScheduler.kt:610)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.executeTask(CoroutineScheduler.kt:1188)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:775)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:762)
+2026-05-05 00:49:10,890 [   4408]   WARN - #c.i.i.p.PluginManager - Plugin descriptor for 'depends' sub-descriptor 'javascript-features.xml' of plugin 'zielu.gittoolbox' has declared element 'url' which has no effect there
+in DependsSubDescriptor(descriptorPath=javascript-features.xml) <- PluginMainDescriptor(name=GitToolBox, id=zielu.gittoolbox, version=600.1.2+243, isBundled=false, path=~\AppData\Roaming\JetBrains\IntelliJIdea2025.1\plugins\gittoolbox) [Plugin: zielu.gittoolbox]
+com.intellij.diagnostic.PluginException: Plugin descriptor for 'depends' sub-descriptor 'javascript-features.xml' of plugin 'zielu.gittoolbox' has declared element 'url' which has no effect there
+in DependsSubDescriptor(descriptorPath=javascript-features.xml) <- PluginMainDescriptor(name=GitToolBox, id=zielu.gittoolbox, version=600.1.2+243, isBundled=false, path=~\AppData\Roaming\JetBrains\IntelliJIdea2025.1\plugins\gittoolbox) [Plugin: zielu.gittoolbox]
+at com.intellij.ide.plugins.IdeaPluginDescriptorImplKt.logUnexpectedElement(IdeaPluginDescriptorImpl.kt:107)
+at com.intellij.ide.plugins.DependsSubDescriptor._init_$lambda$0(IdeaPluginDescriptorImpl.kt:190)
+at com.intellij.ide.plugins.IdeaPluginDescriptorImplKt.reportSubDescriptorUnexpectedElements(IdeaPluginDescriptorImpl.kt:135)
+at com.intellij.ide.plugins.DependsSubDescriptor$Companion.reportDependsSubDescriptorUnexpectedElements(IdeaPluginDescriptorImpl.kt:265)
+at com.intellij.ide.plugins.DependsSubDescriptor.<init>(IdeaPluginDescriptorImpl.kt:190)
+at com.intellij.ide.plugins.IdeaPluginDescriptorImpl.createDependsSubDescriptor$intellij_platform_core_impl(IdeaPluginDescriptorImpl.kt:99)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginDependencyDescriptors(PluginDescriptorLoader.kt:1395)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginDependencyDescriptors(PluginDescriptorLoader.kt:1345)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginSubDescriptors(PluginDescriptorLoader.kt:271)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromStream(PluginDescriptorLoader.kt:211)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromJar(PluginDescriptorLoader.kt:158)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromJar$default(PluginDescriptorLoader.kt:141)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadFromPluginDir(PluginDescriptorLoader.kt:349)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromFileOrDir(PluginDescriptorLoader.kt:298)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromFileOrDir$default(PluginDescriptorLoader.kt:286)
+at com.intellij.ide.plugins.PluginDescriptorLoader$loadDescriptorsFromDir$descriptorsDeferred$1$1$1.invokeSuspend(PluginDescriptorLoader.kt:1237)
+at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+at kotlinx.coroutines.internal.SoftLimitedDispatcher$Worker.run(SoftLimitedDispatcher.kt:130)
+at kotlinx.coroutines.scheduling.TaskImpl.run(Tasks.kt:89)
+at kotlinx.coroutines.scheduling.CoroutineScheduler.runSafely(CoroutineScheduler.kt:610)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.executeTask(CoroutineScheduler.kt:1188)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:775)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:762)
+2026-05-05 00:49:10,892 [   4410]   WARN - #c.i.i.p.PluginManager - Plugin descriptor for 'depends' sub-descriptor 'go-features.xml' of plugin 'zielu.gittoolbox' has declared element 'url' which has no effect there
+in DependsSubDescriptor(descriptorPath=go-features.xml) <- PluginMainDescriptor(name=GitToolBox, id=zielu.gittoolbox, version=600.1.2+243, isBundled=false, path=~\AppData\Roaming\JetBrains\IntelliJIdea2025.1\plugins\gittoolbox) [Plugin: zielu.gittoolbox]
+com.intellij.diagnostic.PluginException: Plugin descriptor for 'depends' sub-descriptor 'go-features.xml' of plugin 'zielu.gittoolbox' has declared element 'url' which has no effect there
+in DependsSubDescriptor(descriptorPath=go-features.xml) <- PluginMainDescriptor(name=GitToolBox, id=zielu.gittoolbox, version=600.1.2+243, isBundled=false, path=~\AppData\Roaming\JetBrains\IntelliJIdea2025.1\plugins\gittoolbox) [Plugin: zielu.gittoolbox]
+at com.intellij.ide.plugins.IdeaPluginDescriptorImplKt.logUnexpectedElement(IdeaPluginDescriptorImpl.kt:107)
+at com.intellij.ide.plugins.DependsSubDescriptor._init_$lambda$0(IdeaPluginDescriptorImpl.kt:190)
+at com.intellij.ide.plugins.IdeaPluginDescriptorImplKt.reportSubDescriptorUnexpectedElements(IdeaPluginDescriptorImpl.kt:135)
+at com.intellij.ide.plugins.DependsSubDescriptor$Companion.reportDependsSubDescriptorUnexpectedElements(IdeaPluginDescriptorImpl.kt:265)
+at com.intellij.ide.plugins.DependsSubDescriptor.<init>(IdeaPluginDescriptorImpl.kt:190)
+at com.intellij.ide.plugins.IdeaPluginDescriptorImpl.createDependsSubDescriptor$intellij_platform_core_impl(IdeaPluginDescriptorImpl.kt:99)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginDependencyDescriptors(PluginDescriptorLoader.kt:1395)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginDependencyDescriptors(PluginDescriptorLoader.kt:1345)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginSubDescriptors(PluginDescriptorLoader.kt:271)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromStream(PluginDescriptorLoader.kt:211)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromJar(PluginDescriptorLoader.kt:158)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromJar$default(PluginDescriptorLoader.kt:141)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadFromPluginDir(PluginDescriptorLoader.kt:349)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromFileOrDir(PluginDescriptorLoader.kt:298)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromFileOrDir$default(PluginDescriptorLoader.kt:286)
+at com.intellij.ide.plugins.PluginDescriptorLoader$loadDescriptorsFromDir$descriptorsDeferred$1$1$1.invokeSuspend(PluginDescriptorLoader.kt:1237)
+at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+at kotlinx.coroutines.internal.SoftLimitedDispatcher$Worker.run(SoftLimitedDispatcher.kt:130)
+at kotlinx.coroutines.scheduling.TaskImpl.run(Tasks.kt:89)
+at kotlinx.coroutines.scheduling.CoroutineScheduler.runSafely(CoroutineScheduler.kt:610)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.executeTask(CoroutineScheduler.kt:1188)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:775)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:762)
+2026-05-05 00:49:10,895 [   4413]   WARN - #c.i.i.p.PluginManager - Plugin descriptor for 'depends' sub-descriptor 'python-features.xml' of plugin 'zielu.gittoolbox' has declared element 'url' which has no effect there
+in DependsSubDescriptor(descriptorPath=python-features.xml) <- PluginMainDescriptor(name=GitToolBox, id=zielu.gittoolbox, version=600.1.2+243, isBundled=false, path=~\AppData\Roaming\JetBrains\IntelliJIdea2025.1\plugins\gittoolbox) [Plugin: zielu.gittoolbox]
+com.intellij.diagnostic.PluginException: Plugin descriptor for 'depends' sub-descriptor 'python-features.xml' of plugin 'zielu.gittoolbox' has declared element 'url' which has no effect there
+in DependsSubDescriptor(descriptorPath=python-features.xml) <- PluginMainDescriptor(name=GitToolBox, id=zielu.gittoolbox, version=600.1.2+243, isBundled=false, path=~\AppData\Roaming\JetBrains\IntelliJIdea2025.1\plugins\gittoolbox) [Plugin: zielu.gittoolbox]
+at com.intellij.ide.plugins.IdeaPluginDescriptorImplKt.logUnexpectedElement(IdeaPluginDescriptorImpl.kt:107)
+at com.intellij.ide.plugins.DependsSubDescriptor._init_$lambda$0(IdeaPluginDescriptorImpl.kt:190)
+at com.intellij.ide.plugins.IdeaPluginDescriptorImplKt.reportSubDescriptorUnexpectedElements(IdeaPluginDescriptorImpl.kt:135)
+at com.intellij.ide.plugins.DependsSubDescriptor$Companion.reportDependsSubDescriptorUnexpectedElements(IdeaPluginDescriptorImpl.kt:265)
+at com.intellij.ide.plugins.DependsSubDescriptor.<init>(IdeaPluginDescriptorImpl.kt:190)
+at com.intellij.ide.plugins.IdeaPluginDescriptorImpl.createDependsSubDescriptor$intellij_platform_core_impl(IdeaPluginDescriptorImpl.kt:99)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginDependencyDescriptors(PluginDescriptorLoader.kt:1395)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginDependencyDescriptors(PluginDescriptorLoader.kt:1345)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginSubDescriptors(PluginDescriptorLoader.kt:271)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromStream(PluginDescriptorLoader.kt:211)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromJar(PluginDescriptorLoader.kt:158)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromJar$default(PluginDescriptorLoader.kt:141)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadFromPluginDir(PluginDescriptorLoader.kt:349)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromFileOrDir(PluginDescriptorLoader.kt:298)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromFileOrDir$default(PluginDescriptorLoader.kt:286)
+at com.intellij.ide.plugins.PluginDescriptorLoader$loadDescriptorsFromDir$descriptorsDeferred$1$1$1.invokeSuspend(PluginDescriptorLoader.kt:1237)
+at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+at kotlinx.coroutines.internal.SoftLimitedDispatcher$Worker.run(SoftLimitedDispatcher.kt:130)
+at kotlinx.coroutines.scheduling.TaskImpl.run(Tasks.kt:89)
+at kotlinx.coroutines.scheduling.CoroutineScheduler.runSafely(CoroutineScheduler.kt:610)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.executeTask(CoroutineScheduler.kt:1188)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:775)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:762)
+2026-05-05 00:49:10,897 [   4415]   WARN - #c.i.i.p.PluginManager - Plugin descriptor for 'depends' sub-descriptor 'php-features.xml' of plugin 'zielu.gittoolbox' has declared element 'url' which has no effect there
+in DependsSubDescriptor(descriptorPath=php-features.xml) <- PluginMainDescriptor(name=GitToolBox, id=zielu.gittoolbox, version=600.1.2+243, isBundled=false, path=~\AppData\Roaming\JetBrains\IntelliJIdea2025.1\plugins\gittoolbox) [Plugin: zielu.gittoolbox]
+com.intellij.diagnostic.PluginException: Plugin descriptor for 'depends' sub-descriptor 'php-features.xml' of plugin 'zielu.gittoolbox' has declared element 'url' which has no effect there
+in DependsSubDescriptor(descriptorPath=php-features.xml) <- PluginMainDescriptor(name=GitToolBox, id=zielu.gittoolbox, version=600.1.2+243, isBundled=false, path=~\AppData\Roaming\JetBrains\IntelliJIdea2025.1\plugins\gittoolbox) [Plugin: zielu.gittoolbox]
+at com.intellij.ide.plugins.IdeaPluginDescriptorImplKt.logUnexpectedElement(IdeaPluginDescriptorImpl.kt:107)
+at com.intellij.ide.plugins.DependsSubDescriptor._init_$lambda$0(IdeaPluginDescriptorImpl.kt:190)
+at com.intellij.ide.plugins.IdeaPluginDescriptorImplKt.reportSubDescriptorUnexpectedElements(IdeaPluginDescriptorImpl.kt:135)
+at com.intellij.ide.plugins.DependsSubDescriptor$Companion.reportDependsSubDescriptorUnexpectedElements(IdeaPluginDescriptorImpl.kt:265)
+at com.intellij.ide.plugins.DependsSubDescriptor.<init>(IdeaPluginDescriptorImpl.kt:190)
+at com.intellij.ide.plugins.IdeaPluginDescriptorImpl.createDependsSubDescriptor$intellij_platform_core_impl(IdeaPluginDescriptorImpl.kt:99)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginDependencyDescriptors(PluginDescriptorLoader.kt:1395)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginDependencyDescriptors(PluginDescriptorLoader.kt:1345)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginSubDescriptors(PluginDescriptorLoader.kt:271)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromStream(PluginDescriptorLoader.kt:211)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromJar(PluginDescriptorLoader.kt:158)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromJar$default(PluginDescriptorLoader.kt:141)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadFromPluginDir(PluginDescriptorLoader.kt:349)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromFileOrDir(PluginDescriptorLoader.kt:298)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromFileOrDir$default(PluginDescriptorLoader.kt:286)
+at com.intellij.ide.plugins.PluginDescriptorLoader$loadDescriptorsFromDir$descriptorsDeferred$1$1$1.invokeSuspend(PluginDescriptorLoader.kt:1237)
+at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+at kotlinx.coroutines.internal.SoftLimitedDispatcher$Worker.run(SoftLimitedDispatcher.kt:130)
+at kotlinx.coroutines.scheduling.TaskImpl.run(Tasks.kt:89)
+at kotlinx.coroutines.scheduling.CoroutineScheduler.runSafely(CoroutineScheduler.kt:610)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.executeTask(CoroutineScheduler.kt:1188)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:775)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:762)
+2026-05-05 00:49:10,898 [   4416]   WARN - #c.i.i.p.PluginManager - Plugin descriptor for 'depends' sub-descriptor 'rust-features.xml' of plugin 'zielu.gittoolbox' has declared element 'url' which has no effect there
+in DependsSubDescriptor(descriptorPath=rust-features.xml) <- PluginMainDescriptor(name=GitToolBox, id=zielu.gittoolbox, version=600.1.2+243, isBundled=false, path=~\AppData\Roaming\JetBrains\IntelliJIdea2025.1\plugins\gittoolbox) [Plugin: zielu.gittoolbox]
+com.intellij.diagnostic.PluginException: Plugin descriptor for 'depends' sub-descriptor 'rust-features.xml' of plugin 'zielu.gittoolbox' has declared element 'url' which has no effect there
+in DependsSubDescriptor(descriptorPath=rust-features.xml) <- PluginMainDescriptor(name=GitToolBox, id=zielu.gittoolbox, version=600.1.2+243, isBundled=false, path=~\AppData\Roaming\JetBrains\IntelliJIdea2025.1\plugins\gittoolbox) [Plugin: zielu.gittoolbox]
+at com.intellij.ide.plugins.IdeaPluginDescriptorImplKt.logUnexpectedElement(IdeaPluginDescriptorImpl.kt:107)
+at com.intellij.ide.plugins.DependsSubDescriptor._init_$lambda$0(IdeaPluginDescriptorImpl.kt:190)
+at com.intellij.ide.plugins.IdeaPluginDescriptorImplKt.reportSubDescriptorUnexpectedElements(IdeaPluginDescriptorImpl.kt:135)
+at com.intellij.ide.plugins.DependsSubDescriptor$Companion.reportDependsSubDescriptorUnexpectedElements(IdeaPluginDescriptorImpl.kt:265)
+at com.intellij.ide.plugins.DependsSubDescriptor.<init>(IdeaPluginDescriptorImpl.kt:190)
+at com.intellij.ide.plugins.IdeaPluginDescriptorImpl.createDependsSubDescriptor$intellij_platform_core_impl(IdeaPluginDescriptorImpl.kt:99)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginDependencyDescriptors(PluginDescriptorLoader.kt:1395)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginDependencyDescriptors(PluginDescriptorLoader.kt:1345)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginSubDescriptors(PluginDescriptorLoader.kt:271)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromStream(PluginDescriptorLoader.kt:211)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromJar(PluginDescriptorLoader.kt:158)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromJar$default(PluginDescriptorLoader.kt:141)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadFromPluginDir(PluginDescriptorLoader.kt:349)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromFileOrDir(PluginDescriptorLoader.kt:298)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromFileOrDir$default(PluginDescriptorLoader.kt:286)
+at com.intellij.ide.plugins.PluginDescriptorLoader$loadDescriptorsFromDir$descriptorsDeferred$1$1$1.invokeSuspend(PluginDescriptorLoader.kt:1237)
+at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+at kotlinx.coroutines.internal.SoftLimitedDispatcher$Worker.run(SoftLimitedDispatcher.kt:130)
+at kotlinx.coroutines.scheduling.TaskImpl.run(Tasks.kt:89)
+at kotlinx.coroutines.scheduling.CoroutineScheduler.runSafely(CoroutineScheduler.kt:610)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.executeTask(CoroutineScheduler.kt:1188)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:775)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:762)
+2026-05-05 00:49:10,899 [   4417]   WARN - #c.i.i.p.PluginManager - Plugin descriptor for 'depends' sub-descriptor 'gitextender-features.xml' of plugin 'zielu.gittoolbox' has declared element 'url' which has no effect there
+in DependsSubDescriptor(descriptorPath=gitextender-features.xml) <- PluginMainDescriptor(name=GitToolBox, id=zielu.gittoolbox, version=600.1.2+243, isBundled=false, path=~\AppData\Roaming\JetBrains\IntelliJIdea2025.1\plugins\gittoolbox) [Plugin: zielu.gittoolbox]
+com.intellij.diagnostic.PluginException: Plugin descriptor for 'depends' sub-descriptor 'gitextender-features.xml' of plugin 'zielu.gittoolbox' has declared element 'url' which has no effect there
+in DependsSubDescriptor(descriptorPath=gitextender-features.xml) <- PluginMainDescriptor(name=GitToolBox, id=zielu.gittoolbox, version=600.1.2+243, isBundled=false, path=~\AppData\Roaming\JetBrains\IntelliJIdea2025.1\plugins\gittoolbox) [Plugin: zielu.gittoolbox]
+at com.intellij.ide.plugins.IdeaPluginDescriptorImplKt.logUnexpectedElement(IdeaPluginDescriptorImpl.kt:107)
+at com.intellij.ide.plugins.DependsSubDescriptor._init_$lambda$0(IdeaPluginDescriptorImpl.kt:190)
+at com.intellij.ide.plugins.IdeaPluginDescriptorImplKt.reportSubDescriptorUnexpectedElements(IdeaPluginDescriptorImpl.kt:135)
+at com.intellij.ide.plugins.DependsSubDescriptor$Companion.reportDependsSubDescriptorUnexpectedElements(IdeaPluginDescriptorImpl.kt:265)
+at com.intellij.ide.plugins.DependsSubDescriptor.<init>(IdeaPluginDescriptorImpl.kt:190)
+at com.intellij.ide.plugins.IdeaPluginDescriptorImpl.createDependsSubDescriptor$intellij_platform_core_impl(IdeaPluginDescriptorImpl.kt:99)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginDependencyDescriptors(PluginDescriptorLoader.kt:1395)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginDependencyDescriptors(PluginDescriptorLoader.kt:1345)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginSubDescriptors(PluginDescriptorLoader.kt:271)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromStream(PluginDescriptorLoader.kt:211)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromJar(PluginDescriptorLoader.kt:158)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromJar$default(PluginDescriptorLoader.kt:141)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadFromPluginDir(PluginDescriptorLoader.kt:349)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromFileOrDir(PluginDescriptorLoader.kt:298)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromFileOrDir$default(PluginDescriptorLoader.kt:286)
+at com.intellij.ide.plugins.PluginDescriptorLoader$loadDescriptorsFromDir$descriptorsDeferred$1$1$1.invokeSuspend(PluginDescriptorLoader.kt:1237)
+at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+at kotlinx.coroutines.internal.SoftLimitedDispatcher$Worker.run(SoftLimitedDispatcher.kt:130)
+at kotlinx.coroutines.scheduling.TaskImpl.run(Tasks.kt:89)
+at kotlinx.coroutines.scheduling.CoroutineScheduler.runSafely(CoroutineScheduler.kt:610)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.executeTask(CoroutineScheduler.kt:1188)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:775)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:762)
+2026-05-05 00:49:10,945 [   4463]   WARN - #c.i.i.p.PluginManager - Plugin descriptor for content module 'intellij.vcs.gitlab' of plugin 'org.jetbrains.plugins.gitlab' has declared element 'allow-bundled-update' which has no effect there
+in ContentModuleDescriptor(id=intellij.vcs.gitlab, loadingRule=EMBEDDED, package=org.jetbrains.plugins.gitlab) <- PluginMainDescriptor(name=GitLab, id=org.jetbrains.plugins.gitlab, version=251.25410.123-IU, isBundled=false, path=~\AppData\Roaming\JetBrains\PyCharm2025.2\plugins\vcs-gitlab-IU) [Plugin: org.jetbrains.plugins.gitlab]
+com.intellij.diagnostic.PluginException: Plugin descriptor for content module 'intellij.vcs.gitlab' of plugin 'org.jetbrains.plugins.gitlab' has declared element 'allow-bundled-update' which has no effect there
+in ContentModuleDescriptor(id=intellij.vcs.gitlab, loadingRule=EMBEDDED, package=org.jetbrains.plugins.gitlab) <- PluginMainDescriptor(name=GitLab, id=org.jetbrains.plugins.gitlab, version=251.25410.123-IU, isBundled=false, path=~\AppData\Roaming\JetBrains\PyCharm2025.2\plugins\vcs-gitlab-IU) [Plugin: org.jetbrains.plugins.gitlab]
+at com.intellij.ide.plugins.IdeaPluginDescriptorImplKt.logUnexpectedElement(IdeaPluginDescriptorImpl.kt:107)
+at com.intellij.ide.plugins.ContentModuleDescriptor._init_$lambda$0(IdeaPluginDescriptorImpl.kt:309)
+at com.intellij.ide.plugins.IdeaPluginDescriptorImplKt.reportSubDescriptorUnexpectedElements(IdeaPluginDescriptorImpl.kt:123)
+at com.intellij.ide.plugins.ContentModuleDescriptor$Companion.reportContentModuleUnexpectedElements(IdeaPluginDescriptorImpl.kt:383)
+at com.intellij.ide.plugins.ContentModuleDescriptor.<init>(IdeaPluginDescriptorImpl.kt:309)
+at com.intellij.ide.plugins.PluginMainDescriptor.createContentModule$intellij_platform_core_impl(PluginMainDescriptor.kt:232)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginSubDescriptors(PluginDescriptorLoader.kt:257)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromStream(PluginDescriptorLoader.kt:211)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromJar(PluginDescriptorLoader.kt:158)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromJar$default(PluginDescriptorLoader.kt:141)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadFromPluginDir(PluginDescriptorLoader.kt:349)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromFileOrDir(PluginDescriptorLoader.kt:298)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromFileOrDir$default(PluginDescriptorLoader.kt:286)
+at com.intellij.ide.plugins.PluginDescriptorLoader$loadDescriptorsFromDir$descriptorsDeferred$1$1$1.invokeSuspend(PluginDescriptorLoader.kt:1237)
+at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+at kotlinx.coroutines.internal.SoftLimitedDispatcher$Worker.run(SoftLimitedDispatcher.kt:130)
+at kotlinx.coroutines.scheduling.TaskImpl.run(Tasks.kt:89)
+at kotlinx.coroutines.scheduling.CoroutineScheduler.runSafely(CoroutineScheduler.kt:610)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.executeTask(CoroutineScheduler.kt:1188)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:775)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:762)
+2026-05-05 00:49:11,062 [   4580]   WARN - #c.i.i.p.PluginManager - Plugin descriptor for 'depends' sub-descriptor 'java-features.xml' of plugin 'zielu.gittoolbox' has declared element 'url' which has no effect there
+in DependsSubDescriptor(descriptorPath=java-features.xml) <- PluginMainDescriptor(name=GitToolBox, id=zielu.gittoolbox, version=600.1.2+243, isBundled=false, path=~\AppData\Roaming\JetBrains\PyCharm2024.3\plugins\gittoolbox) [Plugin: zielu.gittoolbox]
+com.intellij.diagnostic.PluginException: Plugin descriptor for 'depends' sub-descriptor 'java-features.xml' of plugin 'zielu.gittoolbox' has declared element 'url' which has no effect there
+in DependsSubDescriptor(descriptorPath=java-features.xml) <- PluginMainDescriptor(name=GitToolBox, id=zielu.gittoolbox, version=600.1.2+243, isBundled=false, path=~\AppData\Roaming\JetBrains\PyCharm2024.3\plugins\gittoolbox) [Plugin: zielu.gittoolbox]
+at com.intellij.ide.plugins.IdeaPluginDescriptorImplKt.logUnexpectedElement(IdeaPluginDescriptorImpl.kt:107)
+at com.intellij.ide.plugins.DependsSubDescriptor._init_$lambda$0(IdeaPluginDescriptorImpl.kt:190)
+at com.intellij.ide.plugins.IdeaPluginDescriptorImplKt.reportSubDescriptorUnexpectedElements(IdeaPluginDescriptorImpl.kt:135)
+at com.intellij.ide.plugins.DependsSubDescriptor$Companion.reportDependsSubDescriptorUnexpectedElements(IdeaPluginDescriptorImpl.kt:265)
+at com.intellij.ide.plugins.DependsSubDescriptor.<init>(IdeaPluginDescriptorImpl.kt:190)
+at com.intellij.ide.plugins.IdeaPluginDescriptorImpl.createDependsSubDescriptor$intellij_platform_core_impl(IdeaPluginDescriptorImpl.kt:99)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginDependencyDescriptors(PluginDescriptorLoader.kt:1395)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginDependencyDescriptors(PluginDescriptorLoader.kt:1345)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginSubDescriptors(PluginDescriptorLoader.kt:271)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromStream(PluginDescriptorLoader.kt:211)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromJar(PluginDescriptorLoader.kt:158)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromJar$default(PluginDescriptorLoader.kt:141)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadFromPluginDir(PluginDescriptorLoader.kt:349)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromFileOrDir(PluginDescriptorLoader.kt:298)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromFileOrDir$default(PluginDescriptorLoader.kt:286)
+at com.intellij.ide.plugins.PluginDescriptorLoader$loadDescriptorsFromDir$descriptorsDeferred$1$1$1.invokeSuspend(PluginDescriptorLoader.kt:1237)
+at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+at kotlinx.coroutines.internal.SoftLimitedDispatcher$Worker.run(SoftLimitedDispatcher.kt:130)
+at kotlinx.coroutines.scheduling.TaskImpl.run(Tasks.kt:89)
+at kotlinx.coroutines.scheduling.CoroutineScheduler.runSafely(CoroutineScheduler.kt:610)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.executeTask(CoroutineScheduler.kt:1188)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:775)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:762)
+2026-05-05 00:49:11,063 [   4581]   WARN - #c.i.i.p.PluginManager - Plugin descriptor for 'depends' sub-descriptor 'android-features.xml' of plugin 'zielu.gittoolbox' has declared element 'url' which has no effect there
+in DependsSubDescriptor(descriptorPath=android-features.xml) <- PluginMainDescriptor(name=GitToolBox, id=zielu.gittoolbox, version=600.1.2+243, isBundled=false, path=~\AppData\Roaming\JetBrains\PyCharm2024.3\plugins\gittoolbox) [Plugin: zielu.gittoolbox]
+com.intellij.diagnostic.PluginException: Plugin descriptor for 'depends' sub-descriptor 'android-features.xml' of plugin 'zielu.gittoolbox' has declared element 'url' which has no effect there
+in DependsSubDescriptor(descriptorPath=android-features.xml) <- PluginMainDescriptor(name=GitToolBox, id=zielu.gittoolbox, version=600.1.2+243, isBundled=false, path=~\AppData\Roaming\JetBrains\PyCharm2024.3\plugins\gittoolbox) [Plugin: zielu.gittoolbox]
+at com.intellij.ide.plugins.IdeaPluginDescriptorImplKt.logUnexpectedElement(IdeaPluginDescriptorImpl.kt:107)
+at com.intellij.ide.plugins.DependsSubDescriptor._init_$lambda$0(IdeaPluginDescriptorImpl.kt:190)
+at com.intellij.ide.plugins.IdeaPluginDescriptorImplKt.reportSubDescriptorUnexpectedElements(IdeaPluginDescriptorImpl.kt:135)
+at com.intellij.ide.plugins.DependsSubDescriptor$Companion.reportDependsSubDescriptorUnexpectedElements(IdeaPluginDescriptorImpl.kt:265)
+at com.intellij.ide.plugins.DependsSubDescriptor.<init>(IdeaPluginDescriptorImpl.kt:190)
+at com.intellij.ide.plugins.IdeaPluginDescriptorImpl.createDependsSubDescriptor$intellij_platform_core_impl(IdeaPluginDescriptorImpl.kt:99)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginDependencyDescriptors(PluginDescriptorLoader.kt:1395)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginDependencyDescriptors(PluginDescriptorLoader.kt:1345)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginSubDescriptors(PluginDescriptorLoader.kt:271)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromStream(PluginDescriptorLoader.kt:211)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromJar(PluginDescriptorLoader.kt:158)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromJar$default(PluginDescriptorLoader.kt:141)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadFromPluginDir(PluginDescriptorLoader.kt:349)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromFileOrDir(PluginDescriptorLoader.kt:298)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromFileOrDir$default(PluginDescriptorLoader.kt:286)
+at com.intellij.ide.plugins.PluginDescriptorLoader$loadDescriptorsFromDir$descriptorsDeferred$1$1$1.invokeSuspend(PluginDescriptorLoader.kt:1237)
+at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+at kotlinx.coroutines.internal.SoftLimitedDispatcher$Worker.run(SoftLimitedDispatcher.kt:130)
+at kotlinx.coroutines.scheduling.TaskImpl.run(Tasks.kt:89)
+at kotlinx.coroutines.scheduling.CoroutineScheduler.runSafely(CoroutineScheduler.kt:610)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.executeTask(CoroutineScheduler.kt:1188)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:775)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:762)
+2026-05-05 00:49:11,065 [   4583]   WARN - #c.i.i.p.PluginManager - Plugin descriptor for 'depends' sub-descriptor 'kotlin-features.xml' of plugin 'zielu.gittoolbox' has declared element 'url' which has no effect there
+in DependsSubDescriptor(descriptorPath=kotlin-features.xml) <- PluginMainDescriptor(name=GitToolBox, id=zielu.gittoolbox, version=600.1.2+243, isBundled=false, path=~\AppData\Roaming\JetBrains\PyCharm2024.3\plugins\gittoolbox) [Plugin: zielu.gittoolbox]
+com.intellij.diagnostic.PluginException: Plugin descriptor for 'depends' sub-descriptor 'kotlin-features.xml' of plugin 'zielu.gittoolbox' has declared element 'url' which has no effect there
+in DependsSubDescriptor(descriptorPath=kotlin-features.xml) <- PluginMainDescriptor(name=GitToolBox, id=zielu.gittoolbox, version=600.1.2+243, isBundled=false, path=~\AppData\Roaming\JetBrains\PyCharm2024.3\plugins\gittoolbox) [Plugin: zielu.gittoolbox]
+at com.intellij.ide.plugins.IdeaPluginDescriptorImplKt.logUnexpectedElement(IdeaPluginDescriptorImpl.kt:107)
+at com.intellij.ide.plugins.DependsSubDescriptor._init_$lambda$0(IdeaPluginDescriptorImpl.kt:190)
+at com.intellij.ide.plugins.IdeaPluginDescriptorImplKt.reportSubDescriptorUnexpectedElements(IdeaPluginDescriptorImpl.kt:135)
+at com.intellij.ide.plugins.DependsSubDescriptor$Companion.reportDependsSubDescriptorUnexpectedElements(IdeaPluginDescriptorImpl.kt:265)
+at com.intellij.ide.plugins.DependsSubDescriptor.<init>(IdeaPluginDescriptorImpl.kt:190)
+at com.intellij.ide.plugins.IdeaPluginDescriptorImpl.createDependsSubDescriptor$intellij_platform_core_impl(IdeaPluginDescriptorImpl.kt:99)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginDependencyDescriptors(PluginDescriptorLoader.kt:1395)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginDependencyDescriptors(PluginDescriptorLoader.kt:1345)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginSubDescriptors(PluginDescriptorLoader.kt:271)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromStream(PluginDescriptorLoader.kt:211)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromJar(PluginDescriptorLoader.kt:158)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromJar$default(PluginDescriptorLoader.kt:141)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadFromPluginDir(PluginDescriptorLoader.kt:349)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromFileOrDir(PluginDescriptorLoader.kt:298)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromFileOrDir$default(PluginDescriptorLoader.kt:286)
+at com.intellij.ide.plugins.PluginDescriptorLoader$loadDescriptorsFromDir$descriptorsDeferred$1$1$1.invokeSuspend(PluginDescriptorLoader.kt:1237)
+at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+at kotlinx.coroutines.internal.SoftLimitedDispatcher$Worker.run(SoftLimitedDispatcher.kt:130)
+at kotlinx.coroutines.scheduling.TaskImpl.run(Tasks.kt:89)
+at kotlinx.coroutines.scheduling.CoroutineScheduler.runSafely(CoroutineScheduler.kt:610)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.executeTask(CoroutineScheduler.kt:1188)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:775)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:762)
+2026-05-05 00:49:11,067 [   4585]   WARN - #c.i.i.p.PluginManager - Plugin descriptor for 'depends' sub-descriptor 'javascript-features.xml' of plugin 'zielu.gittoolbox' has declared element 'url' which has no effect there
+in DependsSubDescriptor(descriptorPath=javascript-features.xml) <- PluginMainDescriptor(name=GitToolBox, id=zielu.gittoolbox, version=600.1.2+243, isBundled=false, path=~\AppData\Roaming\JetBrains\PyCharm2024.3\plugins\gittoolbox) [Plugin: zielu.gittoolbox]
+com.intellij.diagnostic.PluginException: Plugin descriptor for 'depends' sub-descriptor 'javascript-features.xml' of plugin 'zielu.gittoolbox' has declared element 'url' which has no effect there
+in DependsSubDescriptor(descriptorPath=javascript-features.xml) <- PluginMainDescriptor(name=GitToolBox, id=zielu.gittoolbox, version=600.1.2+243, isBundled=false, path=~\AppData\Roaming\JetBrains\PyCharm2024.3\plugins\gittoolbox) [Plugin: zielu.gittoolbox]
+at com.intellij.ide.plugins.IdeaPluginDescriptorImplKt.logUnexpectedElement(IdeaPluginDescriptorImpl.kt:107)
+at com.intellij.ide.plugins.DependsSubDescriptor._init_$lambda$0(IdeaPluginDescriptorImpl.kt:190)
+at com.intellij.ide.plugins.IdeaPluginDescriptorImplKt.reportSubDescriptorUnexpectedElements(IdeaPluginDescriptorImpl.kt:135)
+at com.intellij.ide.plugins.DependsSubDescriptor$Companion.reportDependsSubDescriptorUnexpectedElements(IdeaPluginDescriptorImpl.kt:265)
+at com.intellij.ide.plugins.DependsSubDescriptor.<init>(IdeaPluginDescriptorImpl.kt:190)
+at com.intellij.ide.plugins.IdeaPluginDescriptorImpl.createDependsSubDescriptor$intellij_platform_core_impl(IdeaPluginDescriptorImpl.kt:99)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginDependencyDescriptors(PluginDescriptorLoader.kt:1395)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginDependencyDescriptors(PluginDescriptorLoader.kt:1345)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginSubDescriptors(PluginDescriptorLoader.kt:271)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromStream(PluginDescriptorLoader.kt:211)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromJar(PluginDescriptorLoader.kt:158)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromJar$default(PluginDescriptorLoader.kt:141)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadFromPluginDir(PluginDescriptorLoader.kt:349)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromFileOrDir(PluginDescriptorLoader.kt:298)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromFileOrDir$default(PluginDescriptorLoader.kt:286)
+at com.intellij.ide.plugins.PluginDescriptorLoader$loadDescriptorsFromDir$descriptorsDeferred$1$1$1.invokeSuspend(PluginDescriptorLoader.kt:1237)
+at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+at kotlinx.coroutines.internal.SoftLimitedDispatcher$Worker.run(SoftLimitedDispatcher.kt:130)
+at kotlinx.coroutines.scheduling.TaskImpl.run(Tasks.kt:89)
+at kotlinx.coroutines.scheduling.CoroutineScheduler.runSafely(CoroutineScheduler.kt:610)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.executeTask(CoroutineScheduler.kt:1188)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:775)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:762)
+2026-05-05 00:49:11,068 [   4586]   WARN - #c.i.i.p.PluginManager - Plugin descriptor for 'depends' sub-descriptor 'go-features.xml' of plugin 'zielu.gittoolbox' has declared element 'url' which has no effect there
+in DependsSubDescriptor(descriptorPath=go-features.xml) <- PluginMainDescriptor(name=GitToolBox, id=zielu.gittoolbox, version=600.1.2+243, isBundled=false, path=~\AppData\Roaming\JetBrains\PyCharm2024.3\plugins\gittoolbox) [Plugin: zielu.gittoolbox]
+com.intellij.diagnostic.PluginException: Plugin descriptor for 'depends' sub-descriptor 'go-features.xml' of plugin 'zielu.gittoolbox' has declared element 'url' which has no effect there
+in DependsSubDescriptor(descriptorPath=go-features.xml) <- PluginMainDescriptor(name=GitToolBox, id=zielu.gittoolbox, version=600.1.2+243, isBundled=false, path=~\AppData\Roaming\JetBrains\PyCharm2024.3\plugins\gittoolbox) [Plugin: zielu.gittoolbox]
+at com.intellij.ide.plugins.IdeaPluginDescriptorImplKt.logUnexpectedElement(IdeaPluginDescriptorImpl.kt:107)
+at com.intellij.ide.plugins.DependsSubDescriptor._init_$lambda$0(IdeaPluginDescriptorImpl.kt:190)
+at com.intellij.ide.plugins.IdeaPluginDescriptorImplKt.reportSubDescriptorUnexpectedElements(IdeaPluginDescriptorImpl.kt:135)
+at com.intellij.ide.plugins.DependsSubDescriptor$Companion.reportDependsSubDescriptorUnexpectedElements(IdeaPluginDescriptorImpl.kt:265)
+at com.intellij.ide.plugins.DependsSubDescriptor.<init>(IdeaPluginDescriptorImpl.kt:190)
+at com.intellij.ide.plugins.IdeaPluginDescriptorImpl.createDependsSubDescriptor$intellij_platform_core_impl(IdeaPluginDescriptorImpl.kt:99)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginDependencyDescriptors(PluginDescriptorLoader.kt:1395)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginDependencyDescriptors(PluginDescriptorLoader.kt:1345)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginSubDescriptors(PluginDescriptorLoader.kt:271)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromStream(PluginDescriptorLoader.kt:211)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromJar(PluginDescriptorLoader.kt:158)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromJar$default(PluginDescriptorLoader.kt:141)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadFromPluginDir(PluginDescriptorLoader.kt:349)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromFileOrDir(PluginDescriptorLoader.kt:298)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromFileOrDir$default(PluginDescriptorLoader.kt:286)
+at com.intellij.ide.plugins.PluginDescriptorLoader$loadDescriptorsFromDir$descriptorsDeferred$1$1$1.invokeSuspend(PluginDescriptorLoader.kt:1237)
+at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+at kotlinx.coroutines.internal.SoftLimitedDispatcher$Worker.run(SoftLimitedDispatcher.kt:130)
+at kotlinx.coroutines.scheduling.TaskImpl.run(Tasks.kt:89)
+at kotlinx.coroutines.scheduling.CoroutineScheduler.runSafely(CoroutineScheduler.kt:610)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.executeTask(CoroutineScheduler.kt:1188)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:775)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:762)
+2026-05-05 00:49:11,068 [   4586]   WARN - #c.i.i.p.PluginManager - Plugin descriptor for 'depends' sub-descriptor 'python-features.xml' of plugin 'zielu.gittoolbox' has declared element 'url' which has no effect there
+in DependsSubDescriptor(descriptorPath=python-features.xml) <- PluginMainDescriptor(name=GitToolBox, id=zielu.gittoolbox, version=600.1.2+243, isBundled=false, path=~\AppData\Roaming\JetBrains\PyCharm2024.3\plugins\gittoolbox) [Plugin: zielu.gittoolbox]
+com.intellij.diagnostic.PluginException: Plugin descriptor for 'depends' sub-descriptor 'python-features.xml' of plugin 'zielu.gittoolbox' has declared element 'url' which has no effect there
+in DependsSubDescriptor(descriptorPath=python-features.xml) <- PluginMainDescriptor(name=GitToolBox, id=zielu.gittoolbox, version=600.1.2+243, isBundled=false, path=~\AppData\Roaming\JetBrains\PyCharm2024.3\plugins\gittoolbox) [Plugin: zielu.gittoolbox]
+at com.intellij.ide.plugins.IdeaPluginDescriptorImplKt.logUnexpectedElement(IdeaPluginDescriptorImpl.kt:107)
+at com.intellij.ide.plugins.DependsSubDescriptor._init_$lambda$0(IdeaPluginDescriptorImpl.kt:190)
+at com.intellij.ide.plugins.IdeaPluginDescriptorImplKt.reportSubDescriptorUnexpectedElements(IdeaPluginDescriptorImpl.kt:135)
+at com.intellij.ide.plugins.DependsSubDescriptor$Companion.reportDependsSubDescriptorUnexpectedElements(IdeaPluginDescriptorImpl.kt:265)
+at com.intellij.ide.plugins.DependsSubDescriptor.<init>(IdeaPluginDescriptorImpl.kt:190)
+at com.intellij.ide.plugins.IdeaPluginDescriptorImpl.createDependsSubDescriptor$intellij_platform_core_impl(IdeaPluginDescriptorImpl.kt:99)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginDependencyDescriptors(PluginDescriptorLoader.kt:1395)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginDependencyDescriptors(PluginDescriptorLoader.kt:1345)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginSubDescriptors(PluginDescriptorLoader.kt:271)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromStream(PluginDescriptorLoader.kt:211)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromJar(PluginDescriptorLoader.kt:158)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromJar$default(PluginDescriptorLoader.kt:141)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadFromPluginDir(PluginDescriptorLoader.kt:349)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromFileOrDir(PluginDescriptorLoader.kt:298)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromFileOrDir$default(PluginDescriptorLoader.kt:286)
+at com.intellij.ide.plugins.PluginDescriptorLoader$loadDescriptorsFromDir$descriptorsDeferred$1$1$1.invokeSuspend(PluginDescriptorLoader.kt:1237)
+at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+at kotlinx.coroutines.internal.SoftLimitedDispatcher$Worker.run(SoftLimitedDispatcher.kt:130)
+at kotlinx.coroutines.scheduling.TaskImpl.run(Tasks.kt:89)
+at kotlinx.coroutines.scheduling.CoroutineScheduler.runSafely(CoroutineScheduler.kt:610)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.executeTask(CoroutineScheduler.kt:1188)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:775)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:762)
+2026-05-05 00:49:11,070 [   4588]   WARN - #c.i.i.p.PluginManager - Plugin descriptor for 'depends' sub-descriptor 'php-features.xml' of plugin 'zielu.gittoolbox' has declared element 'url' which has no effect there
+in DependsSubDescriptor(descriptorPath=php-features.xml) <- PluginMainDescriptor(name=GitToolBox, id=zielu.gittoolbox, version=600.1.2+243, isBundled=false, path=~\AppData\Roaming\JetBrains\PyCharm2024.3\plugins\gittoolbox) [Plugin: zielu.gittoolbox]
+com.intellij.diagnostic.PluginException: Plugin descriptor for 'depends' sub-descriptor 'php-features.xml' of plugin 'zielu.gittoolbox' has declared element 'url' which has no effect there
+in DependsSubDescriptor(descriptorPath=php-features.xml) <- PluginMainDescriptor(name=GitToolBox, id=zielu.gittoolbox, version=600.1.2+243, isBundled=false, path=~\AppData\Roaming\JetBrains\PyCharm2024.3\plugins\gittoolbox) [Plugin: zielu.gittoolbox]
+at com.intellij.ide.plugins.IdeaPluginDescriptorImplKt.logUnexpectedElement(IdeaPluginDescriptorImpl.kt:107)
+at com.intellij.ide.plugins.DependsSubDescriptor._init_$lambda$0(IdeaPluginDescriptorImpl.kt:190)
+at com.intellij.ide.plugins.IdeaPluginDescriptorImplKt.reportSubDescriptorUnexpectedElements(IdeaPluginDescriptorImpl.kt:135)
+at com.intellij.ide.plugins.DependsSubDescriptor$Companion.reportDependsSubDescriptorUnexpectedElements(IdeaPluginDescriptorImpl.kt:265)
+at com.intellij.ide.plugins.DependsSubDescriptor.<init>(IdeaPluginDescriptorImpl.kt:190)
+at com.intellij.ide.plugins.IdeaPluginDescriptorImpl.createDependsSubDescriptor$intellij_platform_core_impl(IdeaPluginDescriptorImpl.kt:99)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginDependencyDescriptors(PluginDescriptorLoader.kt:1395)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginDependencyDescriptors(PluginDescriptorLoader.kt:1345)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginSubDescriptors(PluginDescriptorLoader.kt:271)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromStream(PluginDescriptorLoader.kt:211)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromJar(PluginDescriptorLoader.kt:158)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromJar$default(PluginDescriptorLoader.kt:141)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadFromPluginDir(PluginDescriptorLoader.kt:349)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromFileOrDir(PluginDescriptorLoader.kt:298)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromFileOrDir$default(PluginDescriptorLoader.kt:286)
+at com.intellij.ide.plugins.PluginDescriptorLoader$loadDescriptorsFromDir$descriptorsDeferred$1$1$1.invokeSuspend(PluginDescriptorLoader.kt:1237)
+at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+at kotlinx.coroutines.internal.SoftLimitedDispatcher$Worker.run(SoftLimitedDispatcher.kt:130)
+at kotlinx.coroutines.scheduling.TaskImpl.run(Tasks.kt:89)
+at kotlinx.coroutines.scheduling.CoroutineScheduler.runSafely(CoroutineScheduler.kt:610)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.executeTask(CoroutineScheduler.kt:1188)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:775)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:762)
+2026-05-05 00:49:11,071 [   4589]   WARN - #c.i.i.p.PluginManager - Plugin descriptor for 'depends' sub-descriptor 'rust-features.xml' of plugin 'zielu.gittoolbox' has declared element 'url' which has no effect there
+in DependsSubDescriptor(descriptorPath=rust-features.xml) <- PluginMainDescriptor(name=GitToolBox, id=zielu.gittoolbox, version=600.1.2+243, isBundled=false, path=~\AppData\Roaming\JetBrains\PyCharm2024.3\plugins\gittoolbox) [Plugin: zielu.gittoolbox]
+com.intellij.diagnostic.PluginException: Plugin descriptor for 'depends' sub-descriptor 'rust-features.xml' of plugin 'zielu.gittoolbox' has declared element 'url' which has no effect there
+in DependsSubDescriptor(descriptorPath=rust-features.xml) <- PluginMainDescriptor(name=GitToolBox, id=zielu.gittoolbox, version=600.1.2+243, isBundled=false, path=~\AppData\Roaming\JetBrains\PyCharm2024.3\plugins\gittoolbox) [Plugin: zielu.gittoolbox]
+at com.intellij.ide.plugins.IdeaPluginDescriptorImplKt.logUnexpectedElement(IdeaPluginDescriptorImpl.kt:107)
+at com.intellij.ide.plugins.DependsSubDescriptor._init_$lambda$0(IdeaPluginDescriptorImpl.kt:190)
+at com.intellij.ide.plugins.IdeaPluginDescriptorImplKt.reportSubDescriptorUnexpectedElements(IdeaPluginDescriptorImpl.kt:135)
+at com.intellij.ide.plugins.DependsSubDescriptor$Companion.reportDependsSubDescriptorUnexpectedElements(IdeaPluginDescriptorImpl.kt:265)
+at com.intellij.ide.plugins.DependsSubDescriptor.<init>(IdeaPluginDescriptorImpl.kt:190)
+at com.intellij.ide.plugins.IdeaPluginDescriptorImpl.createDependsSubDescriptor$intellij_platform_core_impl(IdeaPluginDescriptorImpl.kt:99)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginDependencyDescriptors(PluginDescriptorLoader.kt:1395)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginDependencyDescriptors(PluginDescriptorLoader.kt:1345)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginSubDescriptors(PluginDescriptorLoader.kt:271)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromStream(PluginDescriptorLoader.kt:211)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromJar(PluginDescriptorLoader.kt:158)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromJar$default(PluginDescriptorLoader.kt:141)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadFromPluginDir(PluginDescriptorLoader.kt:349)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromFileOrDir(PluginDescriptorLoader.kt:298)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromFileOrDir$default(PluginDescriptorLoader.kt:286)
+at com.intellij.ide.plugins.PluginDescriptorLoader$loadDescriptorsFromDir$descriptorsDeferred$1$1$1.invokeSuspend(PluginDescriptorLoader.kt:1237)
+at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+at kotlinx.coroutines.internal.SoftLimitedDispatcher$Worker.run(SoftLimitedDispatcher.kt:130)
+at kotlinx.coroutines.scheduling.TaskImpl.run(Tasks.kt:89)
+at kotlinx.coroutines.scheduling.CoroutineScheduler.runSafely(CoroutineScheduler.kt:610)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.executeTask(CoroutineScheduler.kt:1188)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:775)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:762)
+2026-05-05 00:49:11,072 [   4590]   WARN - #c.i.i.p.PluginManager - Plugin descriptor for 'depends' sub-descriptor 'gitextender-features.xml' of plugin 'zielu.gittoolbox' has declared element 'url' which has no effect there
+in DependsSubDescriptor(descriptorPath=gitextender-features.xml) <- PluginMainDescriptor(name=GitToolBox, id=zielu.gittoolbox, version=600.1.2+243, isBundled=false, path=~\AppData\Roaming\JetBrains\PyCharm2024.3\plugins\gittoolbox) [Plugin: zielu.gittoolbox]
+com.intellij.diagnostic.PluginException: Plugin descriptor for 'depends' sub-descriptor 'gitextender-features.xml' of plugin 'zielu.gittoolbox' has declared element 'url' which has no effect there
+in DependsSubDescriptor(descriptorPath=gitextender-features.xml) <- PluginMainDescriptor(name=GitToolBox, id=zielu.gittoolbox, version=600.1.2+243, isBundled=false, path=~\AppData\Roaming\JetBrains\PyCharm2024.3\plugins\gittoolbox) [Plugin: zielu.gittoolbox]
+at com.intellij.ide.plugins.IdeaPluginDescriptorImplKt.logUnexpectedElement(IdeaPluginDescriptorImpl.kt:107)
+at com.intellij.ide.plugins.DependsSubDescriptor._init_$lambda$0(IdeaPluginDescriptorImpl.kt:190)
+at com.intellij.ide.plugins.IdeaPluginDescriptorImplKt.reportSubDescriptorUnexpectedElements(IdeaPluginDescriptorImpl.kt:135)
+at com.intellij.ide.plugins.DependsSubDescriptor$Companion.reportDependsSubDescriptorUnexpectedElements(IdeaPluginDescriptorImpl.kt:265)
+at com.intellij.ide.plugins.DependsSubDescriptor.<init>(IdeaPluginDescriptorImpl.kt:190)
+at com.intellij.ide.plugins.IdeaPluginDescriptorImpl.createDependsSubDescriptor$intellij_platform_core_impl(IdeaPluginDescriptorImpl.kt:99)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginDependencyDescriptors(PluginDescriptorLoader.kt:1395)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginDependencyDescriptors(PluginDescriptorLoader.kt:1345)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginSubDescriptors(PluginDescriptorLoader.kt:271)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromStream(PluginDescriptorLoader.kt:211)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromJar(PluginDescriptorLoader.kt:158)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromJar$default(PluginDescriptorLoader.kt:141)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadFromPluginDir(PluginDescriptorLoader.kt:349)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromFileOrDir(PluginDescriptorLoader.kt:298)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromFileOrDir$default(PluginDescriptorLoader.kt:286)
+at com.intellij.ide.plugins.PluginDescriptorLoader$loadDescriptorsFromDir$descriptorsDeferred$1$1$1.invokeSuspend(PluginDescriptorLoader.kt:1237)
+at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+at kotlinx.coroutines.internal.SoftLimitedDispatcher$Worker.run(SoftLimitedDispatcher.kt:130)
+at kotlinx.coroutines.scheduling.TaskImpl.run(Tasks.kt:89)
+at kotlinx.coroutines.scheduling.CoroutineScheduler.runSafely(CoroutineScheduler.kt:610)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.executeTask(CoroutineScheduler.kt:1188)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:775)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:762)
+2026-05-05 00:49:11,191 [   4709]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin me.mbolotov.json.schema.generator is disabled in PyCharm 2024.2. Won't try to import it
+2026-05-05 00:49:11,191 [   4709]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin com.koxudaxi.ruff is disabled in PyCharm 2024.2. Won't try to import it
+2026-05-05 00:49:11,191 [   4709]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Terraform and HCL" from "PyCharm 2024.2" is already present in "GoLand"
+2026-05-05 00:49:11,191 [   4709]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Pydantic" from "PyCharm 2024.2" could not be migrated to "GoLand" because of the missing required dependency: com.intellij.modules.python
+2026-05-05 00:49:11,317 [   4835]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "MCP Server" from "DataGrip 2025.3" is already present in "GoLand"
+2026-05-05 00:49:11,317 [   4835]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Full Line Code Completion" from "DataGrip 2025.3" is already present in "GoLand"
+2026-05-05 00:49:11,373 [   4891]   INFO - #c.i.i.s.i.d.SettingsServiceImpl - Plugin IDs from marketplace were preloaded
+2026-05-05 00:49:11,523 [   5041]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Natural Languages" from "DataGrip 2026.1" is already present in "GoLand"
+2026-05-05 00:49:11,524 [   5042]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "MCP Server" from "DataGrip 2026.1" is already present in "GoLand"
+2026-05-05 00:49:11,524 [   5042]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Full Line Code Completion" from "DataGrip 2026.1" is already present in "GoLand"
+2026-05-05 00:49:11,524 [   5042]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Backup and Sync" from "DataGrip 2026.1" is already present in "GoLand"
+2026-05-05 00:49:11,652 [   5170]   WARN - #c.i.i.p.PluginManager - Plugin descriptor for content module 'intellij.vcs.gitlab' of plugin 'org.jetbrains.plugins.gitlab' has declared element 'allow-bundled-update' which has no effect there
+in ContentModuleDescriptor(id=intellij.vcs.gitlab, loadingRule=EMBEDDED, package=org.jetbrains.plugins.gitlab) <- PluginMainDescriptor(name=GitLab, id=org.jetbrains.plugins.gitlab, version=251.25410.123-IU, isBundled=false, path=~\AppData\Roaming\JetBrains\PyCharm2025.1\plugins\vcs-gitlab-IU) [Plugin: org.jetbrains.plugins.gitlab]
+com.intellij.diagnostic.PluginException: Plugin descriptor for content module 'intellij.vcs.gitlab' of plugin 'org.jetbrains.plugins.gitlab' has declared element 'allow-bundled-update' which has no effect there
+in ContentModuleDescriptor(id=intellij.vcs.gitlab, loadingRule=EMBEDDED, package=org.jetbrains.plugins.gitlab) <- PluginMainDescriptor(name=GitLab, id=org.jetbrains.plugins.gitlab, version=251.25410.123-IU, isBundled=false, path=~\AppData\Roaming\JetBrains\PyCharm2025.1\plugins\vcs-gitlab-IU) [Plugin: org.jetbrains.plugins.gitlab]
+at com.intellij.ide.plugins.IdeaPluginDescriptorImplKt.logUnexpectedElement(IdeaPluginDescriptorImpl.kt:107)
+at com.intellij.ide.plugins.ContentModuleDescriptor._init_$lambda$0(IdeaPluginDescriptorImpl.kt:309)
+at com.intellij.ide.plugins.IdeaPluginDescriptorImplKt.reportSubDescriptorUnexpectedElements(IdeaPluginDescriptorImpl.kt:123)
+at com.intellij.ide.plugins.ContentModuleDescriptor$Companion.reportContentModuleUnexpectedElements(IdeaPluginDescriptorImpl.kt:383)
+at com.intellij.ide.plugins.ContentModuleDescriptor.<init>(IdeaPluginDescriptorImpl.kt:309)
+at com.intellij.ide.plugins.PluginMainDescriptor.createContentModule$intellij_platform_core_impl(PluginMainDescriptor.kt:232)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginSubDescriptors(PluginDescriptorLoader.kt:257)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromStream(PluginDescriptorLoader.kt:211)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromJar(PluginDescriptorLoader.kt:158)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromJar$default(PluginDescriptorLoader.kt:141)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadFromPluginDir(PluginDescriptorLoader.kt:349)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromFileOrDir(PluginDescriptorLoader.kt:298)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromFileOrDir$default(PluginDescriptorLoader.kt:286)
+at com.intellij.ide.plugins.PluginDescriptorLoader$loadDescriptorsFromDir$descriptorsDeferred$1$1$1.invokeSuspend(PluginDescriptorLoader.kt:1237)
+at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+at kotlinx.coroutines.internal.SoftLimitedDispatcher$Worker.run(SoftLimitedDispatcher.kt:130)
+at kotlinx.coroutines.scheduling.TaskImpl.run(Tasks.kt:89)
+at kotlinx.coroutines.scheduling.CoroutineScheduler.runSafely(CoroutineScheduler.kt:610)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.executeTask(CoroutineScheduler.kt:1188)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:775)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:762)
+2026-05-05 00:49:11,654 [   5172]   WARN - #c.i.i.p.PluginManager - Suppressed a frequent exception logged for the 2nd time: Plugin descriptor for content module 'intellij.vcs.gitlab' of plugin 'org.jetbrains.plugins.gitlab' has declared element 'allow-bundled-update' which has no effect there
+2026-05-05 00:49:11,654 [   5172]   WARN - #c.i.i.p.PluginManager - Suppressed a frequent exception logged for the 2nd time: Plugin descriptor for 'depends' sub-descriptor 'java-features.xml' of plugin 'zielu.gittoolbox' has declared element 'url' which has no effect there
+2026-05-05 00:49:11,654 [   5172]   WARN - #c.i.i.p.PluginManager - Suppressed a frequent exception logged for the 2nd time: Plugin descriptor for 'depends' sub-descriptor 'android-features.xml' of plugin 'zielu.gittoolbox' has declared element 'url' which has no effect there
+2026-05-05 00:49:11,654 [   5172]   WARN - #c.i.i.p.PluginManager - Suppressed a frequent exception logged for the 2nd time: Plugin descriptor for 'depends' sub-descriptor 'kotlin-features.xml' of plugin 'zielu.gittoolbox' has declared element 'url' which has no effect there
+2026-05-05 00:49:11,654 [   5172]   WARN - #c.i.i.p.PluginManager - Suppressed a frequent exception logged for the 2nd time: Plugin descriptor for 'depends' sub-descriptor 'javascript-features.xml' of plugin 'zielu.gittoolbox' has declared element 'url' which has no effect there
+2026-05-05 00:49:11,654 [   5172]   WARN - #c.i.i.p.PluginManager - Suppressed a frequent exception logged for the 2nd time: Plugin PluginMainDescriptor(name=.env files support, id=ru.adelf.idea.dotenv, version=2024.3, isBundled=false, path=~\AppData\Roaming\JetBrains\PyCharm2024.3\plugins\idea-php-dotenv-plugin) misses optional descriptor kotlin.xml
+2026-05-05 00:49:11,655 [   5173]   WARN - #c.i.i.p.PluginManager - Suppressed a frequent exception logged for the 2nd time: Plugin descriptor for 'depends' sub-descriptor 'go-features.xml' of plugin 'zielu.gittoolbox' has declared element 'url' which has no effect there
+2026-05-05 00:49:11,655 [   5173]   WARN - #c.i.i.p.PluginManager - Suppressed a frequent exception logged for the 2nd time: Plugin descriptor for 'depends' sub-descriptor 'python-features.xml' of plugin 'zielu.gittoolbox' has declared element 'url' which has no effect there
+2026-05-05 00:49:11,655 [   5173]   WARN - #c.i.i.p.PluginManager - Suppressed a frequent exception logged for the 2nd time: Plugin descriptor for 'depends' sub-descriptor 'php-features.xml' of plugin 'zielu.gittoolbox' has declared element 'url' which has no effect there
+2026-05-05 00:49:11,655 [   5173]   WARN - #c.i.i.p.PluginManager - Suppressed a frequent exception logged for the 2nd time: Plugin descriptor for 'depends' sub-descriptor 'rust-features.xml' of plugin 'zielu.gittoolbox' has declared element 'url' which has no effect there
+2026-05-05 00:49:11,655 [   5173]   WARN - #c.i.i.p.PluginManager - Suppressed a frequent exception logged for the 2nd time: Plugin descriptor for 'depends' sub-descriptor 'gitextender-features.xml' of plugin 'zielu.gittoolbox' has declared element 'url' which has no effect there
+2026-05-05 00:49:11,655 [   5173]   WARN - #c.i.i.p.PluginManager - Suppressed a frequent exception logged for the 2nd time: Plugin descriptor for 'depends' sub-descriptor 'java-features.xml' of plugin 'zielu.gittoolbox' has declared element 'url' which has no effect there
+2026-05-05 00:49:11,655 [   5173]   WARN - #c.i.i.p.PluginManager - Suppressed a frequent exception logged for the 2nd time: Plugin descriptor for 'depends' sub-descriptor 'android-features.xml' of plugin 'zielu.gittoolbox' has declared element 'url' which has no effect there
+2026-05-05 00:49:11,655 [   5173]   WARN - #c.i.i.p.PluginManager - Suppressed a frequent exception logged for the 2nd time: Plugin descriptor for 'depends' sub-descriptor 'kotlin-features.xml' of plugin 'zielu.gittoolbox' has declared element 'url' which has no effect there
+2026-05-05 00:49:11,655 [   5173]   WARN - #c.i.i.p.PluginManager - Suppressed a frequent exception logged for the 2nd time: Plugin descriptor for 'depends' sub-descriptor 'javascript-features.xml' of plugin 'zielu.gittoolbox' has declared element 'url' which has no effect there
+2026-05-05 00:49:11,655 [   5173]   WARN - #c.i.i.p.PluginManager - Suppressed a frequent exception logged for the 2nd time: Plugin descriptor for 'depends' sub-descriptor 'go-features.xml' of plugin 'zielu.gittoolbox' has declared element 'url' which has no effect there
+2026-05-05 00:49:11,655 [   5173]   WARN - #c.i.i.p.PluginManager - Suppressed a frequent exception logged for the 2nd time: Plugin descriptor for 'depends' sub-descriptor 'python-features.xml' of plugin 'zielu.gittoolbox' has declared element 'url' which has no effect there
+2026-05-05 00:49:11,655 [   5173]   WARN - #c.i.i.p.PluginManager - Suppressed a frequent exception logged for the 2nd time: Plugin descriptor for 'depends' sub-descriptor 'php-features.xml' of plugin 'zielu.gittoolbox' has declared element 'url' which has no effect there
+2026-05-05 00:49:11,655 [   5173]   WARN - #c.i.i.p.PluginManager - Suppressed a frequent exception logged for the 2nd time: Plugin descriptor for 'depends' sub-descriptor 'rust-features.xml' of plugin 'zielu.gittoolbox' has declared element 'url' which has no effect there
+2026-05-05 00:49:11,655 [   5173]   WARN - #c.i.i.p.PluginManager - Suppressed a frequent exception logged for the 2nd time: Plugin descriptor for 'depends' sub-descriptor 'gitextender-features.xml' of plugin 'zielu.gittoolbox' has declared element 'url' which has no effect there
+2026-05-05 00:49:11,655 [   5173]   WARN - #c.i.i.p.PluginManager - Suppressed a frequent exception logged for the 2nd time: Plugin descriptor for content module 'intellij.vcs.gitlab' of plugin 'org.jetbrains.plugins.gitlab' has declared element 'allow-bundled-update' which has no effect there
+2026-05-05 00:49:11,677 [   5195]   WARN - #c.i.i.p.PluginManager - Plugin descriptor for content module 'intellij.ml.llm.rust.completion' of plugin 'com.intellij.ml.llm' has declared element 'implementation-detail' which has no effect there
+in ContentModuleDescriptor(id=intellij.ml.llm.rust.completion, package=com.intellij.ml.llm.rust.completion) <- PluginMainDescriptor(name=JetBrains AI Assistant, id=com.intellij.ml.llm, version=243.23654.270.16, isBundled=false, path=~\AppData\Roaming\JetBrains\DataGrip2024.3\plugins\ml-llm) [Plugin: com.intellij.ml.llm]
+com.intellij.diagnostic.PluginException: Plugin descriptor for content module 'intellij.ml.llm.rust.completion' of plugin 'com.intellij.ml.llm' has declared element 'implementation-detail' which has no effect there
+in ContentModuleDescriptor(id=intellij.ml.llm.rust.completion, package=com.intellij.ml.llm.rust.completion) <- PluginMainDescriptor(name=JetBrains AI Assistant, id=com.intellij.ml.llm, version=243.23654.270.16, isBundled=false, path=~\AppData\Roaming\JetBrains\DataGrip2024.3\plugins\ml-llm) [Plugin: com.intellij.ml.llm]
+at com.intellij.ide.plugins.IdeaPluginDescriptorImplKt.logUnexpectedElement(IdeaPluginDescriptorImpl.kt:107)
+at com.intellij.ide.plugins.ContentModuleDescriptor._init_$lambda$0(IdeaPluginDescriptorImpl.kt:309)
+at com.intellij.ide.plugins.IdeaPluginDescriptorImplKt.reportSubDescriptorUnexpectedElements(IdeaPluginDescriptorImpl.kt:125)
+at com.intellij.ide.plugins.ContentModuleDescriptor$Companion.reportContentModuleUnexpectedElements(IdeaPluginDescriptorImpl.kt:383)
+at com.intellij.ide.plugins.ContentModuleDescriptor.<init>(IdeaPluginDescriptorImpl.kt:309)
+at com.intellij.ide.plugins.PluginMainDescriptor.createContentModule$intellij_platform_core_impl(PluginMainDescriptor.kt:232)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginSubDescriptors(PluginDescriptorLoader.kt:257)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromStream(PluginDescriptorLoader.kt:211)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromJar(PluginDescriptorLoader.kt:158)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromJar$default(PluginDescriptorLoader.kt:141)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadFromPluginDir(PluginDescriptorLoader.kt:349)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromFileOrDir(PluginDescriptorLoader.kt:298)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromFileOrDir$default(PluginDescriptorLoader.kt:286)
+at com.intellij.ide.plugins.PluginDescriptorLoader$loadDescriptorsFromDir$descriptorsDeferred$1$1$1.invokeSuspend(PluginDescriptorLoader.kt:1237)
+at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+at kotlinx.coroutines.internal.SoftLimitedDispatcher$Worker.run(SoftLimitedDispatcher.kt:130)
+at kotlinx.coroutines.scheduling.TaskImpl.run(Tasks.kt:89)
+at kotlinx.coroutines.scheduling.CoroutineScheduler.runSafely(CoroutineScheduler.kt:610)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.executeTask(CoroutineScheduler.kt:1188)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:775)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:762)
+2026-05-05 00:49:11,732 [   5250]   WARN - #c.i.i.p.PluginManager - Suppressed a frequent exception logged for the 2nd time: Plugin descriptor for content module 'intellij.vcs.gitlab' of plugin 'org.jetbrains.plugins.gitlab' has declared element 'allow-bundled-update' which has no effect there
+2026-05-05 00:49:11,733 [   5251]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Natural Languages" from "DataGrip 2026.1" is already present in "GoLand"
+2026-05-05 00:49:11,733 [   5251]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "MCP Server" from "DataGrip 2026.1" is already present in "GoLand"
+2026-05-05 00:49:11,733 [   5251]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Full Line Code Completion" from "DataGrip 2026.1" is already present in "GoLand"
+2026-05-05 00:49:11,733 [   5251]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Backup and Sync" from "DataGrip 2026.1" is already present in "GoLand"
+2026-05-05 00:49:11,735 [   5253]   WARN - #c.i.i.p.PluginManager - Plugin descriptor for content module 'intellij.ml.llm.rust.completion' of plugin 'com.intellij.ml.llm' has declared element 'implementation-detail' which has no effect there
+in ContentModuleDescriptor(id=intellij.ml.llm.rust.completion, package=com.intellij.ml.llm.rust.completion) <- PluginMainDescriptor(name=JetBrains AI Assistant, id=com.intellij.ml.llm, version=243.23654.270.16, isBundled=false, path=~\AppData\Roaming\JetBrains\PyCharm2024.3\plugins\ml-llm) [Plugin: com.intellij.ml.llm]
+com.intellij.diagnostic.PluginException: Plugin descriptor for content module 'intellij.ml.llm.rust.completion' of plugin 'com.intellij.ml.llm' has declared element 'implementation-detail' which has no effect there
+in ContentModuleDescriptor(id=intellij.ml.llm.rust.completion, package=com.intellij.ml.llm.rust.completion) <- PluginMainDescriptor(name=JetBrains AI Assistant, id=com.intellij.ml.llm, version=243.23654.270.16, isBundled=false, path=~\AppData\Roaming\JetBrains\PyCharm2024.3\plugins\ml-llm) [Plugin: com.intellij.ml.llm]
+at com.intellij.ide.plugins.IdeaPluginDescriptorImplKt.logUnexpectedElement(IdeaPluginDescriptorImpl.kt:107)
+at com.intellij.ide.plugins.ContentModuleDescriptor._init_$lambda$0(IdeaPluginDescriptorImpl.kt:309)
+at com.intellij.ide.plugins.IdeaPluginDescriptorImplKt.reportSubDescriptorUnexpectedElements(IdeaPluginDescriptorImpl.kt:125)
+at com.intellij.ide.plugins.ContentModuleDescriptor$Companion.reportContentModuleUnexpectedElements(IdeaPluginDescriptorImpl.kt:383)
+at com.intellij.ide.plugins.ContentModuleDescriptor.<init>(IdeaPluginDescriptorImpl.kt:309)
+at com.intellij.ide.plugins.PluginMainDescriptor.createContentModule$intellij_platform_core_impl(PluginMainDescriptor.kt:232)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadPluginSubDescriptors(PluginDescriptorLoader.kt:257)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromStream(PluginDescriptorLoader.kt:211)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromJar(PluginDescriptorLoader.kt:158)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromJar$default(PluginDescriptorLoader.kt:141)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadFromPluginDir(PluginDescriptorLoader.kt:349)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromFileOrDir(PluginDescriptorLoader.kt:298)
+at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromFileOrDir$default(PluginDescriptorLoader.kt:286)
+at com.intellij.ide.plugins.PluginDescriptorLoader$loadDescriptorsFromDir$descriptorsDeferred$1$1$1.invokeSuspend(PluginDescriptorLoader.kt:1237)
+at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+at kotlinx.coroutines.internal.SoftLimitedDispatcher$Worker.run(SoftLimitedDispatcher.kt:130)
+at kotlinx.coroutines.scheduling.TaskImpl.run(Tasks.kt:89)
+at kotlinx.coroutines.scheduling.CoroutineScheduler.runSafely(CoroutineScheduler.kt:610)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.executeTask(CoroutineScheduler.kt:1188)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:775)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:762)
+2026-05-05 00:49:11,744 [   5262]   WARN - #c.i.i.p.PluginManager - Suppressed a frequent exception logged for the 2nd time: Plugin descriptor for content module 'intellij.ml.llm.rust.completion' of plugin 'com.intellij.ml.llm' has declared element 'implementation-detail' which has no effect there
+2026-05-05 00:49:11,744 [   5262]   WARN - #c.i.i.p.PluginManager - Suppressed a frequent exception logged for the 2nd time: Plugin descriptor for content module 'intellij.ml.llm.rust.completion' of plugin 'com.intellij.ml.llm' has declared element 'implementation-detail' which has no effect there
+2026-05-05 00:49:11,800 [   5318]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin me.mbolotov.json.schema.generator is disabled in PyCharm 2024.2. Won't try to import it
+2026-05-05 00:49:11,801 [   5319]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin com.koxudaxi.ruff is disabled in PyCharm 2024.2. Won't try to import it
+2026-05-05 00:49:11,801 [   5319]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Terraform and HCL" from "PyCharm 2024.2" is already present in "GoLand"
+2026-05-05 00:49:11,801 [   5319]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Pydantic" from "PyCharm 2024.2" could not be migrated to "GoLand" because of the missing required dependency: com.intellij.modules.python
+2026-05-05 00:49:11,816 [   5334]   INFO - #c.i.l.u.p.AIPromoUtil - LicensingFacade.getInstance() await finished, is null: false
+2026-05-05 00:49:11,816 [   5334]   INFO - #c.i.l.u.p.AIPromoWindowStatistics - State calculation for stage LicenseFacadeFail finished
+2026-05-05 00:49:11,816 [   5334]   INFO - #c.i.l.u.p.AIPromoWindowStatistics - Starting state calculation for stage NoValidIdeLicense
+2026-05-05 00:49:11,817 [   5335]   INFO - #c.i.l.u.p.AIPromoWindowStatistics - State calculation for stage NoValidIdeLicense finished
+2026-05-05 00:49:11,817 [   5335]   INFO - #c.i.l.u.p.AIPromoWindowStatistics - Starting state calculation for stage NewUser
+2026-05-05 00:49:11,817 [   5335]   INFO - #c.i.l.u.p.AIOnboardingAudience - No promo: new user
+2026-05-05 00:49:11,817 [   5335]   INFO - #c.i.l.u.p.AIPromoWindowStatistics - State calculation for stage NewUser finished
+2026-05-05 00:49:11,835 [   5353]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "MCP Server" from "DataGrip 2025.2" is already present in "GoLand"
+2026-05-05 00:49:11,835 [   5353]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Full Line Code Completion" from "DataGrip 2025.2" is already present in "GoLand"
+2026-05-05 00:49:11,860 [   5378]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "MCP Server" from "DataGrip 2025.3" is already present in "GoLand"
+2026-05-05 00:49:11,861 [   5379]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Full Line Code Completion" from "DataGrip 2025.3" is already present in "GoLand"
+2026-05-05 00:49:11,891 [   5409]   INFO - #c.i.o.u.i.ExternalUpdateManager - update manager: Toolbox App
+2026-05-05 00:49:11,896 [   5414]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin me.mbolotov.json.schema.generator is disabled in PyCharm 2025.2. Won't try to import it
+2026-05-05 00:49:11,896 [   5414]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin com.koxudaxi.ruff is disabled in PyCharm 2025.2. Won't try to import it
+2026-05-05 00:49:11,896 [   5414]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Endpoints" from "PyCharm 2025.2" is already present in "GoLand"
+2026-05-05 00:49:11,896 [   5414]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Package Checker" from "PyCharm 2025.2" is already present in "GoLand"
+2026-05-05 00:49:11,896 [   5414]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Docker" from "PyCharm 2025.2" is already present in "GoLand"
+2026-05-05 00:49:11,896 [   5414]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Pydantic" from "PyCharm 2025.2" could not be migrated to "GoLand" because of the missing required dependency: com.intellij.modules.python
+2026-05-05 00:49:11,896 [   5414]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "GitLab" from "PyCharm 2025.2" is already present in "GoLand"
+2026-05-05 00:49:11,896 [   5414]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "OpenAPI Specifications" from "PyCharm 2025.2" is already present in "GoLand"
+2026-05-05 00:49:11,896 [   5414]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "JavaScript Debugger" from "PyCharm 2025.2" is already present in "GoLand"
+2026-05-05 00:49:11,896 [   5414]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Terraform and HCL" from "PyCharm 2025.2" is already present in "GoLand"
+2026-05-05 00:49:11,896 [   5414]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "EditorConfig" from "PyCharm 2025.2" is already present in "GoLand"
+2026-05-05 00:49:11,896 [   5414]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Full Line Code Completion" from "PyCharm 2025.2" is already present in "GoLand"
+2026-05-05 00:49:11,896 [   5414]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "GitHub" from "PyCharm 2025.2" is already present in "GoLand"
+2026-05-05 00:49:11,910 [   5428]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin me.mbolotov.json.schema.generator is disabled in PyCharm 2025.2. Won't try to import it
+2026-05-05 00:49:11,910 [   5428]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin com.koxudaxi.ruff is disabled in PyCharm 2025.2. Won't try to import it
+2026-05-05 00:49:11,910 [   5428]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Endpoints" from "PyCharm 2025.2" is already present in "GoLand"
+2026-05-05 00:49:11,910 [   5428]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Package Checker" from "PyCharm 2025.2" is already present in "GoLand"
+2026-05-05 00:49:11,910 [   5428]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Docker" from "PyCharm 2025.2" is already present in "GoLand"
+2026-05-05 00:49:11,910 [   5428]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Pydantic" from "PyCharm 2025.2" could not be migrated to "GoLand" because of the missing required dependency: com.intellij.modules.python
+2026-05-05 00:49:11,910 [   5428]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "GitLab" from "PyCharm 2025.2" is already present in "GoLand"
+2026-05-05 00:49:11,910 [   5428]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "OpenAPI Specifications" from "PyCharm 2025.2" is already present in "GoLand"
+2026-05-05 00:49:11,911 [   5429]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "JavaScript Debugger" from "PyCharm 2025.2" is already present in "GoLand"
+2026-05-05 00:49:11,911 [   5429]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Terraform and HCL" from "PyCharm 2025.2" is already present in "GoLand"
+2026-05-05 00:49:11,911 [   5429]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "EditorConfig" from "PyCharm 2025.2" is already present in "GoLand"
+2026-05-05 00:49:11,911 [   5429]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Full Line Code Completion" from "PyCharm 2025.2" is already present in "GoLand"
+2026-05-05 00:49:11,911 [   5429]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "GitHub" from "PyCharm 2025.2" is already present in "GoLand"
+2026-05-05 00:49:11,919 [   5437]   INFO - #c.i.u.i.HttpRequests - Application is not initialized yet; Using default SSL configuration to connect to https://www.jetbrains.com/updates/updates.xml?build=GO-261.23567.143&os=Windows%2011.0&uid=55c70c6a-a077-4710-88e1-c08780ffb473&mid=060088af74bc173a7f672b08bdfa0145b72793e96043d97cdb016077ea8c2713&manager=Toolbox&license=personal&metadata=0420260320PPJA011010A000000XX&userBucket=490295cfa573d240
+2026-05-05 00:49:11,937 [   5455]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin me.mbolotov.json.schema.generator is disabled in PyCharm 2025.1. Won't try to import it
+2026-05-05 00:49:11,938 [   5456]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin com.koxudaxi.ruff is disabled in PyCharm 2025.1. Won't try to import it
+2026-05-05 00:49:11,939 [   5457]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Pydantic" from "PyCharm 2025.1" could not be migrated to "GoLand" because of the missing required dependency: com.intellij.modules.python
+2026-05-05 00:49:11,939 [   5457]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "GitLab" from "PyCharm 2025.1" is already present in "GoLand"
+2026-05-05 00:49:11,939 [   5457]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Terraform and HCL" from "PyCharm 2025.1" is already present in "GoLand"
+2026-05-05 00:49:11,939 [   5457]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Full Line Code Completion" from "PyCharm 2025.1" is already present in "GoLand"
+2026-05-05 00:49:11,939 [   5457]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "GitHub" from "PyCharm 2025.1" is already present in "GoLand"
+2026-05-05 00:49:11,994 [   5512]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin me.mbolotov.json.schema.generator is disabled in PyCharm 2025.1. Won't try to import it
+2026-05-05 00:49:11,994 [   5512]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin com.koxudaxi.ruff is disabled in PyCharm 2025.1. Won't try to import it
+2026-05-05 00:49:11,994 [   5512]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Pydantic" from "PyCharm 2025.1" could not be migrated to "GoLand" because of the missing required dependency: com.intellij.modules.python
+2026-05-05 00:49:11,994 [   5512]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "GitLab" from "PyCharm 2025.1" is already present in "GoLand"
+2026-05-05 00:49:11,994 [   5512]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Terraform and HCL" from "PyCharm 2025.1" is already present in "GoLand"
+2026-05-05 00:49:11,994 [   5512]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Full Line Code Completion" from "PyCharm 2025.1" is already present in "GoLand"
+2026-05-05 00:49:11,994 [   5512]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "GitHub" from "PyCharm 2025.1" is already present in "GoLand"
+2026-05-05 00:49:12,112 [   5630]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Terraform and HCL" from "PyCharm 2024.3" is already present in "GoLand"
+2026-05-05 00:49:12,112 [   5630]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Terraform and HCL" from "PyCharm 2024.3" is already present in "GoLand"
+2026-05-05 00:49:12,112 [   5630]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Ruff" from "PyCharm 2024.3" could not be migrated to "GoLand" because of the missing required dependency: com.intellij.modules.python
+2026-05-05 00:49:12,112 [   5630]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Ruff" from "PyCharm 2024.3" could not be migrated to "GoLand" because of the missing required dependency: com.intellij.modules.python
+2026-05-05 00:49:12,145 [   5663]   INFO - #c.i.p.s.StubIndexImpl - Following stub indices will be built:go.spec.fingerprint(v = 87),ts.external.module.name.index(v = 3),js.export.default.react.component.index(v = 2),JS.framework.markers.index(v = 2),ts.global.exported.index(v = 2),go.all.name(v = 86),go.type.spec.inheritance(v = 86),Css.class(v = 3),js.namespace.index(v = 2),js.imported.bindings.index(v = 2),go.package.level.public.elements(v = 86),js.element.qualifiedName(v = 3),go.typeSpec.redeclared(v = 86),JS.base.types.index(v = 3),Css.custom.property(v = 2),JS.subclass.stub.index(v = 2),markdown.header.anchor(v = 2),js.global.symbol.index(v = 2),es6.assignment.index(v = 2),sql.table.shortName(v = 3),ts.embedded.content.index(v = 2),protobuf.byQualifiedName(v = 3),JS.class.implements(v = 3),js.doc.modules(v = 2),go.non.package.level.names(v = 86),js.typedef.index2(v = 2),redis.dml.shortName(v = 3),js.lazy.packages(v = 3),js.used.remote.modules(v = 2),makefile.target.index(v = 2),js.qualified.shortName(v = 4),ts.external.module.index(v = 3),js.class.index2(v = 3),amd.requirePaths.index(v = 2),es6.exported.index(v = 3),go.method.spec.inheritance(v = 87),sql.column.name(v = 3),JS.class.super(v = 5),Css.attr(v = 2),Css.custom.mixin(v = 2),go.all.private.name(v = 86),go.method(v = 88),JS.global.qualified.elements(v = 3),ts.local.classes(v = 2),js.generics.index(v = 2),dom.elementClass(v = 0),protobuf.byShortName(v = 3),js.local.namespace.members.index(v = 2),go.type.name(v = 88),js.nonglobal.symbol.index(v = 2),markdown.header(v = 2),go.method.fingerprint(v = 87),Css.custom.variable(v = 3),js.symbol.qualified.names.index(v = 1),js.exported.index(v = 2),js.gcl.modules(v = 2),go.function(v = 89),Css.ampersand.selector(v = 2),dom.namespaceKey(v = 1),js.amd.modules(v = 2),es6.side.effect.import.index(v = 3),js.symbol.index2(v = 6),amd.baseUrl.index(v = 2),go.packages(v = 88),sql.names(v = 21),Css.id(v = 2)
+2026-05-05 00:49:12,147 [   5665]   INFO - #c.i.u.i.IndexDataInitializer - Index data initialization done: 2801 ms. Initialized stub indexes: {js.amd.modules, js.doc.modules, js.typedef.index2, go.method.spec.inheritance, go.all.name, go.type.spec.inheritance, protobuf.byQualifiedName, ts.global.exported.index, js.element.qualifiedName, go.type.name, ts.local.classes, js.namespace.index, markdown.header.anchor, js.lazy.packages, go.method.fingerprint, ts.external.module.index, go.package.level.public.elements, JS.framework.markers.index, protobuf.byShortName, redis.dml.shortName, es6.side.effect.import.index, JS.subclass.stub.index, ts.embedded.content.index, js.generics.index, Css.class, Css.attr, amd.requirePaths.index, JS.class.super, Css.id, markdown.header, js.nonglobal.symbol.index, go.method, go.spec.fingerprint, go.all.private.name, makefile.target.index, go.non.package.level.names, Css.custom.variable, js.class.index2, sql.table.shortName, dom.elementClass, go.typeSpec.redeclared, js.qualified.shortName, ts.external.module.name.index, go.function, Css.custom.mixin, Css.ampersand.selector, JS.global.qualified.elements, js.imported.bindings.index, sql.names, sql.column.name, js.symbol.qualified.names.index, js.used.remote.modules, es6.exported.index, go.packages, js.exported.index, js.local.namespace.members.index, es6.assignment.index, JS.base.types.index, js.gcl.modules, js.global.symbol.index, dom.namespaceKey, js.symbol.index2, JS.class.implements, js.export.default.react.component.index, amd.baseUrl.index, Css.custom.property}.
+2026-05-05 00:49:12,158 [   5676]   INFO - #c.i.u.i.HttpRequests - Application is not initialized yet; Using default SSL configuration to connect to https://plugins.jetbrains.com/files/brokenPlugins.json
+2026-05-05 00:49:12,211 [   5729]   INFO - #c.i.u.i.HttpRequests - Application is not initialized yet; Using default SSL configuration to connect to https://downloads.marketplace.jetbrains.com/files/brokenPlugins.json
+2026-05-05 00:49:12,311 [   5829]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Endpoints" from "IntelliJ IDEA 2025.2" is already present in "GoLand"
+2026-05-05 00:49:12,311 [   5829]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Package Checker" from "IntelliJ IDEA 2025.2" is already present in "GoLand"
+2026-05-05 00:49:12,311 [   5829]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Docker" from "IntelliJ IDEA 2025.2" is already present in "GoLand"
+2026-05-05 00:49:12,311 [   5829]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "OpenAPI Specifications" from "IntelliJ IDEA 2025.2" is already present in "GoLand"
+2026-05-05 00:49:12,311 [   5829]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "HTTP Client" from "IntelliJ IDEA 2025.2" is already present in "GoLand"
+2026-05-05 00:49:12,311 [   5829]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "MCP Server" from "IntelliJ IDEA 2025.2" is already present in "GoLand"
+2026-05-05 00:49:12,311 [   5829]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "React" from "IntelliJ IDEA 2025.2" is already present in "GoLand"
+2026-05-05 00:49:12,311 [   5829]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "JavaScript and TypeScript" from "IntelliJ IDEA 2025.2" is already present in "GoLand"
+2026-05-05 00:49:12,311 [   5829]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "GitLab" from "IntelliJ IDEA 2025.2" is already present in "GoLand"
+2026-05-05 00:49:12,311 [   5829]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "JavaScript Debugger" from "IntelliJ IDEA 2025.2" is already present in "GoLand"
+2026-05-05 00:49:12,311 [   5829]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "YAML" from "IntelliJ IDEA 2025.2" is already present in "GoLand"
+2026-05-05 00:49:12,311 [   5829]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "EditorConfig" from "IntelliJ IDEA 2025.2" is already present in "GoLand"
+2026-05-05 00:49:12,311 [   5829]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Kubernetes" from "IntelliJ IDEA 2025.2" is already present in "GoLand"
+2026-05-05 00:49:12,311 [   5829]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Copyright" from "IntelliJ IDEA 2025.2" is already present in "GoLand"
+2026-05-05 00:49:12,311 [   5829]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Full Line Code Completion" from "IntelliJ IDEA 2025.2" is already present in "GoLand"
+2026-05-05 00:49:12,311 [   5829]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "GitHub" from "IntelliJ IDEA 2025.2" is already present in "GoLand"
+2026-05-05 00:49:12,374 [   5892]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Endpoints" from "IntelliJ IDEA 2025.2" is already present in "GoLand"
+2026-05-05 00:49:12,374 [   5892]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Package Checker" from "IntelliJ IDEA 2025.2" is already present in "GoLand"
+2026-05-05 00:49:12,374 [   5892]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Docker" from "IntelliJ IDEA 2025.2" is already present in "GoLand"
+2026-05-05 00:49:12,374 [   5892]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "OpenAPI Specifications" from "IntelliJ IDEA 2025.2" is already present in "GoLand"
+2026-05-05 00:49:12,374 [   5892]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "HTTP Client" from "IntelliJ IDEA 2025.2" is already present in "GoLand"
+2026-05-05 00:49:12,374 [   5892]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "MCP Server" from "IntelliJ IDEA 2025.2" is already present in "GoLand"
+2026-05-05 00:49:12,374 [   5892]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "React" from "IntelliJ IDEA 2025.2" is already present in "GoLand"
+2026-05-05 00:49:12,374 [   5892]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "JavaScript and TypeScript" from "IntelliJ IDEA 2025.2" is already present in "GoLand"
+2026-05-05 00:49:12,374 [   5892]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "GitLab" from "IntelliJ IDEA 2025.2" is already present in "GoLand"
+2026-05-05 00:49:12,374 [   5892]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "JavaScript Debugger" from "IntelliJ IDEA 2025.2" is already present in "GoLand"
+2026-05-05 00:49:12,374 [   5892]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "YAML" from "IntelliJ IDEA 2025.2" is already present in "GoLand"
+2026-05-05 00:49:12,374 [   5892]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "EditorConfig" from "IntelliJ IDEA 2025.2" is already present in "GoLand"
+2026-05-05 00:49:12,374 [   5892]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Kubernetes" from "IntelliJ IDEA 2025.2" is already present in "GoLand"
+2026-05-05 00:49:12,374 [   5892]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Copyright" from "IntelliJ IDEA 2025.2" is already present in "GoLand"
+2026-05-05 00:49:12,374 [   5892]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Full Line Code Completion" from "IntelliJ IDEA 2025.2" is already present in "GoLand"
+2026-05-05 00:49:12,374 [   5892]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "GitHub" from "IntelliJ IDEA 2025.2" is already present in "GoLand"
+2026-05-05 00:49:12,557 [   6075]   INFO - #c.i.u.i.HttpRequests - Application is not initialized yet; Using default SSL configuration to connect to https://plugins.jetbrains.com/files/pluginsXMLIds.json
+2026-05-05 00:49:12,610 [   6128]   INFO - #c.i.u.i.HttpRequests - Application is not initialized yet; Using default SSL configuration to connect to https://downloads.marketplace.jetbrains.com/files/pluginsXMLIds.json
+2026-05-05 00:49:12,642 [   6160]   INFO - #c.i.i.p.m.MarketplaceRequests - Looking for the last compatible plugin updates for:
+[com.jetbrains.sh, com.intellij.microservices.ui, com.intellij.react, org.jetbrains.security.package-checker, org.jetbrains.plugins.docker.gateway, Git4Idea, training, com.intellij.zh, com.ypwang.plugin.go-linter, tanvd.grazi, Docker, org.jetbrains.plugins.remote-run, org.jetbrains.plugins.terminal, JavaScript, org.intellij.plugins.markdown, name.kropp.intellij.makefile, com.intellij.database, org.jetbrains.plugins.gitlab, com.intellij.jsonpath, com.intellij.ko, idea.plugin.protoeditor, com.intellij.swagger, com.jetbrains.performancePlugin, JavaScriptDebugger, org.jetbrains.plugins.yaml, com.jetbrains.restClient, intellij.webpack, Refactor-X, org.editorconfig.editorconfigjetbrains, com.intellij.mcpServer, com.intellij.ja, com.jetbrains.plugins.webDeployment, org.jetbrains.plugins.go-template, com.intellij.kubernetes, com.intellij.copyright, org.jetbrains.plugins.textmate, org.jetbrains.completion.full.line, org.jetbrains.plugins.github, com.intellij.settingsSync, HtmlTools]
+send machine ID: true
+2026-05-05 00:49:12,644 [   6162]   INFO - #c.i.u.i.HttpRequests - Application is not initialized yet; Using default SSL configuration to connect to https://plugins.jetbrains.com/api/search/updates/compatible?build=GO-261.23567.143&os=Windows+11.0&arch=X86_64&mid=060088af74bc173a7f672b08bdfa0145b72793e96043d97cdb016077ea8c2713&pluginXmlId=com.jetbrains.sh&pluginXmlId=com.intellij.microservices.ui&pluginXmlId=com.intellij.react&pluginXmlId=org.jetbrains.security.package-checker&pluginXmlId=org.jetbrains.plugins.docker.gateway&pluginXmlId=Git4Idea&pluginXmlId=training&pluginXmlId=com.intellij.zh&pluginXmlId=com.ypwang.plugin.go-linter&pluginXmlId=tanvd.grazi&pluginXmlId=Docker&pluginXmlId=org.jetbrains.plugins.remote-run&pluginXmlId=org.jetbrains.plugins.terminal&pluginXmlId=JavaScript&pluginXmlId=org.intellij.plugins.markdown&pluginXmlId=name.kropp.intellij.makefile&pluginXmlId=com.intellij.database&pluginXmlId=org.jetbrains.plugins.gitlab&pluginXmlId=com.intellij.jsonpath&pluginXmlId=com.intellij.ko&pluginXmlId=idea.plugin.protoeditor&pluginXmlId=com.intellij.swagger&pluginXmlId=com.jetbrains.performancePlugin&pluginXmlId=JavaScriptDebugger&pluginXmlId=org.jetbrains.plugins.yaml&pluginXmlId=com.jetbrains.restClient&pluginXmlId=intellij.webpack&pluginXmlId=Refactor-X&pluginXmlId=org.editorconfig.editorconfigjetbrains&pluginXmlId=com.intellij.mcpServer&pluginXmlId=com.intellij.ja&pluginXmlId=com.jetbrains.plugins.webDeployment&pluginXmlId=org.jetbrains.plugins.go-template&pluginXmlId=com.intellij.kubernetes&pluginXmlId=com.intellij.copyright&pluginXmlId=org.jetbrains.plugins.textmate&pluginXmlId=org.jetbrains.completion.full.line&pluginXmlId=org.jetbrains.plugins.github&pluginXmlId=com.intellij.settingsSync&pluginXmlId=HtmlTools
+2026-05-05 00:49:12,740 [   6258]   INFO - #c.i.u.i.HttpRequests - Application is not initialized yet; Using default SSL configuration to connect to https://plugins.jetbrains.com/files/26071/1034317/meta.json
+2026-05-05 00:49:12,999 [   6517]   INFO - #c.i.o.w.i.PainterHelper - (BufferedImageGraphicsConfig) 640x507 non-accelerated non-volatile image created
+2026-05-05 00:49:16,870 [  10388]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin org.sonarlint.idea is disabled in IntelliJ IDEA 2025.1. Won't try to import it
+2026-05-05 00:49:16,870 [  10388]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin org.sonarlint.idea is disabled in IntelliJ IDEA 2025.1. Won't try to import it
+2026-05-05 00:49:16,870 [  10388]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "GitLab" from "IntelliJ IDEA 2025.1" is already present in "GoLand"
+2026-05-05 00:49:16,870 [  10388]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "GitLab" from "IntelliJ IDEA 2025.1" is already present in "GoLand"
+2026-05-05 00:49:16,870 [  10388]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "GitHub" from "IntelliJ IDEA 2025.1" is already present in "GoLand"
+2026-05-05 00:49:16,870 [  10388]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "GitHub" from "IntelliJ IDEA 2025.1" is already present in "GoLand"
+2026-05-05 00:49:16,870 [  10388]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Ktlint" from "IntelliJ IDEA 2025.1" could not be migrated to "GoLand" because of the missing required dependency: org.jetbrains.kotlin
+2026-05-05 00:49:16,870 [  10388]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Ktlint" from "IntelliJ IDEA 2025.1" could not be migrated to "GoLand" because of the missing required dependency: org.jetbrains.kotlin
+2026-05-05 00:49:17,540 [  11058]   INFO - #c.i.f.ProductivityFeaturesRegistryImpl - Feature with id 'editing.completion.replace' is overridden by: id = [editing.completion.replace], displayName = [null], groupId = [completion], usageCount = [0]
+2026-05-05 00:49:17,540 [  11058]   INFO - #c.i.f.ProductivityFeaturesRegistryImpl - Feature with id 'editing.completion.finishByCtrlDot' is overridden by: id = [editing.completion.finishByCtrlDot], displayName = [null], groupId = [completion], usageCount = [0]
+2026-05-05 00:49:17,540 [  11058]   INFO - #c.i.f.ProductivityFeaturesRegistryImpl - Feature with id 'editing.completion.finishByDotEtc' is overridden by: id = [editing.completion.finishByDotEtc], displayName = [null], groupId = [completion], usageCount = [0]
+2026-05-05 00:49:17,540 [  11058]   INFO - #c.i.f.ProductivityFeaturesRegistryImpl - Feature with id 'scratch' is overridden by: id = [scratch], displayName = [null], groupId = [editing], usageCount = [0]
+2026-05-05 00:49:17,540 [  11058]   INFO - #c.i.f.ProductivityFeaturesRegistryImpl - Feature with id 'codeassists.quickdefinition' is overridden by: id = [codeassists.quickdefinition], displayName = [null], groupId = [codeassists], usageCount = [0]
+2026-05-05 00:49:17,540 [  11058]   INFO - #c.i.f.ProductivityFeaturesRegistryImpl - Feature with id 'codeassists.comment.line' is overridden by: id = [codeassists.comment.line], displayName = [null], groupId = [codeassists], usageCount = [0]
+2026-05-05 00:49:19,099 [  12617]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - User has selected DataGrip2026.1
+2026-05-05 00:49:19,099 [  12617]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Found 20 custom plugins: Key Promoter X, JSON to Schema, StringManipulation, Relative Line Numbers, .ignore, CSV Editor, JetBrains AI Assistant, Tab Shifter, GitToolBox, XPathView + XSLT, plantuml4idea, Space, Advanced JSON Studio, Unit File Support (systemd), CamelCase, Ideolog, Json Formatter, AceJump, .env files, Copy with Line Numbers
+2026-05-05 00:49:23,191 [  16709]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Will import 20 custom plugins: Key Promoter X, me.mbolotov.json.schema.generator, String Manipulation, youngstead.relative-line-numbers, mobi.hsz.idea.gitignore, net.seesharpsoft.intellij.plugins.csv, com.intellij.ml.llm, socrates.tabshifter, zielu.gittoolbox, XPathView, PlantUML integration, com.jetbrains.space, com.godwin.json.parser, net.sjrx.intellij.plugins.systemdunitfiles, de.netnexus.camelcaseplugin, com.intellij.ideolog, cn.jxzhang.plugin.json-formatter, AceJump, ru.adelf.idea.dotenv, sandipchitale.copywithlinenumbers
+0 plugins will be skipped:
+2026-05-05 00:49:23,191 [  16709]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Will import the following categories: UI, KEYMAP, CODE, PLUGINS, TOOLS, SYSTEM
+2026-05-05 00:49:23,197 [  16715]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Starting migration...
+2026-05-05 00:49:23,197 [  16715]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Started importing plugins...
+2026-05-05 00:49:23,198 [  16716]   INFO - #c.i.i.s.i.j.JbSettingsImporter - reading plugin repositories from C:\Users\homee\AppData\Roaming\JetBrains\DataGrip2026.1
+2026-05-05 00:49:23,605 [  17123]   INFO - #c.i.i.p.m.MarketplaceRequests - Looking for the last compatible plugin updates for:
+[Key Promoter X, me.mbolotov.json.schema.generator, String Manipulation, youngstead.relative-line-numbers, mobi.hsz.idea.gitignore, net.seesharpsoft.intellij.plugins.csv, com.intellij.ml.llm, socrates.tabshifter, zielu.gittoolbox, XPathView, PlantUML integration, com.jetbrains.space, com.godwin.json.parser, net.sjrx.intellij.plugins.systemdunitfiles, de.netnexus.camelcaseplugin, com.intellij.ideolog, cn.jxzhang.plugin.json-formatter, AceJump, ru.adelf.idea.dotenv, sandipchitale.copywithlinenumbers]
+send machine ID: false
+2026-05-05 00:49:24,418 [  17936]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Endpoints" from "IntelliJ IDEA 2026.1" is already present in "GoLand"
+2026-05-05 00:49:24,418 [  17936]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Endpoints" from "IntelliJ IDEA 2026.1" is already present in "GoLand"
+2026-05-05 00:49:24,418 [  17936]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Package Checker" from "IntelliJ IDEA 2026.1" is already present in "GoLand"
+2026-05-05 00:49:24,418 [  17936]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Package Checker" from "IntelliJ IDEA 2026.1" is already present in "GoLand"
+2026-05-05 00:49:24,418 [  17936]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Docker" from "IntelliJ IDEA 2026.1" is already present in "GoLand"
+2026-05-05 00:49:24,418 [  17936]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Docker" from "IntelliJ IDEA 2026.1" is already present in "GoLand"
+2026-05-05 00:49:24,418 [  17936]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "OpenAPI Specifications" from "IntelliJ IDEA 2026.1" is already present in "GoLand"
+2026-05-05 00:49:24,418 [  17936]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "HTTP Client" from "IntelliJ IDEA 2026.1" is already present in "GoLand"
+2026-05-05 00:49:24,418 [  17936]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "OpenAPI Specifications" from "IntelliJ IDEA 2026.1" is already present in "GoLand"
+2026-05-05 00:49:24,418 [  17936]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "MCP Server" from "IntelliJ IDEA 2026.1" is already present in "GoLand"
+2026-05-05 00:49:24,418 [  17936]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "HTTP Client" from "IntelliJ IDEA 2026.1" is already present in "GoLand"
+2026-05-05 00:49:24,418 [  17936]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "React" from "IntelliJ IDEA 2026.1" is already present in "GoLand"
+2026-05-05 00:49:24,418 [  17936]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "MCP Server" from "IntelliJ IDEA 2026.1" is already present in "GoLand"
+2026-05-05 00:49:24,418 [  17936]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "React" from "IntelliJ IDEA 2026.1" is already present in "GoLand"
+2026-05-05 00:49:24,418 [  17936]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "JavaScript and TypeScript" from "IntelliJ IDEA 2026.1" is already present in "GoLand"
+2026-05-05 00:49:24,418 [  17936]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "GitLab" from "IntelliJ IDEA 2026.1" is already present in "GoLand"
+2026-05-05 00:49:24,418 [  17936]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "JavaScript and TypeScript" from "IntelliJ IDEA 2026.1" is already present in "GoLand"
+2026-05-05 00:49:24,418 [  17936]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "JavaScript Debugger" from "IntelliJ IDEA 2026.1" is already present in "GoLand"
+2026-05-05 00:49:24,418 [  17936]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "YAML" from "IntelliJ IDEA 2026.1" is already present in "GoLand"
+2026-05-05 00:49:24,418 [  17936]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "GitLab" from "IntelliJ IDEA 2026.1" is already present in "GoLand"
+2026-05-05 00:49:24,418 [  17936]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "EditorConfig" from "IntelliJ IDEA 2026.1" is already present in "GoLand"
+2026-05-05 00:49:24,418 [  17936]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Kubernetes" from "IntelliJ IDEA 2026.1" is already present in "GoLand"
+2026-05-05 00:49:24,418 [  17936]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "JavaScript Debugger" from "IntelliJ IDEA 2026.1" is already present in "GoLand"
+2026-05-05 00:49:24,418 [  17936]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Copyright" from "IntelliJ IDEA 2026.1" is already present in "GoLand"
+2026-05-05 00:49:24,418 [  17936]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Full Line Code Completion" from "IntelliJ IDEA 2026.1" is already present in "GoLand"
+2026-05-05 00:49:24,418 [  17936]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "YAML" from "IntelliJ IDEA 2026.1" is already present in "GoLand"
+2026-05-05 00:49:24,418 [  17936]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "GitHub" from "IntelliJ IDEA 2026.1" is already present in "GoLand"
+2026-05-05 00:49:24,418 [  17936]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "EditorConfig" from "IntelliJ IDEA 2026.1" is already present in "GoLand"
+2026-05-05 00:49:24,418 [  17936]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Kubernetes" from "IntelliJ IDEA 2026.1" is already present in "GoLand"
+2026-05-05 00:49:24,418 [  17936]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Copyright" from "IntelliJ IDEA 2026.1" is already present in "GoLand"
+2026-05-05 00:49:24,418 [  17936]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "Full Line Code Completion" from "IntelliJ IDEA 2026.1" is already present in "GoLand"
+2026-05-05 00:49:24,418 [  17936]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugin "GitHub" from "IntelliJ IDEA 2026.1" is already present in "GoLand"
+2026-05-05 00:49:28,470 [  21988]   INFO - #c.i.i.s.i.j.JbSettingsImporter - Downloading Key Promoter X
+2026-05-05 00:49:28,472 [  21990]   INFO - #c.i.o.u.i.PluginDownloader - downloading plugin Key Promoter X(Key Promoter X) version 2026.1.0 from https://plugins.jetbrains.com/pluginManager?os=Windows%2011.0&build=GO-261.23567.143&updatedFrom&id=Key%20Promoter%20X&arch=X86_64&uuid=04012612e12a07e-691b-4b2a-85f5-a956f3dc5f62
+2026-05-05 00:49:28,882 [  22400]   INFO - #c.i.i.s.i.j.JbSettingsImporter - Downloaded and unpacked newer version of plugin 'Key Promoter X' : 2026.1.0
+2026-05-05 00:49:28,882 [  22400]   INFO - #c.i.i.s.i.j.JbSettingsImporter - Downloading me.mbolotov.json.schema.generator
+2026-05-05 00:49:28,884 [  22402]   INFO - #c.i.o.u.i.PluginDownloader - downloading plugin JSON to Schema(me.mbolotov.json.schema.generator) version 1.2.1 from https://plugins.jetbrains.com/pluginManager?os=Windows%2011.0&build=GO-261.23567.143&updatedFrom&id=me.mbolotov.json.schema.generator&arch=X86_64&uuid=04012612e12a07e-691b-4b2a-85f5-a956f3dc5f62
+2026-05-05 00:49:29,790 [  23308]   INFO - #c.i.i.s.i.j.JbSettingsImporter - Downloaded and unpacked newer version of plugin 'me.mbolotov.json.schema.generator' : 1.2.1
+2026-05-05 00:49:29,790 [  23308]   INFO - #c.i.i.s.i.j.JbSettingsImporter - Downloading String Manipulation
+2026-05-05 00:49:29,797 [  23315]   INFO - #c.i.o.u.i.PluginDownloader - downloading plugin StringManipulation(String Manipulation) version 9.16.0 from https://plugins.jetbrains.com/pluginManager?os=Windows%2011.0&build=GO-261.23567.143&updatedFrom&id=String%20Manipulation&arch=X86_64&uuid=04012612e12a07e-691b-4b2a-85f5-a956f3dc5f62
+2026-05-05 00:49:30,285 [  23803]   INFO - #c.i.i.s.i.j.JbSettingsImporter - Downloaded and unpacked newer version of plugin 'String Manipulation' : 9.16.0
+2026-05-05 00:49:30,285 [  23803]   INFO - #c.i.i.s.i.j.JbSettingsImporter - Downloading youngstead.relative-line-numbers
+2026-05-05 00:49:30,288 [  23806]   INFO - #c.i.o.u.i.PluginDownloader - downloading plugin Relative Line Numbers(youngstead.relative-line-numbers) version 1.1.1 from https://plugins.jetbrains.com/pluginManager?os=Windows%2011.0&build=GO-261.23567.143&updatedFrom&id=youngstead.relative-line-numbers&arch=X86_64&uuid=04012612e12a07e-691b-4b2a-85f5-a956f3dc5f62
+2026-05-05 00:49:30,640 [  24158]   INFO - #c.i.i.s.i.j.JbSettingsImporter - Downloaded and unpacked newer version of plugin 'youngstead.relative-line-numbers' : 1.1.1
+2026-05-05 00:49:30,640 [  24158]   INFO - #c.i.i.s.i.j.JbSettingsImporter - Downloading mobi.hsz.idea.gitignore
+2026-05-05 00:49:30,643 [  24161]   INFO - #c.i.o.u.i.PluginDownloader - downloading plugin .ignore(mobi.hsz.idea.gitignore) version 4.5.7 from https://plugins.jetbrains.com/pluginManager?os=Windows%2011.0&build=GO-261.23567.143&updatedFrom&id=mobi.hsz.idea.gitignore&arch=X86_64&uuid=04012612e12a07e-691b-4b2a-85f5-a956f3dc5f62
+2026-05-05 00:49:31,079 [  24597]   INFO - #c.i.i.s.i.j.JbSettingsImporter - Downloaded and unpacked newer version of plugin 'mobi.hsz.idea.gitignore' : 4.5.7
+2026-05-05 00:49:31,079 [  24597]   INFO - #c.i.i.s.i.j.JbSettingsImporter - Downloading net.seesharpsoft.intellij.plugins.csv
+2026-05-05 00:49:31,081 [  24599]   INFO - #c.i.o.u.i.PluginDownloader - downloading plugin CSV Editor(net.seesharpsoft.intellij.plugins.csv) version 4.2.0 from https://plugins.jetbrains.com/pluginManager?os=Windows%2011.0&build=GO-261.23567.143&updatedFrom&id=net.seesharpsoft.intellij.plugins.csv&arch=X86_64&uuid=04012612e12a07e-691b-4b2a-85f5-a956f3dc5f62
+2026-05-05 00:49:31,448 [  24966]   INFO - #c.i.i.s.i.j.JbSettingsImporter - Downloaded and unpacked newer version of plugin 'net.seesharpsoft.intellij.plugins.csv' : 4.2.0
+2026-05-05 00:49:31,448 [  24966]   INFO - #c.i.i.s.i.j.JbSettingsImporter - Downloading com.intellij.ml.llm
+2026-05-05 00:49:31,448 [  24966]   INFO - #c.i.o.u.i.PluginDownloader - downloading plugin JetBrains AI Assistant(com.intellij.ml.llm) version 261.23567.192 from https://plugins.jetbrains.com/pluginManager?os=Windows%2011.0&build=GO-261.23567.143&updatedFrom&id=com.intellij.ml.llm&arch=X86_64&uuid=04012612e12a07e-691b-4b2a-85f5-a956f3dc5f62
+2026-05-05 00:49:38,379 [  31897]   INFO - #c.i.i.s.i.j.JbSettingsImporter - Downloaded and unpacked newer version of plugin 'com.intellij.ml.llm' : 261.23567.192
+2026-05-05 00:49:38,379 [  31897]   INFO - #c.i.i.s.i.j.JbSettingsImporter - Downloading socrates.tabshifter
+2026-05-05 00:49:38,379 [  31897]   INFO - #c.i.o.u.i.PluginDownloader - downloading plugin Tab Shifter(socrates.tabshifter) version 0.39 from https://plugins.jetbrains.com/pluginManager?os=Windows%2011.0&build=GO-261.23567.143&updatedFrom&id=socrates.tabshifter&arch=X86_64&uuid=04012612e12a07e-691b-4b2a-85f5-a956f3dc5f62
+2026-05-05 00:49:38,805 [  32323]   INFO - #c.i.i.s.i.j.JbSettingsImporter - Downloaded and unpacked newer version of plugin 'socrates.tabshifter' : 0.39
+2026-05-05 00:49:38,805 [  32323]   INFO - #c.i.i.s.i.j.JbSettingsImporter - Downloading zielu.gittoolbox
+2026-05-05 00:49:38,807 [  32325]   INFO - #c.i.o.u.i.PluginDownloader - downloading plugin GitToolBox(zielu.gittoolbox) version 600.2.6+253 from https://plugins.jetbrains.com/pluginManager?os=Windows%2011.0&build=GO-261.23567.143&updatedFrom&id=zielu.gittoolbox&arch=X86_64&uuid=04012612e12a07e-691b-4b2a-85f5-a956f3dc5f62
+2026-05-05 00:49:39,757 [  33275]   INFO - #c.i.i.s.i.j.JbSettingsImporter - Downloaded and unpacked newer version of plugin 'zielu.gittoolbox' : 600.2.6+253
+2026-05-05 00:49:39,757 [  33275]   INFO - #c.i.i.s.i.j.JbSettingsImporter - Downloading XPathView
+2026-05-05 00:49:39,759 [  33277]   INFO - #c.i.o.u.i.PluginDownloader - downloading plugin XPathView + XSLT(XPathView) version 261.23567.28 from https://plugins.jetbrains.com/pluginManager?os=Windows%2011.0&build=GO-261.23567.143&updatedFrom&id=XPathView&arch=X86_64&uuid=04012612e12a07e-691b-4b2a-85f5-a956f3dc5f62
+2026-05-05 00:49:40,186 [  33704]   INFO - #c.i.i.s.i.j.JbSettingsImporter - Downloaded and unpacked newer version of plugin 'XPathView' : 261.23567.28
+2026-05-05 00:49:40,186 [  33704]   INFO - #c.i.i.s.i.j.JbSettingsImporter - Downloading PlantUML integration
+2026-05-05 00:49:40,188 [  33706]   INFO - #c.i.o.u.i.PluginDownloader - downloading plugin plantuml4idea(PlantUML integration) version 7.14.0-IJ2023.2 from https://plugins.jetbrains.com/pluginManager?os=Windows%2011.0&build=GO-261.23567.143&updatedFrom&id=PlantUML%20integration&arch=X86_64&uuid=04012612e12a07e-691b-4b2a-85f5-a956f3dc5f62
+2026-05-05 00:49:42,103 [  35621]   INFO - #c.i.i.s.i.j.JbSettingsImporter - Downloaded and unpacked newer version of plugin 'PlantUML integration' : 7.14.0-IJ2023.2
+2026-05-05 00:49:42,103 [  35621]   INFO - #c.i.i.s.i.j.JbSettingsImporter - Downloading com.jetbrains.space
+2026-05-05 00:49:42,106 [  35624]   INFO - #c.i.o.u.i.PluginDownloader - downloading plugin Space(com.jetbrains.space) version 261.23567.28 from https://plugins.jetbrains.com/pluginManager?os=Windows%2011.0&build=GO-261.23567.143&updatedFrom&id=com.jetbrains.space&arch=X86_64&uuid=04012612e12a07e-691b-4b2a-85f5-a956f3dc5f62
+2026-05-05 00:49:44,166 [  37684]   INFO - #c.i.i.s.i.j.JbSettingsImporter - Downloaded and unpacked newer version of plugin 'com.jetbrains.space' : 261.23567.28
+2026-05-05 00:49:44,166 [  37684]   INFO - #c.i.i.s.i.j.JbSettingsImporter - Downloading com.godwin.json.parser
+2026-05-05 00:49:44,168 [  37686]   INFO - #c.i.o.u.i.PluginDownloader - downloading plugin Advanced JSON Studio(com.godwin.json.parser) version 2026.1.7 from https://plugins.jetbrains.com/pluginManager?os=Windows%2011.0&build=GO-261.23567.143&updatedFrom&id=com.godwin.json.parser&arch=X86_64&uuid=04012612e12a07e-691b-4b2a-85f5-a956f3dc5f62
+2026-05-05 00:49:45,663 [  39181]   INFO - #c.i.i.s.i.j.JbSettingsImporter - Downloaded and unpacked newer version of plugin 'com.godwin.json.parser' : 2026.1.7
+2026-05-05 00:49:45,663 [  39181]   INFO - #c.i.i.s.i.j.JbSettingsImporter - Downloading net.sjrx.intellij.plugins.systemdunitfiles
+2026-05-05 00:49:45,665 [  39183]   INFO - #c.i.o.u.i.PluginDownloader - downloading plugin Unit File Support (systemd)(net.sjrx.intellij.plugins.systemdunitfiles) version 242.260422.703 from https://plugins.jetbrains.com/pluginManager?os=Windows%2011.0&build=GO-261.23567.143&updatedFrom&id=net.sjrx.intellij.plugins.systemdunitfiles&arch=X86_64&uuid=04012612e12a07e-691b-4b2a-85f5-a956f3dc5f62
+2026-05-05 00:49:46,521 [  40039]   INFO - #c.i.i.s.i.j.JbSettingsImporter - Downloaded and unpacked newer version of plugin 'net.sjrx.intellij.plugins.systemdunitfiles' : 242.260422.703
+2026-05-05 00:49:46,521 [  40039]   INFO - #c.i.i.s.i.j.JbSettingsImporter - Downloading de.netnexus.camelcaseplugin
+2026-05-05 00:49:46,521 [  40039]   INFO - #c.i.o.u.i.PluginDownloader - downloading plugin CamelCase(de.netnexus.camelcaseplugin) version 3.0.12 from https://plugins.jetbrains.com/pluginManager?os=Windows%2011.0&build=GO-261.23567.143&updatedFrom&id=de.netnexus.camelcaseplugin&arch=X86_64&uuid=04012612e12a07e-691b-4b2a-85f5-a956f3dc5f62
+2026-05-05 00:49:46,881 [  40399]   INFO - #c.i.i.s.i.j.JbSettingsImporter - Downloaded and unpacked newer version of plugin 'de.netnexus.camelcaseplugin' : 3.0.12
+2026-05-05 00:49:46,881 [  40399]   INFO - #c.i.i.s.i.j.JbSettingsImporter - Downloading com.intellij.ideolog
+2026-05-05 00:49:46,883 [  40401]   INFO - #c.i.o.u.i.PluginDownloader - downloading plugin Ideolog(com.intellij.ideolog) version 261.22158.195 from https://plugins.jetbrains.com/pluginManager?os=Windows%2011.0&build=GO-261.23567.143&updatedFrom&id=com.intellij.ideolog&arch=X86_64&uuid=04012612e12a07e-691b-4b2a-85f5-a956f3dc5f62
+2026-05-05 00:49:47,328 [  40846]   INFO - #c.i.i.s.i.j.JbSettingsImporter - Downloaded and unpacked newer version of plugin 'com.intellij.ideolog' : 261.22158.195
+2026-05-05 00:49:47,328 [  40846]   INFO - #c.i.i.s.i.j.JbSettingsImporter - Downloading cn.jxzhang.plugin.json-formatter
+2026-05-05 00:49:47,330 [  40848]   INFO - #c.i.o.u.i.PluginDownloader - downloading plugin Json Formatter(cn.jxzhang.plugin.json-formatter) version 1.6 from https://plugins.jetbrains.com/pluginManager?os=Windows%2011.0&build=GO-261.23567.143&updatedFrom&id=cn.jxzhang.plugin.json-formatter&arch=X86_64&uuid=04012612e12a07e-691b-4b2a-85f5-a956f3dc5f62
+2026-05-05 00:49:48,145 [  41663]   INFO - #c.i.i.s.i.j.JbSettingsImporter - Downloaded and unpacked newer version of plugin 'cn.jxzhang.plugin.json-formatter' : 1.6
+2026-05-05 00:49:48,145 [  41663]   INFO - #c.i.i.s.i.j.JbSettingsImporter - Downloading AceJump
+2026-05-05 00:49:48,148 [  41666]   INFO - #c.i.o.u.i.PluginDownloader - downloading plugin AceJump(AceJump) version 3.8.22 from https://plugins.jetbrains.com/pluginManager?os=Windows%2011.0&build=GO-261.23567.143&updatedFrom&id=AceJump&arch=X86_64&uuid=04012612e12a07e-691b-4b2a-85f5-a956f3dc5f62
+2026-05-05 00:49:48,655 [  42173]   INFO - #c.i.i.s.i.j.JbSettingsImporter - Downloaded and unpacked newer version of plugin 'AceJump' : 3.8.22
+2026-05-05 00:49:48,655 [  42173]   INFO - #c.i.i.s.i.j.JbSettingsImporter - Downloading ru.adelf.idea.dotenv
+2026-05-05 00:49:48,657 [  42175]   INFO - #c.i.o.u.i.PluginDownloader - downloading plugin .env files(ru.adelf.idea.dotenv) version 261.23567.176 from https://plugins.jetbrains.com/pluginManager?os=Windows%2011.0&build=GO-261.23567.143&updatedFrom&id=ru.adelf.idea.dotenv&arch=X86_64&uuid=04012612e12a07e-691b-4b2a-85f5-a956f3dc5f62
+2026-05-05 00:49:49,060 [  42578]   INFO - #c.i.i.s.i.j.JbSettingsImporter - Downloaded and unpacked newer version of plugin 'ru.adelf.idea.dotenv' : 261.23567.176
+2026-05-05 00:49:49,060 [  42578]   INFO - #c.i.i.s.i.j.JbSettingsImporter - Downloading sandipchitale.copywithlinenumbers
+2026-05-05 00:49:49,061 [  42579]   INFO - #c.i.o.u.i.PluginDownloader - downloading plugin Copy with Line Numbers(sandipchitale.copywithlinenumbers) version 1.0.13 from https://plugins.jetbrains.com/pluginManager?os=Windows%2011.0&build=GO-261.23567.143&updatedFrom&id=sandipchitale.copywithlinenumbers&arch=X86_64&uuid=04012612e12a07e-691b-4b2a-85f5-a956f3dc5f62
+2026-05-05 00:49:49,529 [  43047]   INFO - #c.i.i.s.i.j.JbSettingsImporter - Downloaded and unpacked newer version of plugin 'sandipchitale.copywithlinenumbers' : 1.0.13
+2026-05-05 00:49:49,531 [  43049]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Plugins migrated in 26334 ms.
+2026-05-05 00:49:49,531 [  43049]   INFO - #c.i.i.s.i.j.JbImportServiceImpl - Started localization migration...
+2026-05-05 00:49:49,534 [  43052]   INFO - #c.i.o.a.m.Localization242 - [i18n] Localization migration won't be performed because previous version is 2026.1
+2026-05-05 00:49:49,629 [  43147]   INFO - #c.i.i.s.i.j.JbSettingsImporter - NOT loaded components(55):
+AIAssistantPromptLibraryStorage, AIAssistantQuotaManager2, AINaturalLanguagePromotionState, BaseRefactoringSettings, CommonFeedbackSurveyService, CsvEditorSettings, CsvSettings, ScriptedLoadersAssociations, LocalDatabaseDriverManager, DatabaseSettings, DataGridAppearanceSettingsImpl, DebuggerSettings, XDebuggerSettings, DiffSettings, ExternalDiffSettings, TextDiffSettings, DontShowAgainFeedbackService, CodeInsightSettings, InlineCompletionOnboarding, EmbeddingsActivationInfo, Encoding, GitToolBoxAppSettings2, GitToolBoxBlameAppConfig, GitToolBoxBranchesAppConfig, GitToolBoxRepositoriesAppConfig, GeneralLocalSettings, IgnoreSettings, IgnoredPluginSuggestions, TimeBetweenTyping, InstallJunieHubActionManager, LanguageInjectionConfiguration, KeymapFlagsStorage, KeyPromoterXSettings, KeyPromoterXStatistic, AICodeGenerationPromoState, LLMSettings, McpApplicationServerCommands, NextEditSettings, AILicenseTypeStorage, FileEditorProviderManager, ReworkedTerminalUsage, PyCharmCEFeedbackState2, RunnerLayoutSettings, SettingsSyncLocalSettings, SshConfigs, TerminalFontOptions, TextMateUserBundlesSettings, Trusted.Paths, UsageViewSettings, Vcs.Log.App.Settings, VcsEditorTab.Settings, ToolWindowLayout, DimensionService, SingleStripeButtonsState, WindowStateApplicationService
+2026-05-05 00:49:49,629 [  43147]   INFO - #c.i.i.s.i.j.JbSettingsImporter - NOT loaded storages(43):
+AIAssistantPromptLibraryStorage.xml, AIAssistantQuotaManager2.xml, AINaturalLanguagePromotionState.xml, baseRefactoring.xml, CommonFeedbackSurveyService.xml, csv-editor.xml, csvSettings.xml, databaseDrivers.xml, databaseSettings.xml, dataViewsSettings.xml, debugger.xml, diff.xml, DontShowAgainFeedbackService.xml, embeddings-activation.xml, encoding.xml, git_toolbox_2.xml, git_toolbox_blame.xml, git_toolbox_branches.xml, git_toolbox_repos.xml, ide.general.local.xml, ignore.xml, ignored-suggested-plugins.xml, inline.factors.completion.xml, InstallJunieHubActionManager.xml, IntelliLang.xml, keymapFlags.xml, KeyPromoterXSettings.xml, KeyPromoterXStatistic.xml, llm.code.generation.xml, llm.for.code.xml, llm.mcpServers.xml, llm.nextEdits.xml, PyCharmCEFeedbackService.xml, runner.layout.xml, settingsSyncLocal.xml, sshConfigs.xml, terminal-font.xml, textmate.xml, trusted-paths.xml, usageView.xml, vcs.xml, window.layouts.xml, windows/keymap.xml
+2026-05-05 00:49:49,731 [  43249]   WARN - #c.i.s.ComponentManagerImpl - com.intellij.testFramework.fixtures.HeavyIdeaTestFixturePathProviderImpl
+java.lang.ClassNotFoundException: com.intellij.testFramework.fixtures.HeavyIdeaTestFixturePathProviderImpl
+at com.intellij.util.lang.UrlClassLoader.findClass(UrlClassLoader.java:267)
+at java.base/java.lang.ClassLoader.loadClass(ClassLoader.java:557)
+at java.base/java.lang.ClassLoader.loadClass(ClassLoader.java:490)
+at com.intellij.serviceContainer.ComponentManagerImplKt.doLoadClass(ComponentManagerImpl.kt:1561)
+at com.intellij.serviceContainer.ComponentManagerImplKt.doLoadClass$default(ComponentManagerImpl.kt:1553)
+at com.intellij.serviceContainer.ServiceDescriptorInstanceInitializer.loadInstanceClass(ServiceInstanceInitializer.kt:111)
+at com.intellij.platform.instanceContainer.internal.LazyInstanceHolder.instanceClass(LazyInstanceHolder.kt:71)
+at com.intellij.serviceContainer.ComponentManagerImpl.processAllHolders$process(ComponentManagerImpl.kt:1353)
+at com.intellij.serviceContainer.ComponentManagerImpl.processAllHolders(ComponentManagerImpl.kt:1372)
+at com.intellij.ide.startup.importSettings.jb.JbSettingsImporter.loadNotLoadedComponents(JbSettingsImporter.kt:306)
+at com.intellij.ide.startup.importSettings.jb.JbSettingsImporter.importOptions(JbSettingsImporter.kt:198)
+at com.intellij.ide.startup.importSettings.jb.JbImportServiceImpl$importSettings$3.invokeSuspend$performImport(JbImportServiceImpl.kt:497)
+at com.intellij.ide.startup.importSettings.jb.JbImportServiceImpl$importSettings$3.invokeSuspend(JbImportServiceImpl.kt:534)
+at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+at kotlinx.coroutines.scheduling.CoroutineScheduler.runSafely(CoroutineScheduler.kt:610)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runDefaultDispatcherTask(CoroutineScheduler.kt:1194)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.executeTask(CoroutineScheduler.kt:906)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:775)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:762)
+2026-05-05 00:49:50,020 [  43538]   WARN - #c.i.s.ComponentManagerImpl - com.intellij.docker.compose.ComposeFilesSynchronizedWithServiceView PluginClassLoader(plugin=ContentModuleDescriptor(id=intellij.clouds.docker.shared, loadingRule=REQUIRED) <- PluginMainDescriptor(name=Docker, id=Docker, version=261.23567.143, package=com.intellij.docker, isBundled=true, path=~\AppData\Local\Programs\GoLand\plugins\clouds-docker-impl), packagePrefix=null, state=active, parents=ContentModuleDescriptor(id=intellij.libraries.ktor.client, loadingRule=EMBEDDED) <- PluginMainDescriptor(name=IDEA CORE, id=com.intellij, version=261.23567.143, isBundled=true, path=~\AppData\Local\Programs\GoLand\lib), ContentModuleDescriptor(id=intellij.platform.execution.serviceView) <- PluginMainDescriptor(name=IDEA CORE, id=com.intellij, version=261.23567.143, isBundled=true, path=~\AppData\Local\Programs\GoLand\lib), ContentModuleDescriptor(id=intellij.clouds.docker.agent, loadingRule=EMBEDDED) <- PluginMainDescriptor(name=Docker, id=Docker, version=261.23567.143, package=com.intellij.docker, isBundled=true, path=~\AppData\Local\Programs\GoLand\plugins\clouds-docker-impl), )
+java.lang.ClassNotFoundException: com.intellij.docker.compose.ComposeFilesSynchronizedWithServiceView PluginClassLoader(plugin=ContentModuleDescriptor(id=intellij.clouds.docker.shared, loadingRule=REQUIRED) <- PluginMainDescriptor(name=Docker, id=Docker, version=261.23567.143, package=com.intellij.docker, isBundled=true, path=~\AppData\Local\Programs\GoLand\plugins\clouds-docker-impl), packagePrefix=null, state=active, parents=ContentModuleDescriptor(id=intellij.libraries.ktor.client, loadingRule=EMBEDDED) <- PluginMainDescriptor(name=IDEA CORE, id=com.intellij, version=261.23567.143, isBundled=true, path=~\AppData\Local\Programs\GoLand\lib), ContentModuleDescriptor(id=intellij.platform.execution.serviceView) <- PluginMainDescriptor(name=IDEA CORE, id=com.intellij, version=261.23567.143, isBundled=true, path=~\AppData\Local\Programs\GoLand\lib), ContentModuleDescriptor(id=intellij.clouds.docker.agent, loadingRule=EMBEDDED) <- PluginMainDescriptor(name=Docker, id=Docker, version=261.23567.143, package=com.intellij.docker, isBundled=true, path=~\AppData\Local\Programs\GoLand\plugins\clouds-docker-impl), )
+at com.intellij.serviceContainer.ComponentManagerImplKt.doLoadClass(ComponentManagerImpl.kt:1557)
+at com.intellij.serviceContainer.ComponentManagerImplKt.doLoadClass$default(ComponentManagerImpl.kt:1553)
+at com.intellij.serviceContainer.ServiceDescriptorInstanceInitializer.loadInstanceClass(ServiceInstanceInitializer.kt:111)
+at com.intellij.platform.instanceContainer.internal.LazyInstanceHolder.instanceClass(LazyInstanceHolder.kt:71)
+at com.intellij.serviceContainer.ComponentManagerImpl.processAllHolders$process(ComponentManagerImpl.kt:1353)
+at com.intellij.serviceContainer.ComponentManagerImpl.processAllHolders(ComponentManagerImpl.kt:1372)
+at com.intellij.ide.startup.importSettings.jb.JbSettingsImporter.loadNotLoadedComponents(JbSettingsImporter.kt:306)
+at com.intellij.ide.startup.importSettings.jb.JbSettingsImporter.importOptions(JbSettingsImporter.kt:198)
+at com.intellij.ide.startup.importSettings.jb.JbImportServiceImpl$importSettings$3.invokeSuspend$performImport(JbImportServiceImpl.kt:497)
+at com.intellij.ide.startup.importSettings.jb.JbImportServiceImpl$importSettings$3.invokeSuspend(JbImportServiceImpl.kt:534)
+at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+at kotlinx.coroutines.scheduling.CoroutineScheduler.runSafely(CoroutineScheduler.kt:610)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runDefaultDispatcherTask(CoroutineScheduler.kt:1194)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.executeTask(CoroutineScheduler.kt:906)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:775)
+at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:762)
+2026-05-05 00:49:50,081 [  43599]   INFO - #c.i.i.s.i.j.JbSettingsImporter - Loaded notFoundComponents in 430 ms
+2026-05-05 00:49:50,081 [  43599]   INFO - #c.i.i.s.i.j.JbSettingsImporter - Component AIAssistantPromptLibraryStorage was not found and loaded. Its settings will not be migrated
+2026-05-05 00:49:50,081 [  43599]   INFO - #c.i.i.s.i.j.JbSettingsImporter - Component AIAssistantQuotaManager2 was not found and loaded. Its settings will not be migrated
+2026-05-05 00:49:50,081 [  43599]   INFO - #c.i.i.s.i.j.JbSettingsImporter - Component AINaturalLanguagePromotionState was not found and loaded. Its settings will not be migrated
+2026-05-05 00:49:50,081 [  43599]   INFO - #c.i.i.s.i.j.JbSettingsImporter - Component CommonFeedbackSurveyService was not found and loaded. Its settings will not be migrated
+2026-05-05 00:49:50,081 [  43599]   INFO - #c.i.i.s.i.j.JbSettingsImporter - Component CsvEditorSettings was not found and loaded. Its settings will not be migrated
+2026-05-05 00:49:50,081 [  43599]   INFO - #c.i.i.s.i.j.JbSettingsImporter - Component ScriptedLoadersAssociations was not found and loaded. Its settings will not be migrated
+2026-05-05 00:49:50,081 [  43599]   INFO - #c.i.i.s.i.j.JbSettingsImporter - Component DebuggerSettings was not found and loaded. Its settings will not be migrated

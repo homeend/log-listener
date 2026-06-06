@@ -137,14 +137,15 @@ func (m *model) handleSearchInputKey(msg tea.KeyMsg) tea.Model {
 	return m
 }
 
-// handleWrapPromptKey processes the y/n answer for the wrap-around
-// prompt. y wraps from the opposite end; n/Esc dismisses without
-// moving.
+// handleWrapPromptKey answers the wrap-around prompt. y/Y wraps from the
+// opposite end; any other key (n, Esc, or anything else) dismisses the prompt
+// without moving, so a stray keypress can't leave it stuck on screen.
 func (m *model) handleWrapPromptKey(msg tea.KeyMsg) tea.Model {
 	dir := m.wrapPrompt
-	switch msg.String() {
-	case "y", "Y":
-		m.wrapPrompt = 0
+	// Any key dismisses the prompt; only y/Y also performs the wrap. This way
+	// an accidental keypress clears the prompt instead of leaving it stuck.
+	m.wrapPrompt = 0
+	if s := msg.String(); s == "y" || s == "Y" {
 		var hit int
 		if dir == 'n' {
 			hit = m.findHit(0, +1)
@@ -154,10 +155,6 @@ func (m *model) handleWrapPromptKey(msg tea.KeyMsg) tea.Model {
 		if hit >= 0 {
 			m.jumpToHit(hit)
 		}
-		return m
-	case "n", "N", "esc":
-		m.wrapPrompt = 0
-		return m
 	}
 	return m
 }
