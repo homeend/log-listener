@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 // plainExportLine renders one displayLine to plain (unstyled) export text.
@@ -41,6 +43,24 @@ func (m *model) snapshotScrollback() []string {
 		out = append(out, plainExportLine(m.lines[i]))
 	}
 	return out
+}
+
+// saveResultMsg reports the outcome of a background export write.
+type saveResultMsg struct {
+	path string
+	n    int
+	err  error
+}
+
+// saveCmd captures the already-computed export lines and writes them off the
+// model goroutine, yielding a saveResultMsg. The snapshot is taken by the
+// caller (in Update) because m.lines is owned by the model goroutine.
+func (m *model) saveCmd(lines []string) tea.Cmd {
+	dir := m.saveDir
+	return func() tea.Msg {
+		path, err := writeExport(dir, lines, time.Now())
+		return saveResultMsg{path: path, n: len(lines), err: err}
+	}
 }
 
 // writeExport writes lines to screen-log-listener-<timestamp>.txt in dir (the

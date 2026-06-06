@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	tea "github.com/charmbracelet/bubbletea"
+
 	"github.com/homeend/log-listener/internal/render"
 )
 
@@ -80,5 +82,52 @@ func TestWriteExportNamingAndContent(t *testing.T) {
 	}
 	if first, _ := os.ReadFile(p1); string(first) != "a\nb\n" {
 		t.Errorf("first file was clobbered: %q", string(first))
+	}
+}
+
+func TestSaveKeyWritesFileAndFlashes(t *testing.T) {
+	m := newModel(100)
+	m.saveDir = t.TempDir()
+	m2, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 30})
+	m = m2.(*model)
+	m.appendEvent(render.Event{Group: "g", File: "/x/a.log",
+		Rendered: []render.Part{{Type: "text", Value: "SAVED-ROW"}}})
+
+	// Press S (save scrollback) → a non-nil command.
+	m2, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'S'}})
+	m = m2.(*model)
+	if cmd == nil {
+		t.Fatal("save key should return a tea.Cmd")
+	}
+
+	// Run the command → a saveResultMsg; feed it back.
+	msg := cmd()
+	res, ok := msg.(saveResultMsg)
+	if !ok {
+		t.Fatalf("cmd produced %T, want saveResultMsg", msg)
+	}
+	if res.err != nil {
+		t.Fatalf("save failed: %v", res.err)
+	}
+	m2, _ = m.Update(res)
+	m = m2.(*model)
+	if !strings.Contains(m.flash, "saved") {
+		t.Errorf("flash = %q, want a 'saved …' message", m.flash)
+	}
+	if !strings.Contains(m.renderFooter(), "saved") {
+		t.Errorf("footer should show the flash: %q", m.renderFooter())
+	}
+
+	// The written file exists and holds the row.
+	got, _ := os.ReadFile(res.path)
+	if !strings.Contains(string(got), "SAVED-ROW") {
+		t.Errorf("file content = %q", string(got))
+	}
+
+	// Any next key clears the flash.
+	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
+	m = m2.(*model)
+	if m.flash != "" {
+		t.Errorf("flash should clear on next key, got %q", m.flash)
 	}
 }

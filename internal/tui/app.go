@@ -353,6 +353,12 @@ type model struct {
 	// Toggled with the `m` key. TUI-only; stdout/SSE still emit full
 	// content.
 	collapseMultiline bool
+
+	// flash is a transient status line (e.g. a save confirmation) shown in the
+	// footer until the next key event. saveDir overrides the export directory
+	// (default "" = cwd); it is a test seam, never set in production.
+	flash   string
+	saveDir string
 }
 
 // RenderFunc runs a single (group, file, raw) tuple through the
@@ -443,6 +449,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyMsg:
+		// Any keypress dismisses a transient flash message.
+		m.flash = ""
 		// Modal key paths take priority — search input swallows almost
 		// everything, and a pending wrap prompt swallows y/n/Esc before
 		// the normal dispatcher sees them.
@@ -652,6 +660,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.horizScroll += horizFastStep
 		case keymap.ActionResetHoriz:
 			m.horizScroll = 0
+		case keymap.ActionSaveViewport:
+			return m, m.saveCmd(m.snapshotViewport())
+		case keymap.ActionSaveScrollback:
+			return m, m.saveCmd(m.snapshotScrollback())
 		case keymap.ActionCollapseAll:
 			// Collapse multiline entries (continuation rows hidden behind
 			// a "[...]" marker on the head). Toggles repeatedly.
@@ -675,6 +687,12 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.applyReload(msg)
 	case QuitMsg:
 		return m, tea.Quit
+	case saveResultMsg:
+		if msg.err != nil {
+			m.flash = "save failed: " + msg.err.Error()
+		} else {
+			m.flash = fmt.Sprintf("saved %d lines to %s", msg.n, msg.path)
+		}
 	}
 	return m, nil
 }
@@ -1106,6 +1124,9 @@ func (m *model) renderFooter() string {
 			text = " No more hits — wrap to bottom? (y/n) "
 		}
 		return headerBg.Width(m.width).MaxHeight(1).Render(text)
+	}
+	if m.flash != "" {
+		return headerBg.Width(m.width).MaxHeight(1).Render(" " + m.flash + " ")
 	}
 	pos := "tail"
 	if !m.tailMode {
