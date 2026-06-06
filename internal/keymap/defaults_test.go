@@ -61,3 +61,15 @@ func equalSlice(a, b []string) bool {
 	}
 	return true
 }
+
+func TestSaveActionsHaveDefaults(t *testing.T) {
+	for _, goos := range []string{"linux", "darwin", "windows"} {
+		dm := defaultFor(goos)
+		if !equalSlice(dm[ActionSaveViewport], []string{"s"}) {
+			t.Errorf("%s: save_viewport default = %v, want [s]", goos, dm[ActionSaveViewport])
+		}
+		if !equalSlice(dm[ActionSaveScrollback], []string{"S"}) {
+			t.Errorf("%s: save_scrollback default = %v, want [S]", goos, dm[ActionSaveScrollback])
+		}
+	}
+}

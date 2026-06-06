@@ -36,6 +36,8 @@ const (
 	ActionFastLeft        Action = "fast_left"
 	ActionFastRight       Action = "fast_right"
 	ActionResetHoriz      Action = "reset_horiz"
+	ActionSaveViewport    Action = "save_viewport"
+	ActionSaveScrollback  Action = "save_scrollback"
 )
 
 // ActionDef is the documentation/metadata for one action. Context groups
@@ -75,6 +77,8 @@ var AllActions = []ActionDef{
 	{ActionFastLeft, "Fast pan left", "Scroll left several columns.", "main"},
 	{ActionFastRight, "Fast pan right", "Scroll right several columns.", "main"},
 	{ActionResetHoriz, "Reset horizontal scroll", "Return to column 0.", "main"},
+	{ActionSaveViewport, "Save viewport", "Write the visible rows to a text file.", "main"},
+	{ActionSaveScrollback, "Save scrollback", "Write the full scrollback buffer to a text file.", "main"},
 }
 
 // IsAction reports whether name is a known action.

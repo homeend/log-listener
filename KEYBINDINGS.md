@@ -33,6 +33,8 @@ A terminal TUI cannot capture the macOS Cmd (⌘) key, so macOS bindings use the
 | Fast pan left | Ctrl+← / Shift+← | ⇧← / ⌃← | Scroll left several columns. |
 | Fast pan right | Ctrl+→ / Shift+→ | ⇧→ / ⌃→ | Scroll right several columns. |
 | Reset horizontal scroll | 0 | 0 | Return to column 0. |
+| Save viewport | s | s | Write the visible rows to a text file. |
+| Save scrollback | S | S | Write the full scrollback buffer to a text file. |
 
 ## Positional toggles (not individually overridable)
 
@@ -59,4 +61,4 @@ keybindings:
     fast_down: ["ctrl+down"]
 ```
 
-Valid action names: `quit`, `toggle_files`, `toggle_groups`, `toggle_renderers`, `close_overlay`, `search`, `next_match`, `prev_match`, `filter`, `toggle_group_col`, `toggle_file_col`, `clear`, `collapse_all`, `scroll_up`, `scroll_down`, `page_up`, `page_down`, `fast_up`, `fast_down`, `top`, `bottom`, `scroll_left`, `scroll_right`, `fast_left`, `fast_right`, `reset_horiz`.
+Valid action names: `quit`, `toggle_files`, `toggle_groups`, `toggle_renderers`, `close_overlay`, `search`, `next_match`, `prev_match`, `filter`, `toggle_group_col`, `toggle_file_col`, `clear`, `collapse_all`, `scroll_up`, `scroll_down`, `page_up`, `page_down`, `fast_up`, `fast_down`, `top`, `bottom`, `scroll_left`, `scroll_right`, `fast_left`, `fast_right`, `reset_horiz`, `save_viewport`, `save_scrollback`.

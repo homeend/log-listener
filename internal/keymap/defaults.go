@@ -30,6 +30,8 @@ func defaultFor(goos string) map[Action][]string {
 		ActionScrollLeft:      {"left", "h"},
 		ActionScrollRight:     {"right", "l"},
 		ActionResetHoriz:      {"0"},
+		ActionSaveViewport:    {"s"},
+		ActionSaveScrollback:  {"S"},
 		// Fast scroll defaults differ per-OS; set below.
 	}
 	if goos == "darwin" {
