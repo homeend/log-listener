@@ -32,6 +32,7 @@ Authoritative design + per-phase history lives in `PLAN.md` and `CHANGELOG.md`.
 | `internal/render`          | Template DSL parser, JSON/XML, Pipeline (first-match-wins).   |
 | `internal/sink`            | Colorized stdout + SSE hub.                                   |
 | `internal/tui`             | bubbletea app: streaming view + Ctrl+I file overlay.          |
+| `internal/keymap`          | Actions ↔ per-OS keys, glyph display, override resolve, doc gen. |
 | `cmd/log-listener`         | Entry point; wires config → discover → watch → pipeline → sinks/TUI. |
 
 ### Data flow
@@ -57,6 +58,10 @@ is active.
 - **Render-function output starts on its own line** (JSON/XML blocks always
   emitted as separate output blocks).
 - **TUI off when stdout isn't a TTY**; same for color.
+- **Keybindings flow through `internal/keymap`**: one named action per TUI
+  function; per-OS default keys; YAML overrides resolve current-OS → `default`
+  → app-default (per-action replace); `docs/KEYBINDINGS.md` is generated via
+  `--keybindings-doc` and guarded by `TestDocsUpToDate`.
 - **Single static binary** — only deps: `fsnotify`, `yaml.v3`, `bubbletea`,
   `lipgloss`, and `go-runewidth` (display-width math for the TUI; already
   pulled in transitively by `lipgloss`, so it adds nothing to the binary).
