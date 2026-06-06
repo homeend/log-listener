@@ -2,6 +2,7 @@ package keymap_test
 
 import (
 	"os"
+	"strings"
 	"testing"
 
 	"log-listener/internal/keymap"
@@ -16,7 +17,8 @@ func TestDocsUpToDate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read %s: %v (run `./build.sh keybindings-docs`)", path, err)
 	}
-	if string(want) != got {
+	norm := func(s string) string { return strings.ReplaceAll(s, "\r\n", "\n") }
+	if norm(string(want)) != norm(got) {
 		t.Errorf("%s is stale — run `./build.sh keybindings-docs`", path)
 	}
 }
