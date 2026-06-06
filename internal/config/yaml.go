@@ -50,6 +50,7 @@ type File struct {
 	Renderers        []Renderer             `yaml:"renderers,omitempty"`
 	Output           *Output                `yaml:"output,omitempty"`
 	TUI              *TUI                   `yaml:"tui,omitempty"`
+	Keybindings      *Keybindings           `yaml:"keybindings,omitempty"`
 }
 
 type DirGroup struct {
@@ -131,6 +132,16 @@ type SSE struct {
 type TUI struct {
 	Enabled    *bool `yaml:"enabled,omitempty"`
 	Scrollback *int  `yaml:"scrollback,omitempty"`
+}
+
+// Keybindings is the raw YAML override layers for TUI keys. Action names and
+// key strings are validated later by keymap.Resolve (cmd wiring), not here, so
+// config stays decoupled from the keymap package.
+type Keybindings struct {
+	Default map[string][]string `yaml:"default,omitempty"`
+	Darwin  map[string][]string `yaml:"darwin,omitempty"`
+	Linux   map[string][]string `yaml:"linux,omitempty"`
+	Windows map[string][]string `yaml:"windows,omitempty"`
 }
 
 // Load parses CLI args, resolves the YAML config (if any), and merges them
@@ -366,6 +377,12 @@ func mergeYAMLInto(cfg *Config, yc *File, now time.Time) error {
 		if t.Scrollback != nil && !cfg.cliExplicit["tui_scrollback"] {
 			cfg.TUIScrollback = *t.Scrollback
 		}
+	}
+
+	// keybindings — carried through verbatim; resolved+validated in cmd
+	// (needs runtime.GOOS). YAML-only, no CLI flags.
+	if yc.Keybindings != nil {
+		cfg.Keybindings = yc.Keybindings
 	}
 
 	return nil

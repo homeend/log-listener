@@ -37,6 +37,7 @@ type Config struct {
 	RendererSpecs []RendererSpec
 	Matchers      map[string]MatcherSpec
 	MuteSpecs     []MuteSpec
+	Keybindings   *Keybindings // raw YAML key override layers; resolved in cmd
 
 	indexDir    map[string]int
 	indexFile   map[string]int
