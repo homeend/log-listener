@@ -3,9 +3,11 @@ package tui
 import (
 	"strings"
 	"testing"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"log-listener/internal/config"
 	"log-listener/internal/render"
 )
 
@@ -276,5 +278,42 @@ func TestClipANSIWindowWideCharColumns(t *testing.T) {
 	}
 	if r := []rune(strings.TrimRight(got, " ")); len(r) != 3 {
 		t.Fatalf("6 columns should be 3 wide runes, got %d", len(r))
+	}
+}
+
+func TestClipANSIWindowWideCharStraddleLeft(t *testing.T) {
+	// skip=1 lands in the middle of the first 2-column rune: it can't be shown
+	// half, so it becomes a leading filler space, then the rest follows.
+	got := clipANSIWindow("中中中", 1, 6)
+	if w := dispWidth(got); w != 6 {
+		t.Fatalf("display width %d, want 6 (%q)", w, got)
+	}
+	if !strings.HasPrefix(got, " 中中") {
+		t.Fatalf("want leading filler space then 中中, got %q", got)
+	}
+}
+
+// TestWideScriptLineThroughPipelineNoOverflow pushes the real mixed-script
+// plugins line through the pipeline into the view and asserts no row overflows.
+func TestWideScriptLineThroughPipelineNoOverflow(t *testing.T) {
+	p, err := render.NewPipeline([]config.RendererSpec{
+		{Name: "json-line", LineRegex: `^\s*(\{.*\})\s*$`, Template: `json($1)`},
+		{Name: "idea-trailing-json", LineRegex: `^(.*?\s)(\{.+\})\s*$`, Template: `$1\njson($2)`},
+	}, nil, nil, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	line := "2026-06-06 INFO Loaded plugins: 中文语言包 (261), 한국어 언어 팩 (261), 日本語言語パック (261), VSCode Keymap (261)"
+	ev, _ := p.Render(time.Time{}, "goland", "/idea.log", line)
+	m := newModel(1000)
+	m.groupOrder = []string{"goland"}
+	m.groupEnabled["goland"] = true
+	m.appendEvent(ev)
+	m2, _ := m.Update(tea.WindowSizeMsg{Width: 50, Height: 10})
+	m = m2.(*model)
+	for i, row := range strings.Split(m.View(), "\n") {
+		if w := dispWidth(stripANSI(row)); w > 50 {
+			t.Fatalf("row %d display width %d exceeds 50: %q", i, w, stripANSI(row))
+		}
 	}
 }

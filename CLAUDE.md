@@ -58,7 +58,8 @@ is active.
   emitted as separate output blocks).
 - **TUI off when stdout isn't a TTY**; same for color.
 - **Single static binary** — only deps: `fsnotify`, `yaml.v3`, `bubbletea`,
-  `lipgloss`.
+  `lipgloss`, and `go-runewidth` (display-width math for the TUI; already
+  pulled in transitively by `lipgloss`, so it adds nothing to the binary).
 
 ## Conventions
 

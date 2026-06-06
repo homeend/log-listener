@@ -13,6 +13,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/mattn/go-runewidth"
 
 	"log-listener/internal/render"
 )
@@ -27,13 +28,14 @@ func stripANSI(s string) string { return ansiRE.ReplaceAllString(s, "") }
 func runeLen(s string) int { return utf8.RuneCountInString(s) }
 
 // dispWidth is the terminal cell width of s — wide (CJK) runes count as 2,
-// zero-width/combining as 0 — with any ANSI stripped. Width/clip math must use
-// this, not runeLen: a rune is not always one column, and counting it as one
-// makes a row of wide characters overflow and wrap, corrupting the layout.
-func dispWidth(s string) int { return lipgloss.Width(s) }
+// zero-width/combining as 0 — with any ANSI stripped first. Width/clip math
+// must use this, not runeLen: a rune is not always one column, and counting it
+// as one makes a row of wide characters overflow and wrap.
+func dispWidth(s string) int { return runewidth.StringWidth(stripANSI(s)) }
 
-// runeWidth is the cell width of a single rune (0, 1, or 2).
-func runeWidth(r rune) int { return lipgloss.Width(string(r)) }
+// runeWidth is the cell width of a single rune (0, 1, or 2). A table lookup —
+// allocation-free, so it's cheap on the per-rune clip hot path.
+func runeWidth(r rune) int { return runewidth.RuneWidth(r) }
 
 // expandTabs replaces tabs with spaces to 8-column tab stops so a body's rune
 // count equals its terminal display width. Without this a tab (1 rune, up to 8
