@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-// RenderMarkdownDoc generates the full docs/KEYBINDINGS.md content from the
+// RenderMarkdownDoc generates the full KEYBINDINGS.md content from the
 // built-in default keymaps — the same source of truth the TUI uses, so the
 // doc cannot drift. Columns: Action / Linux·Windows / macOS.
 func RenderMarkdownDoc() string {

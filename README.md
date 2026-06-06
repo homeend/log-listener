@@ -38,7 +38,7 @@ linker flag.
 - **OS-aware, customizable keybindings.** The TUI renders native key glyphs on
   macOS (`⌃ ⌥ ⇧`) and Ctrl/Shift text on Linux/Windows, and every shortcut is
   remappable per-OS via a `keybindings:` block. Full per-OS reference:
-  [`docs/KEYBINDINGS.md`](docs/KEYBINDINGS.md).
+  [`KEYBINDINGS.md`](KEYBINDINGS.md).
 - **Static binary, four runtime dependencies.** `fsnotify`, `yaml.v3`,
   `bubbletea`, `lipgloss`. No CGO.
 
@@ -639,7 +639,7 @@ can't capture the ⌘ key, so no shortcut uses Cmd.
 
 Every binding is an *action* you can remap — see **Customizing keybindings**
 below. The authoritative per-OS reference is generated from the code into
-[`docs/KEYBINDINGS.md`](docs/KEYBINDINGS.md) (regenerate with
+[`KEYBINDINGS.md`](KEYBINDINGS.md) (regenerate with
 `./build.sh keybindings-docs`, or print it with `log-listener --keybindings-doc`).
 
 | Key                 | Action                                                |

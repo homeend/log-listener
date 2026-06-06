@@ -28,7 +28,7 @@ and this project adheres to phased delivery per `PLAN.md`.
   positional `1`–`9` / `!@#…` toggles are all rejected at load time — no silent
   no-fire.
 - **Generated reference**: `log-listener --keybindings-doc` prints a Markdown
-  table of every action's keys per OS; the committed `docs/KEYBINDINGS.md` is
+  table of every action's keys per OS; the committed `KEYBINDINGS.md` is
   produced from it (`./build.sh keybindings-docs`) and guarded by
   `TestDocsUpToDate` so it can never drift from the code.
 

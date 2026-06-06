@@ -9,7 +9,7 @@
 #   vet           go vet ./...
 #   race          go test -race ./...
 #   cover         coverage summary
-#   keybindings-docs  regenerate docs/KEYBINDINGS.md from the keymap
+#   keybindings-docs  regenerate KEYBINDINGS.md from the keymap
 #   clean         remove built binary
 #   help          show this list
 set -eu
@@ -48,8 +48,8 @@ case "$target" in
   race)  go test -race "$PKG" ;;
   cover) go test -cover "$PKG" ;;
   keybindings-docs)
-    go run "$CMD" --keybindings-doc > docs/KEYBINDINGS.md
-    echo "wrote ./docs/KEYBINDINGS.md"
+    go run "$CMD" --keybindings-doc > KEYBINDINGS.md
+    echo "wrote ./KEYBINDINGS.md"
     ;;
   clean)
     rm -f "$BINARY"

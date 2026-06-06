@@ -8,10 +8,10 @@ import (
 	"log-listener/internal/keymap"
 )
 
-// TestDocsUpToDate fails if docs/KEYBINDINGS.md drifts from RenderMarkdownDoc.
+// TestDocsUpToDate fails if KEYBINDINGS.md drifts from RenderMarkdownDoc.
 // Regenerate with: ./build.sh keybindings-docs
 func TestDocsUpToDate(t *testing.T) {
-	const path = "../../docs/KEYBINDINGS.md"
+	const path = "../../KEYBINDINGS.md"
 	got := keymap.RenderMarkdownDoc()
 	want, err := os.ReadFile(path)
 	if err != nil {
