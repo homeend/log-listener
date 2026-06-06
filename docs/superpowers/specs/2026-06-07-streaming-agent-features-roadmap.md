@@ -18,7 +18,10 @@ detailed contract for each feature lives in its own design doc.
    decorate them. Plus jump-to-next/prev-block and block highlighting.
 3. **Embedded MCP server** — an HTTP MCP endpoint running *inside the live
    process*, sharing the same in-memory buffer the user is watching, so an
-   external agent can query exactly what the user sees.
+   external agent can query exactly what the user sees. The save feature's
+   `snapshotViewport` / `snapshotScrollback` become MCP tools here
+   (`get_viewport` / `get_scrollback`), alongside `get_line`/`get_range`/
+   `search`/`get_context`/`list_exceptions`.
 
 **Build order: #2 → #3 → #1.** The one hard dependency: #1's `list_exceptions`
 tool reuses #3's exception processor, so #3 must land before #1.
@@ -33,6 +36,10 @@ a live stream and asks an agent to inspect *that* stream. So the MCP server is
 SDK's `StreamableHTTPHandler`), enabled by a flag and running **alongside** the
 TUI / stdout / SSE — exactly like the existing `--sse` hub. Plain SSE is
 rejected: it is emit-only and cannot serve request/response tool calls.
+
+**No auth — local dev only.** The endpoint binds to loopback (`127.0.0.1`) and
+ships no authentication; it is a local developer aid, not a remote service. The
+SDK's `oauth2` dependency comes in transitively but is unused.
 
 ### MCP library: official Go SDK (`github.com/modelcontextprotocol/go-sdk`)
 Chosen over hand-rolling JSON-RPC. Verified at v1.6.1: **CGO-free**

@@ -88,6 +88,13 @@ Two pure, unit-testable snapshot methods on `model` return `[]string`:
   in order, ignoring transient view toggles (collapse/filter) and group
   enable/disable. "Save scrollback" means the whole buffer, period.
 
+**Forward reuse (feature #1):** "give me the viewport" and "give me the
+scrollback" are exactly the request/response operations an agent wants, so these
+two snapshots are direct material for MCP tools (`get_viewport` / `get_scrollback`).
+Keep them as pure `model` methods returning `[]string` so the MCP layer can call
+the same logic. Exposing the *live* viewport to MCP needs a thread-safe accessor
+into the bubbletea model — that coupling is designed in the #1 spec, not here.
+
 ## File write (bubbletea-idiomatic side effect)
 
 Writing happens off the model via a `tea.Cmd` so `Update` stays pure and the IO
@@ -103,7 +110,9 @@ is off the render path:
 
 File naming, in the write command:
 
-- Base name: `log-listener-YYYYMMDD-HHMMSS.txt` via `time.Now().Format("20060102-150405")`.
+- Base name: `screen-log-listener-YYYYMMDD-HHMMSS.txt` via
+  `time.Now().Format("20060102-150405")`. The `screen-` prefix marks these as
+  view dumps and groups them in a directory listing.
 - Directory: `m.saveDir`, a new model field defaulting to `""` → current working
   directory (`os.Getwd`). The field is a **test seam** (tests set a `t.TempDir()`);
   production never sets it.
@@ -119,7 +128,7 @@ wrap-prompt priority branches). It is cleared on the **next key event** (set
 `m.flash = ""` at the top of the `tea.KeyMsg` path, before dispatch), so it
 persists until the user does anything.
 
-- Success: `flash = "saved 142 lines to /path/log-listener-20260607-013355.txt"`.
+- Success: `flash = "saved 142 lines to /path/screen-log-listener-20260607-013355.txt"`.
 - Empty buffer: still writes an (empty-bodied) file and reports `saved 0 lines…`;
   no special-case.
 - Failure: `flash = "save failed: <err>"`.
