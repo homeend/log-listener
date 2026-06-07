@@ -41,6 +41,8 @@ Authoritative design + per-phase history lives in `PLAN.md` and `CHANGELOG.md`.
 | `internal/keymap`          | Actions ↔ per-OS keys, glyph display, override resolve, doc gen. |
 | `internal/blocks`          | Segments lines into multi-line blocks; annotate-only processors (exception detection + language guess). Shared by TUI + future MCP. |
 | `internal/preload`         | Seeds the buffer from a file before tailing: raw lines → pipeline, or a saved `screen-log-listener-*` capture reconstructed faithfully. |
+| `internal/linebuf`         | Shared concurrency-safe ring of log records with stable IDs + block maps; fed at fan-out, read by the MCP server. |
+| `internal/mcp`             | Embedded MCP server (official Go SDK, Streamable HTTP) exposing read tools over linebuf. |
 | `.` (repo root)            | `package main` entry point; wires config → discover → watch → pipeline → sinks/TUI. |
 
 ### Data flow
@@ -49,7 +51,7 @@ Authoritative design + per-phase history lives in `PLAN.md` and `CHANGELOG.md`.
 `watch.Watcher` (fsnotify → per-file Tailer) → raw line +
 `render.Pipeline.Render` (first-match-wins renderer) → `render.Event` →
 fanout to `sink.Stdout` and/or `sink.SSEHub`, OR to `tui.App.Push` when TUI
-is active.
+is active; also always fed into `linebuf.Buffer` (shared with the MCP server).
 
 ### Locked design rules
 
@@ -70,9 +72,15 @@ is active.
   function; per-OS default keys; YAML overrides resolve current-OS → `default`
   → app-default (per-action replace); `KEYBINDINGS.md` is generated via
   `--keybindings-doc` and guarded by `TestDocsUpToDate`.
-- **Single static binary** — only deps: `fsnotify`, `yaml.v3`, `bubbletea`,
-  `lipgloss`, and `go-runewidth` (display-width math for the TUI; already
-  pulled in transitively by `lipgloss`, so it adds nothing to the binary).
+- **CGO-free static binary** — `build-static` still works. Core runtime deps:
+  `fsnotify`, `yaml.v3`, `bubbletea`, `lipgloss`, `go-runewidth` (already
+  pulled in by `lipgloss`). The `--mcp` feature deliberately adds a sixth dep:
+  `github.com/modelcontextprotocol/go-sdk` (official Go MCP SDK, CGO-free),
+  overriding the prior "five deps only" rule.
+- **`--mcp` is a loopback-only embedded Streamable-HTTP MCP server** — no
+  authentication, not started in `--once` mode. Shares the `linebuf.Buffer`
+  populated at fan-out. CLI flag only (`--mcp [addr]`); no YAML `output.mcp`
+  field was added this cycle.
 
 ## Conventions
 

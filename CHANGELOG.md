@@ -7,6 +7,27 @@ and this project adheres to phased delivery per `PLAN.md`.
 
 ## [Unreleased]
 
+### Embedded MCP server + agent hand-off (`--mcp`, `y`)
+- **`--mcp [addr]`** starts an embedded Streamable-HTTP MCP server (default
+  `127.0.0.1:7777`) that shares the live in-memory log buffer alongside the
+  TUI / stdout / SSE sinks. Optional value: bare `--mcp` uses the default;
+  `--mcp host:port` overrides. Not active in `--once` mode. No authentication
+  — local dev aid only. CLI flag only (no YAML `output.mcp` field this cycle).
+- **Six read-only MCP tools**: `get_line(id)`, `get_range(from,to)`,
+  `get_context(id,before,after)`, `get_scrollback(limit,offset)`,
+  `search(query,regex,limit)`, `list_exceptions()`. All operate on the shared
+  `linebuf.Buffer` and return JSON. Implemented in the new `internal/mcp`
+  package using the official Go MCP SDK (`github.com/modelcontextprotocol/go-sdk`).
+- **Stable per-record IDs**: every log record is assigned a permanent opaque ID
+  (`L0`, `L1`, … base-36) at fan-out ingest by the new `internal/linebuf`
+  concurrency-safe ring buffer. IDs are stable for the lifetime of the record
+  in the buffer; evicted records are gone but survivors never change ID.
+- **`y` — Copy reference** (TUI): copies a paste-ready reference to the
+  clipboard via OSC 52, context-sensitively: `line:<id>` when a search hit is
+  selected; `range:<headId>..<endId>` when the cursor is on a multi-line block;
+  `range:<firstVisibleId>..<lastVisibleId>` (viewport) otherwise. Paste to an
+  agent, which resolves it via `get_line` / `get_range`.
+
 ### Preload the buffer from a file
 - **`--preload <[group=]path>`** (repeatable) seeds the buffer before tailing so
   the TUI can be driven with canned data — no live logs needed. **Raw** files run

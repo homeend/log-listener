@@ -27,10 +27,10 @@ linker flag.
 - **Renderer pipeline with a small DSL.** Regex-match a line, then template
   the output: literal text + `$N` capture references + `json($N)` /
   `xml($N)` calls that pretty-print embedded payloads.
-- **Three output destinations, in parallel.** A colorized stdout sink, an
-  interactive bubbletea TUI, and an HTTP/SSE broadcast — any combination.
-  Output downgrades automatically when stdout isn't a TTY (no TUI, no
-  color).
+- **Multiple output destinations, in parallel.** A colorized stdout sink, an
+  interactive bubbletea TUI, an HTTP/SSE broadcast, and an embedded MCP server
+  — any combination. Output downgrades automatically when stdout isn't a TTY
+  (no TUI, no color).
 - **One-shot mode.** `--once` scans existing content (renderers still apply
   — useful for prettifying JSON inside historical logs) and exits.
 - **YAML configuration with CLI precedence.** Anything you can do on the CLI
@@ -39,8 +39,15 @@ linker flag.
   macOS (`⌃ ⌥ ⇧`) and Ctrl/Shift text on Linux/Windows, and every shortcut is
   remappable per-OS via a `keybindings:` block. Full per-OS reference:
   [`KEYBINDINGS.md`](KEYBINDINGS.md).
-- **Static binary, four runtime dependencies.** `fsnotify`, `yaml.v3`,
-  `bubbletea`, `lipgloss`. No CGO.
+- **Embedded MCP server for agent hand-off.** `--mcp [addr]` starts a
+  Streamable-HTTP MCP server (default `127.0.0.1:7777`) sharing the live log
+  buffer. An AI agent can call six read tools against it; press `y` in the TUI
+  to copy a paste-ready reference to the clipboard (OSC 52) that the agent
+  resolves immediately. Local dev aid only — no authentication.
+- **Static binary, CGO-free.** No CGO; `build-static` produces a fully static
+  binary. Runtime deps: `fsnotify`, `yaml.v3`, `bubbletea`, `lipgloss`,
+  `go-runewidth`, and the official Go MCP SDK
+  (`github.com/modelcontextprotocol/go-sdk`).
 
 ---
 
@@ -220,6 +227,7 @@ nothing to capture). All of these are validated at startup.
 | `--no-tui`                        | Disable the interactive TUI even when stdout is a TTY.                |
 | `--no-color`                      | Disable ANSI color in stdout.                                         |
 | `--sse <addr>`                    | Enable the SSE broadcast on `addr` (e.g. `127.0.0.1:8080`).           |
+| `--mcp [addr]`                    | Start the embedded MCP server (default `127.0.0.1:7777`). Optional value: bare `--mcp` uses the default; `--mcp host:port` overrides. Not active in `--once` mode. No authentication — local dev only. |
 | `--preload <[group=]path>`        | Seed the buffer from a file before tailing (auto-detect raw vs capture). Repeatable. |
 | `--preload-raw <[group=]path>`    | Force raw mode: run the file's lines through the pipeline under a synthetic group.    |
 | `--preload-capture <path>`        | Force capture mode: reconstruct a saved `screen-log-listener-*` export.               |
@@ -527,6 +535,45 @@ Hub behavior:
   timeouts.
 - `GET /` returns a one-line plaintext hint pointing at `/stream`.
 
+### MCP server (`--mcp`)
+
+```bash
+--mcp                   # bind to 127.0.0.1:7777 (default)
+--mcp 127.0.0.1:9100    # override address
+```
+
+Starts a Streamable-HTTP MCP server that shares the same in-memory log buffer
+the TUI is watching. An AI agent connects and calls six read-only tools:
+
+| Tool                           | What it returns                                                         |
+|--------------------------------|-------------------------------------------------------------------------|
+| `get_line(id)`                 | The single record with that ID.                                         |
+| `get_range(from, to)`          | All records from `from` to `to` (inclusive, either order).              |
+| `get_context(id, before, after)` | The record at `id` plus `before` records before and `after` after it. |
+| `get_scrollback(limit, offset)` | The most recent records, newest-first, paginated by `limit`/`offset`. |
+| `search(query, regex, limit)`  | Records whose text contains `query` (or matches `regex`), newest-first. |
+| `list_exceptions()`            | All exception-annotated blocks detected in the buffer.                  |
+
+**Record IDs** are stable opaque strings (`L0`, `L1`, `L2`, … base-36) assigned
+at ingest and never reused. IDs in the buffer can be evicted as the ring fills,
+but those that remain are permanent.
+
+**`y` — Copy reference (TUI).** Press `y` in the TUI to copy a paste-ready
+reference to the clipboard via OSC 52. Which reference is produced depends on
+context:
+
+| Context                           | Copied reference                              |
+|-----------------------------------|-----------------------------------------------|
+| Search active, hit selected       | `line:<hitEntryId>`                           |
+| Cursor inside a multi-line block  | `range:<headId>..<endId>`                     |
+| Otherwise (default)               | `range:<firstVisibleId>..<lastVisibleId>` (viewport) |
+
+Paste the reference to an agent. It resolves `line:<id>` via `get_line` and
+`range:<a>..<b>` via `get_range`.
+
+The MCP server runs alongside stdout/SSE/TUI and is **not** started in
+`--once` mode. No authentication — bind to loopback only.
+
 ### TUI
 
 Auto-selected when stdout is a TTY and `--no-tui` was not passed.
@@ -683,6 +730,7 @@ below. The authoritative per-OS reference is generated from the code into
 | **`]`** / **`[`**   | **Jump to the next / previous multi-line block.**     |
 | **`}`** / **`{`**   | **Jump to the next / previous processor-matched block (e.g. exception).** |
 | **`e`**             | **Toggle the exception left-bar marker.**             |
+| **`y`**             | **Copy reference to clipboard (OSC 52) — `line:<id>`, block `range`, or viewport `range` depending on context (see MCP server section).** |
 
 When you pan horizontally (`←` / `→`), the visible window is clipped from
 the left while ANSI styling (colors and the search highlight) is preserved
@@ -850,6 +898,8 @@ internal/config/           CLI parser + YAML loader + CLI/YAML merge
 internal/render/           template DSL + JSON/XML + first-match pipeline
 internal/sink/             colorized stdout + SSE broadcast hub
 internal/tui/              bubbletea app with bounded scrollback + Ctrl+I overlay
+internal/linebuf/          concurrency-safe ring of log records with stable IDs + block maps
+internal/mcp/              embedded MCP server (Streamable HTTP) exposing read tools over linebuf
 ```
 
 `PLAN.md` is the authoritative architecture document. `CHANGELOG.md` is
