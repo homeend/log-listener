@@ -142,6 +142,12 @@ func (b *Buffer) Range(fromID, toID string) []*Entry {
 func (b *Buffer) Context(id string, before, after int) []*Entry {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
+	if before < 0 {
+		before = 0
+	}
+	if after < 0 {
+		after = 0
+	}
 	idx := -1
 	for i, e := range b.entries {
 		if e.ID == id {
@@ -301,18 +307,26 @@ func (b *Buffer) BlockOf(id string) *Block {
 	return nil
 }
 
-// Rerender re-runs renderFn over every stored entry's Raw, replacing Lines but
-// keeping ID/Seq. For config reload only (the pipeline changed). If renderFn
-// returns ok=false for an entry, its Lines are left unchanged.
+// Rerender re-runs renderFn over every stored entry's Raw, replacing each entry
+// with a NEW Entry (copy-on-write) that has the freshly decomposed Lines but the
+// same ID/Seq. Copy-on-write (not in-place mutation) is REQUIRED: accessor
+// methods hand out *Entry pointers and release the read lock before the caller
+// reads e.Lines, so an MCP handler may hold an escaped pointer concurrently —
+// mutating Lines in place would race. A handler holding the old pointer reads a
+// coherent pre-reload snapshot; new lookups get the new entry. For config reload
+// only. If renderFn returns ok=false for an entry, it is left unchanged.
 func (b *Buffer) Rerender(renderFn func(group, file, raw string) (render.Event, bool)) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	for _, e := range b.entries {
+	for i, e := range b.entries {
 		rev, ok := renderFn(e.Group, e.File, e.Raw)
 		if !ok {
 			continue
 		}
-		e.Lines = b.decompose(rev)
+		ne := *e
+		ne.Lines = b.decompose(rev)
+		b.entries[i] = &ne
+		b.byID[ne.ID] = &ne
 	}
 	b.dirty = true
 }

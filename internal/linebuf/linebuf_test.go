@@ -125,6 +125,34 @@ func TestExceptionsMapsBlockToEntries(t *testing.T) {
 	}
 }
 
+func TestRerenderNoRaceWithEscapedPointer(t *testing.T) {
+	b := New(100, decomp)
+	for i := 0; i < 50; i++ {
+		b.Append(ev("g", "/a.log", "line"))
+	}
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for i := 0; i < 200; i++ {
+			// Simulate an MCP handler: grab an escaped *Entry, then read its
+			// Lines without holding the buffer lock.
+			if e, ok := b.Get("L0"); ok {
+				_ = len(e.Lines)
+				for _, ln := range e.Lines {
+					_ = ln.Text
+				}
+			}
+		}
+	}()
+	for i := 0; i < 200; i++ {
+		b.Rerender(func(g, f, raw string) (render.Event, bool) {
+			return render.Event{Group: g, File: f, Raw: raw,
+				Rendered: []render.Part{{Type: "text", Value: "RE"}}}, true
+		})
+	}
+	<-done
+}
+
 func TestRerenderKeepsIDsChangesContent(t *testing.T) {
 	b := New(100, decomp)
 	b.Append(ev("g", "/a.log", "original"))
