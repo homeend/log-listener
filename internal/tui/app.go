@@ -819,6 +819,18 @@ func (m *model) trimToCap() {
 			m.searchHit = -1 // hit scrolled off-screen
 		}
 	}
+	if m.visualMode {
+		m.visualCursor -= dropLines
+		if m.visualCursor < 0 {
+			m.visualCursor = 0
+		}
+		if m.visualAnchor >= 0 {
+			m.visualAnchor -= dropLines
+			if m.visualAnchor < 0 {
+				m.visualAnchor = -1 // anchor scrolled off → unset
+			}
+		}
+	}
 	m.blocksDirty = true
 }
 

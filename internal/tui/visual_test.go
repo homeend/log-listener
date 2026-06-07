@@ -118,3 +118,34 @@ func TestVisualBarRendersCursorAndSelection(t *testing.T) {
 		}
 	}
 }
+
+func TestVisualIndicesClampOnEviction(t *testing.T) {
+	m := newModel(3) // cap 3 lines
+	m2, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 10})
+	m = m2.(*model)
+	m.groupOrder = []string{"g"}
+	m.groupEnabled["g"] = true
+	seedVisual(m, "a", "b", "c") // lines 0,1,2
+	m.tailMode = false
+	m.streamTop = 0
+	m = key(m, keyV)     // cursor 0
+	m = key(m, keyJ)     // cursor 1
+	m = key(m, keySpace) // anchor 1
+	// Appending two more entries evicts the two oldest lines (cap 3), one at a
+	// time. Each eviction drops dropLines=1.
+	//   After "d": cursor 1→0, anchor 1→0 (not negative, no unset yet).
+	//   After "e": cursor 0→-1→clamp(0), anchor 0→-1→unset(-1).
+	// Without the fix the indices stay frozen at 1 (drift — they point at the
+	// wrong line). With the fix they are dragged down correctly.
+	seedVisual(m, "d", "e")
+	// visualCursor must have been dragged: frozen at 1 means bug; dragged to 0
+	// (clamped from -1 on the second eviction) means fix is working.
+	if m.visualCursor != 0 {
+		t.Errorf("visualCursor not dragged on eviction: got %d, want 0", m.visualCursor)
+	}
+	// visualAnchor must have been unset: frozen at 1 means bug; dragged to -1
+	// (scrolled off on the second eviction) means fix is working.
+	if m.visualAnchor != -1 {
+		t.Errorf("visualAnchor not unset on eviction: got %d, want -1", m.visualAnchor)
+	}
+}
