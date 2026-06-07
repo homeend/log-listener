@@ -92,6 +92,14 @@ and this project adheres to phased delivery per `PLAN.md`.
   toggles. A footer message confirms the path (or reports a write error) until
   the next keypress. Both keys are remappable via the `keybindings:` block.
 
+### Output log to file (`-o` / `--output`)
+- **`-o <file>` / `--output <file>`** writes every displayed line to `<file>`
+  in plain text (ANSI color stripped), in all modes (`--once`, `--no-tui`, and
+  the interactive TUI). The file is truncated at startup. Format: one line per
+  log entry, same as stdout: `[group] basename: text`, with indented JSON/XML
+  blocks on separate lines. Note: keep the output file outside any watched
+  directory, or it will be discovered and tailed (infinite loop risk).
+
 ### OS-aware keybindings (translation + override layer)
 - **`internal/keymap`** is now the single source of truth for TUI keys: every
   function is a named *action* mapped to a per-OS list of keys, so behavior and

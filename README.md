@@ -226,6 +226,7 @@ nothing to capture). All of these are validated at startup.
 | `--once`                          | Scan existing content (renderers run) and exit. No tailing.           |
 | `--no-tui`                        | Disable the interactive TUI even when stdout is a TTY.                |
 | `--no-color`                      | Disable ANSI color in stdout.                                         |
+| `-o <file>` / `--output <file>`   | Also write every displayed line to `<file>` in plain text (no ANSI), in all modes; truncates on startup. Tip: keep outside watched directories. |
 | `--sse <addr>`                    | Enable the SSE broadcast on `addr` (e.g. `127.0.0.1:8080`).           |
 | `--mcp [addr]`                    | Start the embedded MCP server (default `127.0.0.1:7777`). Optional value: bare `--mcp` uses the default; `--mcp host:port` overrides. Not active in `--once` mode. No authentication — local dev only. |
 | `--preload <[group=]path>`        | Seed the buffer from a file before tailing (auto-detect raw vs capture). Repeatable. |
