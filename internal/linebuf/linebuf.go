@@ -106,5 +106,62 @@ func baseName(p string) string {
 	return p
 }
 
-// (Range, Context, Search, Recent, Exceptions, BlockOf, Rerender are added in
-// the following tasks.)
+// Range returns entries between fromID and toID inclusive, in seq order,
+// tolerant of argument order. If one ID was evicted, the resident sub-span is
+// returned; if both are unknown, nil.
+func (b *Buffer) Range(fromID, toID string) []*Entry {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	from, okF := b.byID[fromID]
+	to, okT := b.byID[toID]
+	if !okF && !okT {
+		return nil
+	}
+	lo, hi := uint64(0), ^uint64(0)
+	if okF {
+		lo = from.Seq
+	}
+	if okT {
+		hi = to.Seq
+	}
+	if lo > hi {
+		lo, hi = hi, lo
+	}
+	var out []*Entry
+	for _, e := range b.entries {
+		if e.Seq >= lo && e.Seq <= hi {
+			out = append(out, e)
+		}
+	}
+	return out
+}
+
+// Context returns up to `before` entries before id and `after` after it,
+// inclusive of id.
+func (b *Buffer) Context(id string, before, after int) []*Entry {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	idx := -1
+	for i, e := range b.entries {
+		if e.ID == id {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		return nil
+	}
+	lo := idx - before
+	if lo < 0 {
+		lo = 0
+	}
+	hi := idx + after
+	if hi >= len(b.entries) {
+		hi = len(b.entries) - 1
+	}
+	out := make([]*Entry, 0, hi-lo+1)
+	for i := lo; i <= hi; i++ {
+		out = append(out, b.entries[i])
+	}
+	return out
+}

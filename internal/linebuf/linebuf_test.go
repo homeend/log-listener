@@ -45,3 +45,29 @@ func TestAppendEvictsOldest(t *testing.T) {
 		t.Error("L2 should be present")
 	}
 }
+
+func TestRangeInclusiveAndOrderTolerant(t *testing.T) {
+	b := New(100, decomp)
+	for _, s := range []string{"a", "b", "c", "d"} {
+		b.Append(ev("g", "/x.log", s))
+	}
+	got := b.Range("L1", "L3") // b,c,d
+	if len(got) != 3 || got[0].Lines[0].Text != "b" || got[2].Lines[0].Text != "d" {
+		t.Fatalf("range L1..L3: %+v", got)
+	}
+	rev := b.Range("L3", "L1") // same span, reversed args
+	if len(rev) != 3 || rev[0].Lines[0].Text != "b" {
+		t.Fatalf("reversed args should normalise: %+v", rev)
+	}
+}
+
+func TestContextBounds(t *testing.T) {
+	b := New(100, decomp)
+	for _, s := range []string{"a", "b", "c", "d", "e"} {
+		b.Append(ev("g", "/x.log", s))
+	}
+	got := b.Context("L2", 1, 1) // b,c,d
+	if len(got) != 3 || got[0].Lines[0].Text != "b" || got[2].Lines[0].Text != "d" {
+		t.Fatalf("context L2 ±1: %+v", got)
+	}
+}
