@@ -150,6 +150,7 @@ type Options struct {
 	Keymap            *keymap.Keymap         // resolved key bindings; nil → built-in for runtime.GOOS
 	SetRendererOn     func(idx int, on bool) // called when shift+digit toggles a renderer
 	RenderFn          RenderFunc             // called per scrollback entry when toggling triggers re-render
+	InitialEvents     []render.Event         // seeded into scrollback before Run (preload)
 }
 
 // New creates an App from Options. Files and groups must be passed
@@ -177,6 +178,9 @@ func New(opts Options) *App {
 	}
 	m.setRendererEnabled = opts.SetRendererOn
 	m.renderFn = opts.RenderFn
+	for _, ev := range opts.InitialEvents {
+		m.appendEvent(ev)
+	}
 	// tea.WithEnvironment hands a controlled env to bubbletea's internal
 	// termenv.Output. With COLORTERM=truecolor termenv accepts the
 	// profile from env and skips the OSC 11 / CSI 6n probes that hang
