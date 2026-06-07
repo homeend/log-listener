@@ -54,6 +54,11 @@ type Buffer struct {
 	blockOf   map[string]int
 	dirty     bool
 	decompose func(render.Event) []Line
+
+	vpMu       sync.RWMutex
+	vpFrom     string
+	vpTo       string
+	vpAttached bool
 }
 
 // New returns a Buffer holding at most cap entries, decomposing events with
@@ -305,6 +310,24 @@ func (b *Buffer) BlockOf(id string) *Block {
 		return &blk
 	}
 	return nil
+}
+
+// SetViewport records the TUI's current on-screen entry range (first..last
+// visible entry id) and marks a TUI as attached. Published by the model on each
+// render in TUI mode; never called headlessly. Uses its own lock so a
+// render-time publish never contends with a tool read of the ring.
+func (b *Buffer) SetViewport(from, to string) {
+	b.vpMu.Lock()
+	defer b.vpMu.Unlock()
+	b.vpFrom, b.vpTo, b.vpAttached = from, to, true
+}
+
+// Viewport returns the last-published on-screen range. attached is false until
+// a TUI has published at least once (headless runs report not-attached).
+func (b *Buffer) Viewport() (from, to string, attached bool) {
+	b.vpMu.RLock()
+	defer b.vpMu.RUnlock()
+	return b.vpFrom, b.vpTo, b.vpAttached
 }
 
 // Rerender re-runs renderFn over every stored entry's Raw, replacing each entry

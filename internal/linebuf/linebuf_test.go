@@ -153,6 +153,18 @@ func TestRerenderNoRaceWithEscapedPointer(t *testing.T) {
 	<-done
 }
 
+func TestViewportSlotRoundTrip(t *testing.T) {
+	b := New(100, decomp)
+	if _, _, attached := b.Viewport(); attached {
+		t.Error("fresh buffer must report not-attached")
+	}
+	b.SetViewport("L0", "L5")
+	from, to, attached := b.Viewport()
+	if !attached || from != "L0" || to != "L5" {
+		t.Fatalf("viewport = %q..%q attached=%v", from, to, attached)
+	}
+}
+
 func TestRerenderKeepsIDsChangesContent(t *testing.T) {
 	b := New(100, decomp)
 	b.Append(ev("g", "/a.log", "original"))
