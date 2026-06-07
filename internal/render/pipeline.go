@@ -109,6 +109,7 @@ func (r *Renderer) Match(path, line string) []string {
 // the parts produced by the matching renderer (or a single text part holding
 // the raw line if no renderer matched).
 type Event struct {
+	ID       string    `json:"id,omitempty"`
 	Ts       time.Time `json:"ts"`
 	File     string    `json:"file"`
 	Group    string    `json:"group"`

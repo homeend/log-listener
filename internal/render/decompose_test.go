@@ -1,6 +1,10 @@
 package render
 
-import "testing"
+import (
+	"encoding/json"
+	"strings"
+	"testing"
+)
 
 func TestDecomposeLinesTextHeadAndContinuations(t *testing.T) {
 	ev := Event{Rendered: []Part{{Type: "text", Value: "head line\n  cont one\n  cont two"}}}
@@ -42,5 +46,16 @@ func TestDecomposeLinesJSONBlock(t *testing.T) {
 	}
 	if len(got) < 2 || !got[1].IsCont {
 		t.Fatalf("json rows should be continuations: %+v", got)
+	}
+}
+
+func TestEventIDOmitemptyMarshal(t *testing.T) {
+	withID, _ := json.Marshal(Event{ID: "L7", Rendered: []Part{}})
+	if !strings.Contains(string(withID), `"id":"L7"`) {
+		t.Errorf("id should marshal: %s", withID)
+	}
+	noID, _ := json.Marshal(Event{Rendered: []Part{}})
+	if strings.Contains(string(noID), `"id"`) {
+		t.Errorf("empty id should be omitted: %s", noID)
 	}
 }
