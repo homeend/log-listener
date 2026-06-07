@@ -73,3 +73,21 @@ func TestSaveActionsHaveDefaults(t *testing.T) {
 		}
 	}
 }
+
+func TestBlockActionsHaveDefaults(t *testing.T) {
+	want := map[Action]string{
+		ActionNextBlock:            "]",
+		ActionPrevBlock:            "[",
+		ActionNextMarkedBlock:      "}",
+		ActionPrevMarkedBlock:      "{",
+		ActionToggleExceptionMarks: "e",
+	}
+	for _, goos := range []string{"linux", "darwin", "windows"} {
+		dm := defaultFor(goos)
+		for a, key := range want {
+			if !equalSlice(dm[a], []string{key}) {
+				t.Errorf("%s: %s default = %v, want [%s]", goos, a, dm[a], key)
+			}
+		}
+	}
+}

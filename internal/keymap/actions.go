@@ -10,34 +10,39 @@ package keymap
 type Action string
 
 const (
-	ActionQuit            Action = "quit"
-	ActionToggleFiles     Action = "toggle_files"
-	ActionToggleGroups    Action = "toggle_groups"
-	ActionToggleRenderers Action = "toggle_renderers"
-	ActionCloseOverlay    Action = "close_overlay"
-	ActionSearch          Action = "search"
-	ActionNextMatch       Action = "next_match"
-	ActionPrevMatch       Action = "prev_match"
-	ActionFilter          Action = "filter"
-	ActionToggleGroupCol  Action = "toggle_group_col"
-	ActionToggleFileCol   Action = "toggle_file_col"
-	ActionClear           Action = "clear"
-	ActionCollapseAll     Action = "collapse_all"
-	ActionScrollUp        Action = "scroll_up"
-	ActionScrollDown      Action = "scroll_down"
-	ActionPageUp          Action = "page_up"
-	ActionPageDown        Action = "page_down"
-	ActionFastUp          Action = "fast_up"
-	ActionFastDown        Action = "fast_down"
-	ActionTop             Action = "top"
-	ActionBottom          Action = "bottom"
-	ActionScrollLeft      Action = "scroll_left"
-	ActionScrollRight     Action = "scroll_right"
-	ActionFastLeft        Action = "fast_left"
-	ActionFastRight       Action = "fast_right"
-	ActionResetHoriz      Action = "reset_horiz"
-	ActionSaveViewport    Action = "save_viewport"
-	ActionSaveScrollback  Action = "save_scrollback"
+	ActionQuit                 Action = "quit"
+	ActionToggleFiles          Action = "toggle_files"
+	ActionToggleGroups         Action = "toggle_groups"
+	ActionToggleRenderers      Action = "toggle_renderers"
+	ActionCloseOverlay         Action = "close_overlay"
+	ActionSearch               Action = "search"
+	ActionNextMatch            Action = "next_match"
+	ActionPrevMatch            Action = "prev_match"
+	ActionFilter               Action = "filter"
+	ActionToggleGroupCol       Action = "toggle_group_col"
+	ActionToggleFileCol        Action = "toggle_file_col"
+	ActionClear                Action = "clear"
+	ActionCollapseAll          Action = "collapse_all"
+	ActionScrollUp             Action = "scroll_up"
+	ActionScrollDown           Action = "scroll_down"
+	ActionPageUp               Action = "page_up"
+	ActionPageDown             Action = "page_down"
+	ActionFastUp               Action = "fast_up"
+	ActionFastDown             Action = "fast_down"
+	ActionTop                  Action = "top"
+	ActionBottom               Action = "bottom"
+	ActionScrollLeft           Action = "scroll_left"
+	ActionScrollRight          Action = "scroll_right"
+	ActionFastLeft             Action = "fast_left"
+	ActionFastRight            Action = "fast_right"
+	ActionResetHoriz           Action = "reset_horiz"
+	ActionSaveViewport         Action = "save_viewport"
+	ActionSaveScrollback       Action = "save_scrollback"
+	ActionNextBlock            Action = "next_block"
+	ActionPrevBlock            Action = "prev_block"
+	ActionNextMarkedBlock      Action = "next_marked_block"
+	ActionPrevMarkedBlock      Action = "prev_marked_block"
+	ActionToggleExceptionMarks Action = "toggle_exception_marks"
 )
 
 // ActionDef is the documentation/metadata for one action. Context groups
@@ -79,6 +84,11 @@ var AllActions = []ActionDef{
 	{ActionResetHoriz, "Reset horizontal scroll", "Return to column 0.", "main"},
 	{ActionSaveViewport, "Save viewport", "Write the visible rows to a text file.", "main"},
 	{ActionSaveScrollback, "Save scrollback", "Write the full scrollback buffer to a text file.", "main"},
+	{ActionNextBlock, "Next block", "Jump to the next multi-line block.", "main"},
+	{ActionPrevBlock, "Previous block", "Jump to the previous multi-line block.", "main"},
+	{ActionNextMarkedBlock, "Next marked block", "Jump to the next processor-matched block (e.g. exception).", "main"},
+	{ActionPrevMarkedBlock, "Previous marked block", "Jump to the previous processor-matched block.", "main"},
+	{ActionToggleExceptionMarks, "Toggle exception marks", "Show/hide the exception left-bar.", "main"},
 }
 
 // IsAction reports whether name is a known action.
