@@ -40,6 +40,7 @@ A terminal TUI cannot capture the macOS Cmd (⌘) key, so macOS bindings use the
 | Next marked block | } | } | Jump to the next processor-matched block (e.g. exception). |
 | Previous marked block | { | { | Jump to the previous processor-matched block. |
 | Toggle exception marks | e | e | Show/hide the exception left-bar. |
+| Copy reference | y | y | Copy a paste-ready id reference (search line, block range, or viewport range) for an agent. |
 
 ## Positional toggles (not individually overridable)
 
@@ -66,4 +67,4 @@ keybindings:
     fast_down: ["ctrl+down"]
 ```
 
-Valid action names: `quit`, `toggle_files`, `toggle_groups`, `toggle_renderers`, `close_overlay`, `search`, `next_match`, `prev_match`, `filter`, `toggle_group_col`, `toggle_file_col`, `clear`, `collapse_all`, `scroll_up`, `scroll_down`, `page_up`, `page_down`, `fast_up`, `fast_down`, `top`, `bottom`, `scroll_left`, `scroll_right`, `fast_left`, `fast_right`, `reset_horiz`, `save_viewport`, `save_scrollback`, `next_block`, `prev_block`, `next_marked_block`, `prev_marked_block`, `toggle_exception_marks`.
+Valid action names: `quit`, `toggle_files`, `toggle_groups`, `toggle_renderers`, `close_overlay`, `search`, `next_match`, `prev_match`, `filter`, `toggle_group_col`, `toggle_file_col`, `clear`, `collapse_all`, `scroll_up`, `scroll_down`, `page_up`, `page_down`, `fast_up`, `fast_down`, `top`, `bottom`, `scroll_left`, `scroll_right`, `fast_left`, `fast_right`, `reset_horiz`, `save_viewport`, `save_scrollback`, `next_block`, `prev_block`, `next_marked_block`, `prev_marked_block`, `toggle_exception_marks`, `copy_reference`.

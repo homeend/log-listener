@@ -37,6 +37,7 @@ func defaultFor(goos string) map[Action][]string {
 		ActionNextMarkedBlock:      {"}"},
 		ActionPrevMarkedBlock:      {"{"},
 		ActionToggleExceptionMarks: {"e"},
+		ActionCopyReference:        {"y"},
 		// Fast scroll defaults differ per-OS; set below.
 	}
 	if goos == "darwin" {

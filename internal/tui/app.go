@@ -662,6 +662,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.horizScroll += horizFastStep
 		case keymap.ActionResetHoriz:
 			m.horizScroll = 0
+		case keymap.ActionCopyReference:
+			if ref := copyReference(m); ref != "" {
+				m.flash = "copied " + ref
+			}
 		case keymap.ActionSaveViewport:
 			return m, m.saveCmd(m.snapshotViewport())
 		case keymap.ActionSaveScrollback:
