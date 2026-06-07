@@ -683,6 +683,12 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if ref := copyReference(m); ref != "" {
 				m.flash = "copied " + ref
 			}
+		case keymap.ActionCopyText:
+			if _, n := m.copySelectionText(); n > 0 {
+				m.flash = fmt.Sprintf("copied %d lines", n)
+			} else {
+				m.flash = "nothing to copy"
+			}
 		case keymap.ActionVisualSelect:
 			m.enterVisual()
 		case keymap.ActionSaveViewport:

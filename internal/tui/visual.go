@@ -2,9 +2,12 @@ package tui
 
 import (
 	"fmt"
+	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+
+	"github.com/homeend/log-listener/internal/keymap"
 )
 
 // visualCaretStyle/visualSelStyle: bright caret for the cursor row, accent bar
@@ -83,17 +86,46 @@ func (m *model) ensureVisualVisible() {
 	}
 }
 
-// buildVisualRef is the pure seam: the range over the inclusive line span
-// [min(anchor,cursor), max], as range:<entryID(min)>..<entryID(max)>, or "" if
-// either endpoint can't be resolved.
+// buildVisualText renders the inclusive visual span [min(anchor,cursor),max] to
+// plain displayed text. With no anchor (visualAnchor < 0) it is just the caret
+// row. "" if the span resolves to nothing.
+func buildVisualText(m *model) string {
+	lo, hi := m.visualCursor, m.visualCursor
+	if m.visualAnchor >= 0 {
+		lo, hi = m.visualAnchor, m.visualCursor
+		if lo > hi {
+			lo, hi = hi, lo
+		}
+	}
+	return m.textForRows(rangeSlice(lo, hi))
+}
+
+// copyVisualText copies the visual span's text (OSC 52) and flashes a count.
+func (m *model) copyVisualText() {
+	txt := buildVisualText(m)
+	if txt == "" {
+		return
+	}
+	osc52Copy(txt)
+	m.flash = fmt.Sprintf("copied %d lines", strings.Count(txt, "\n")+1)
+}
+
+// buildVisualRef is the reference seam: the visual span as line:<id> (single
+// owning entry) or range:<a>..<b>. With no anchor it is the caret row.
 func buildVisualRef(m *model) string {
-	lo, hi := m.visualAnchor, m.visualCursor
-	if lo > hi {
-		lo, hi = hi, lo
+	lo, hi := m.visualCursor, m.visualCursor
+	if m.visualAnchor >= 0 {
+		lo, hi = m.visualAnchor, m.visualCursor
+		if lo > hi {
+			lo, hi = hi, lo
+		}
 	}
 	a, b := m.entryIDForLine(lo), m.entryIDForLine(hi)
 	if a == "" || b == "" {
 		return ""
+	}
+	if a == b {
+		return "line:" + a
 	}
 	return fmt.Sprintf("range:%s..%s", a, b)
 }
@@ -112,6 +144,22 @@ func (m *model) copyVisualSelection() {
 // handleVisualKey processes keys while in visual mode. Only up/down (arrows +
 // j/k), space, and esc act; any other key is ignored (stays in visual mode).
 func (m *model) handleVisualKey(msg tea.KeyMsg) *model {
+	// Copy keys resolve through the keymap so y/Y stay remappable even though
+	// visual mode otherwise bypasses the main keymap dispatch. Only the copy
+	// actions return here; every other key (incl. j/k/space/esc, which may also
+	// be keymap-bound) falls through to the hardcoded movement switch below.
+	if act, ok := m.resolvedKM().Lookup(msg.String()); ok {
+		switch act {
+		case keymap.ActionCopyReference:
+			m.copyVisualSelection()
+			m.exitVisual()
+			return m
+		case keymap.ActionCopyText:
+			m.copyVisualText()
+			m.exitVisual()
+			return m
+		}
+	}
 	switch msg.String() {
 	case "up", "k":
 		if m.visualCursor > 0 {
@@ -124,12 +172,7 @@ func (m *model) handleVisualKey(msg tea.KeyMsg) *model {
 		}
 		m.ensureVisualVisible()
 	case " ":
-		if m.visualAnchor < 0 {
-			m.visualAnchor = m.visualCursor
-		} else {
-			m.copyVisualSelection()
-			m.exitVisual()
-		}
+		m.visualAnchor = m.visualCursor // set/re-set the selection start
 	case "esc":
 		m.exitVisual()
 	}
