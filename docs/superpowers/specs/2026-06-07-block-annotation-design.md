@@ -213,11 +213,14 @@ line, recenter):
 - **All blocks:** `]` → next block, `[` → previous block.
 - **Processed blocks:** `}` → next `Processed()` block, `{` → previous.
 
-Both honor `collectVisible` visibility: a target whose head is in a disabled
-group or filtered out by search is skipped (reuse the search-hit visibility
-logic; do not invent a parallel path). Wrap behavior mirrors search nav (stop at
-the ends; no new wrap-prompt for blocks in v1 — just clamp). Navigation reads
-`m.blocks` via `ensureBlocks()`.
+Both skip heads that are hidden by **group-disable or collapse**
+(`lineEnabled`). Navigation **during an active search filter is best-effort**:
+nav jumps `streamTop` to the block head, and `collectVisible` then clamps the
+view to the nearest filtered row — so the landing may sit near, not exactly on,
+a head that the filter would hide. This degrades gracefully (no crash, no layout
+damage); a precise filter-aware nav is out of scope for v1. Wrap behavior
+mirrors search nav (stop at the ends; no wrap-prompt for blocks — just clamp).
+Navigation reads `m.blocks` via `ensureBlocks()`.
 
 ## Component 5: keymap actions + doc
 
