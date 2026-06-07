@@ -23,3 +23,5 @@ log-listener.local.yml
 log-listener.yml
 
 /.junie/
+
+screen-log-listener-*.txt
