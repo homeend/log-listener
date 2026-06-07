@@ -220,6 +220,9 @@ nothing to capture). All of these are validated at startup.
 | `--no-tui`                        | Disable the interactive TUI even when stdout is a TTY.                |
 | `--no-color`                      | Disable ANSI color in stdout.                                         |
 | `--sse <addr>`                    | Enable the SSE broadcast on `addr` (e.g. `127.0.0.1:8080`).           |
+| `--preload <[group=]path>`        | Seed the buffer from a file before tailing (auto-detect raw vs capture). Repeatable. |
+| `--preload-raw <[group=]path>`    | Force raw mode: run the file's lines through the pipeline under a synthetic group.    |
+| `--preload-capture <path>`        | Force capture mode: reconstruct a saved `screen-log-listener-*` export.               |
 
 ### Rule tokens
 

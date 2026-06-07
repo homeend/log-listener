@@ -7,6 +7,16 @@ and this project adheres to phased delivery per `PLAN.md`.
 
 ## [Unreleased]
 
+### Preload the buffer from a file
+- **`--preload <[group=]path>`** (repeatable) seeds the buffer before tailing so
+  the TUI can be driven with canned data — no live logs needed. **Raw** files run
+  through the renderer pipeline under a synthetic group; **capture** files (a
+  saved `screen-log-listener-*` export) are reconstructed faithfully, recovering
+  the original groups/files so block annotation, exception marks, navigation, and
+  save all work on the restored buffer. Mode auto-detects by filename; force it
+  with **`--preload-raw`** / **`--preload-capture`**. `--preload x --once` prints
+  the seeded content and exits (a headless inspection path).
+
 ### Block annotation + exception marks
 - Multi-line log units (stack traces, pretty-printed JSON/XML, indented
   continuations) are grouped into **blocks** by a neutral `internal/blocks`
