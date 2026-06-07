@@ -7,6 +7,20 @@ and this project adheres to phased delivery per `PLAN.md`.
 
 ## [Unreleased]
 
+### TUI: focused-block indicator + visual selection mode
+- **Focused-block `│` indicator**: a cyan `│` in the TUI left margin marks the
+  multi-line block the cursor is currently on — the live preview of what `y` will
+  copy as a `range:` reference. The indicator appears when navigating onto a
+  multi-line block (e.g. via `]`/`[`/`}`/`{` or scrolling) and disappears when
+  the cursor is not on a block or while tailing, so you can always tell whether
+  `y` will produce a block range or the fallback viewport range.
+- **`v` — visual line-selection mode**: a vim-style modal selection layer. Press
+  `v` to enter; move the cursor with ↑/↓ (`j`/`k`); press `space` to anchor the
+  start of the selection, move to the end, then press `space` again to copy a
+  `range:<id>..<id>` reference to the clipboard via OSC 52 and exit the mode.
+  `esc` cancels at any point. The copied reference is the same format `y`
+  produces and is resolvable by the MCP server's `get_range` tool.
+
 ### Embedded MCP server + agent hand-off (`--mcp`, `y`)
 - **`--mcp [addr]`** starts an embedded Streamable-HTTP MCP server (default
   `127.0.0.1:7777`) that shares the live in-memory log buffer alongside the

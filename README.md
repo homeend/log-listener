@@ -559,7 +559,11 @@ at ingest and never reused. IDs in the buffer can be evicted as the ring fills,
 but those that remain are permanent.
 
 **`y` — Copy reference (TUI).** Press `y` in the TUI to copy a paste-ready
-reference to the clipboard via OSC 52. Which reference is produced depends on
+reference to the clipboard via OSC 52. A cyan `│` in the left margin marks the
+multi-line block the cursor is currently on — that is the block `y` will copy as
+a `range:`; the indicator disappears when the cursor is not on a multi-line block
+(or while tailing), so you can always tell whether `y` will produce a block range
+or the fallback viewport range. Which reference is produced depends on
 context:
 
 | Context                           | Copied reference                              |
@@ -731,6 +735,7 @@ below. The authoritative per-OS reference is generated from the code into
 | **`}`** / **`{`**   | **Jump to the next / previous processor-matched block (e.g. exception).** |
 | **`e`**             | **Toggle the exception left-bar marker.**             |
 | **`y`**             | **Copy reference to clipboard (OSC 52) — `line:<id>`, block `range`, or viewport `range` depending on context (see MCP server section).** |
+| **`v`**             | **Enter visual line-selection mode: `space` sets the selection start; move with ↑/↓ or `j`/`k`; `space` again copies a `range:<id>..<id>` reference (OSC 52) and exits; `esc` cancels.** |
 
 When you pan horizontally (`←` / `→`), the visible window is clipped from
 the left while ANSI styling (colors and the search highlight) is preserved
