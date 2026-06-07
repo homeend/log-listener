@@ -24,6 +24,13 @@ func TestDecomposeLinesExpandsTabs(t *testing.T) {
 	}
 }
 
+func TestDecomposeLinesEmpty(t *testing.T) {
+	got := DecomposeLines(Event{})
+	if len(got) != 1 || got[0].Text != "" || got[0].IsCont {
+		t.Errorf("empty event: want one empty head row, got %+v", got)
+	}
+}
+
 func TestDecomposeLinesJSONBlock(t *testing.T) {
 	ev := Event{Rendered: []Part{
 		{Type: "text", Value: "got json"},

@@ -25,7 +25,9 @@ func DecomposeLines(ev Event) []DisplayLine {
 	for _, p := range ev.Rendered {
 		switch p.Type {
 		case "text":
-			textBuf.WriteString(p.Value.(string))
+			if s, ok := p.Value.(string); ok {
+				textBuf.WriteString(s)
+			}
 		case "json":
 			if b, err := json.MarshalIndent(p.Value, "", "  "); err == nil {
 				blocks = append(blocks, string(b))
