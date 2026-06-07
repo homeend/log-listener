@@ -16,9 +16,10 @@ and this project adheres to phased delivery per `PLAN.md`.
   guesses the language (Python/Java/Kotlin/Go/JS/TS/Rust/C-C++/PHP). Detection
   is heuristic; Go panics may still split into multiple blocks.
 - **`e`** toggles a red left-bar (`▌`) drawn on exception blocks. **`]`/`[`**
-  jump between all blocks; **`}`/`{`** jump between processor-matched blocks.
-  All keys are remappable via the `keybindings:` block. IDs/clipboard for
-  agent hand-off arrive with the MCP server.
+  jump between multi-line blocks (single-line entries are skipped); **`}`/`{`**
+  jump between processor-matched (exception) blocks. All keys are remappable via
+  the `keybindings:` block. IDs/clipboard for agent hand-off arrive with the
+  MCP server.
 
 ### Installable via `go install`
 - The module path is now `github.com/homeend/log-listener` (was the bare

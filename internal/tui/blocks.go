@@ -94,8 +94,22 @@ func (m *model) jumpToBlockHead(idx int) {
 	}
 }
 
+// isNavTarget reports whether b is a destination for block navigation. Marked
+// nav (}/{) targets processor-matched blocks. Plain nav (]/[) targets only
+// MULTI-LINE blocks (End > Start) — single-line log entries are each their own
+// degenerate block, but stepping through every line is not "jump to the next
+// block"; the user wants to hop between the multi-row structures (stack traces,
+// indented config dumps, JSON/XML), exceptions or not.
+func (m *model) isNavTarget(b blocks.Block, markedOnly bool) bool {
+	if markedOnly {
+		return b.Processed()
+	}
+	return b.End > b.Start
+}
+
 // gotoNextBlock moves to the next block head after the anchor. markedOnly limits
-// the search to processor-matched (Processed) blocks. No-op if none.
+// the search to processor-matched (Processed) blocks; otherwise to multi-line
+// blocks. No-op if none.
 func (m *model) gotoNextBlock(markedOnly bool) {
 	m.ensureBlocks()
 	anchor := m.navAnchor()
@@ -103,7 +117,7 @@ func (m *model) gotoNextBlock(markedOnly bool) {
 		if b.Start <= anchor {
 			continue
 		}
-		if markedOnly && !b.Processed() {
+		if !m.isNavTarget(b, markedOnly) {
 			continue
 		}
 		if !m.blockHeadEnabled(b) {
@@ -123,7 +137,7 @@ func (m *model) gotoPrevBlock(markedOnly bool) {
 		if b.Start >= anchor {
 			continue
 		}
-		if markedOnly && !b.Processed() {
+		if !m.isNavTarget(b, markedOnly) {
 			continue
 		}
 		if !m.blockHeadEnabled(b) {

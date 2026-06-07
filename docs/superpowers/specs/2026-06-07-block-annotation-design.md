@@ -210,7 +210,10 @@ Four new keymap actions, all overridable, dispatched like the existing search-hi
 nav (`unstickFromTail`, set `streamTop` to the target block's first **visible**
 line, recenter):
 
-- **All blocks:** `]` → next block, `[` → previous block.
+- **Multi-line blocks:** `]` → next, `[` → previous. Targets only blocks
+  spanning more than one row (`End > Start`); single-line log entries (each a
+  degenerate block) are skipped, so this hops between the multi-row structures
+  (stack traces, indented dumps, JSON/XML), exceptions or not.
 - **Processed blocks:** `}` → next `Processed()` block, `{` → previous.
 
 Both skip heads that are hidden by **group-disable or collapse**
