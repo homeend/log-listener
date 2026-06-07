@@ -307,6 +307,13 @@ type model struct {
 	searchTerm  string
 	searchHit   int
 	wrapPrompt  rune
+
+	// Visual selection mode (vim-style `v`): visualMode gates the modal key
+	// path; visualCursor is the moving line; visualAnchor is the selection
+	// start (-1 until the first space sets it).
+	visualMode   bool
+	visualCursor int
+	visualAnchor int
 	// lastQuery is the most recently committed query (original case),
 	// preserved across clears so "/"+Enter repeats it. filterMode is the
 	// `t` "show only matching entries" toggle (used by later tasks).
@@ -373,6 +380,7 @@ func newModel(scrollback int) *model {
 		showFile:     true,
 		groupEnabled: map[string]bool{},
 		searchHit:    -1,
+		visualAnchor: -1,
 
 		showExceptionMarks: true,
 	}
@@ -1362,6 +1370,10 @@ func (m *model) renderStream(rows int) string {
 		if bar, ok := m.exceptionBar(idx); ok {
 			styled = bar + styled
 			visW += exceptionBarWidth
+		}
+		if fb, ok := m.focusBar(idx); ok {
+			styled = fb + styled
+			visW += focusBarWidth
 		}
 		rendered = append(rendered, m.clipLine(styled, visW))
 	}
