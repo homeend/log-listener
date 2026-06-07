@@ -63,12 +63,12 @@ func (s *Server) getRange(_ context.Context, _ *mcpsdk.CallToolRequest, in GetRa
 
 type GetContextInput struct {
 	ID     string `json:"id"`
-	Before int    `json:"before"`
-	After  int    `json:"after"`
+	Before int    `json:"before,omitempty"`
+	After  int    `json:"after,omitempty"`
 }
 type GetScrollbackInput struct {
-	Limit  int `json:"limit"`
-	Offset int `json:"offset"`
+	Limit  int `json:"limit,omitempty"`
+	Offset int `json:"offset,omitempty"`
 }
 
 func (s *Server) getContext(_ context.Context, _ *mcpsdk.CallToolRequest, in GetContextInput) (*mcpsdk.CallToolResult, EntriesOutput, error) {
@@ -108,8 +108,8 @@ func (s *Server) getScrollback(_ context.Context, _ *mcpsdk.CallToolRequest, in 
 
 type SearchInput struct {
 	Query string `json:"query"`
-	Regex bool   `json:"regex"`
-	Limit int    `json:"limit"`
+	Regex bool   `json:"regex,omitempty"`
+	Limit int    `json:"limit,omitempty"`
 }
 type SearchHitDTO struct {
 	ID          string `json:"id"`

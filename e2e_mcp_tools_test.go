@@ -98,7 +98,7 @@ func TestE2EMCPToolsAgainstPreload(t *testing.T) {
 	defer sess.Close()
 
 	var sr mcp.SearchOutput
-	decodeResult(t, mcpCall(t, sess, "search", map[string]any{"query": "alice", "regex": false, "limit": 10}), &sr)
+	decodeResult(t, mcpCall(t, sess, "search", map[string]any{"query": "alice"}), &sr)
 	if len(sr.Hits) != 1 || sr.Hits[0].ID != "L1" {
 		t.Fatalf("search alice: %+v", sr)
 	}
