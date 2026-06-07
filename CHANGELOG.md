@@ -7,19 +7,24 @@ and this project adheres to phased delivery per `PLAN.md`.
 
 ## [Unreleased]
 
-### TUI: focused-block indicator + visual selection mode
+### TUI: focused-block indicator + visual selection mode + copy-text key
 - **Focused-block `│` indicator**: a cyan `│` in the TUI left margin marks the
   multi-line block the cursor is currently on — the live preview of what `y` will
   copy as a `range:` reference. The indicator appears when navigating onto a
   multi-line block (e.g. via `]`/`[`/`}`/`{` or scrolling) and disappears when
   the cursor is not on a block or while tailing, so you can always tell whether
   `y` will produce a block range or the fallback viewport range.
-- **`v` — visual line-selection mode**: a vim-style modal selection layer. Press
-  `v` to enter; move the cursor with ↑/↓ (`j`/`k`); press `space` to anchor the
-  start of the selection, move to the end, then press `space` again to copy a
-  `range:<id>..<id>` reference to the clipboard via OSC 52 and exit the mode.
-  `esc` cancels at any point. The copied reference is the same format `y`
-  produces and is resolvable by the MCP server's `get_range` tool.
+- **`Y` — copy text as displayed**: press `Y` (capital) to copy the selected text
+  (no ANSI color codes) as shown in the TUI, with `[group] file:` prefixes and
+  pretty-printed JSON/XML blocks intact. Mirrors `y`'s context-aware selection:
+  search hit, focused block, or viewport. Text is copied to the clipboard via
+  OSC 52; very large selections may exceed the terminal's OSC 52 size limit —
+  use `s` (save viewport) or `S` (save full buffer) instead.
+- **`v` — unified visual line-selection mode**: a vim-style modal selection layer.
+  Press `v` to enter; move the cursor with ↑/↓ (`j`/`k`); press `space` to anchor
+  the start of the selection, move to the end, then press `y` to copy a
+  `range:<id>..<id>` reference or `Y` to copy the selected text, both via OSC 52
+  and exit the mode. `esc` cancels at any point.
 
 ### Embedded MCP server + agent hand-off (`--mcp`, `y`)
 - **`--mcp [addr]`** starts an embedded Streamable-HTTP MCP server (default

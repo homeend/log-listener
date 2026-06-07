@@ -577,6 +577,14 @@ context:
 Paste the reference to an agent. It resolves `line:<id>` via `get_line` and
 `range:<a>..<b>` via `get_range`.
 
+**`Y` — Copy text as displayed (TUI).** Press `Y` (capital) to copy the selected
+text as displayed — same contexts as `y` (search hit, focused block, or viewport),
+but the **text itself** instead of a reference. Output is plain text with no ANSI
+color codes, with `[group] filename:` prefixes, and pretty-printed JSON/XML blocks
+kept as formatted. Text is copied to the clipboard via OSC 52. Very large
+selections may exceed the terminal's OSC 52 size limit; use `s` (save viewport) or
+`S` (save full buffer) as the escape hatch.
+
 The MCP server runs alongside stdout/SSE/TUI and is **not** started in
 `--once` mode. No authentication — bind to loopback only.
 
@@ -737,7 +745,8 @@ below. The authoritative per-OS reference is generated from the code into
 | **`}`** / **`{`**   | **Jump to the next / previous processor-matched block (e.g. exception).** |
 | **`e`**             | **Toggle the exception left-bar marker.**             |
 | **`y`**             | **Copy reference to clipboard (OSC 52) — `line:<id>`, block `range`, or viewport `range` depending on context (see MCP server section).** |
-| **`v`**             | **Enter visual line-selection mode: `space` sets the selection start; move with ↑/↓ or `j`/`k`; `space` again copies a `range:<id>..<id>` reference (OSC 52) and exits; `esc` cancels.** |
+| **`Y`**             | **Copy selected text as displayed (no ANSI color, with prefixes, OSC 52) — same contexts as `y`; large selections may hit the OSC 52 size limit, use `s`/`S` to save instead.** |
+| **`v`**             | **Enter visual line-selection mode: `space` sets the selection start; move with ↑/↓ or `j`/`k`; press `y` to copy the reference and exit, or `Y` to copy the text and exit; `esc` cancels.** |
 
 When you pan horizontally (`←` / `→`), the visible window is clipped from
 the left while ANSI styling (colors and the search highlight) is preserved
