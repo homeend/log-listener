@@ -39,6 +39,8 @@ Authoritative design + per-phase history lives in `PLAN.md` and `CHANGELOG.md`.
 | `internal/sink`            | Colorized stdout + SSE hub.                                   |
 | `internal/tui`             | bubbletea app: streaming view + Ctrl+I file overlay.          |
 | `internal/keymap`          | Actions ↔ per-OS keys, glyph display, override resolve, doc gen. |
+| `internal/blocks`          | Segments lines into multi-line blocks; annotate-only processors (exception detection + language guess). Shared by TUI + future MCP. |
+| `internal/preload`         | Seeds the buffer from a file before tailing: raw lines → pipeline, or a saved `screen-log-listener-*` capture reconstructed faithfully. |
 | `.` (repo root)            | `package main` entry point; wires config → discover → watch → pipeline → sinks/TUI. |
 
 ### Data flow
