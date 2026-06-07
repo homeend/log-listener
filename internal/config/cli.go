@@ -78,7 +78,6 @@ func ParseArgs(args []string, now time.Time) (*Config, error) {
 				return nil, err
 			}
 			cfg.OutputFile = v
-			cfg.cliExplicit["output"] = true
 			i = next
 		case a == "--once":
 			cfg.Once = true
