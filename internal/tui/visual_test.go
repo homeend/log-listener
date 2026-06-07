@@ -119,6 +119,20 @@ func TestVisualBarRendersCursorAndSelection(t *testing.T) {
 	}
 }
 
+func TestVisualEnterClosesOverlays(t *testing.T) {
+	m := newVisualModel(t, "a", "b", "c")
+	m.tailMode = false
+	m.streamTop = 0
+	m.showFiles = true // an overlay is open
+	m = key(m, keyV)
+	if !m.visualMode {
+		t.Fatal("v should enter visual mode")
+	}
+	if m.showFiles || m.showGroupsPanel || m.showRenderersPanel {
+		t.Error("entering visual mode must close any open overlay")
+	}
+}
+
 func TestVisualIndicesClampOnEviction(t *testing.T) {
 	m := newModel(3) // cap 3 lines
 	m2, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 10})

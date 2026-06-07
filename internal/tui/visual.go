@@ -46,6 +46,9 @@ func (m *model) enterVisual() {
 	}
 	m.unstickFromTail()
 	m.tailMode = false
+	m.showFiles = false
+	m.showGroupsPanel = false
+	m.showRenderersPanel = false
 	m.visualMode = true
 	m.visualAnchor = -1
 	if vis := m.collectVisible(m.contentHeight()); len(vis) > 0 {
