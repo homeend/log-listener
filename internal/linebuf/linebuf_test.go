@@ -124,3 +124,22 @@ func TestExceptionsMapsBlockToEntries(t *testing.T) {
 		t.Errorf("BlockOf(L0): %+v", got)
 	}
 }
+
+func TestRerenderKeepsIDsChangesContent(t *testing.T) {
+	b := New(100, decomp)
+	b.Append(ev("g", "/a.log", "original"))
+	b.Rerender(func(group, file, raw string) (render.Event, bool) {
+		return render.Event{Group: group, File: file, Raw: raw,
+			Rendered: []render.Part{{Type: "text", Value: "RE:" + raw}}}, true
+	})
+	e, ok := b.Get("L0")
+	if !ok {
+		t.Fatal("L0 must survive rerender")
+	}
+	if e.Lines[0].Text != "RE:original" {
+		t.Errorf("content not re-rendered: %q", e.Lines[0].Text)
+	}
+	if e.Seq != 0 {
+		t.Errorf("seq must be preserved: %d", e.Seq)
+	}
+}

@@ -300,3 +300,19 @@ func (b *Buffer) BlockOf(id string) *Block {
 	}
 	return nil
 }
+
+// Rerender re-runs renderFn over every stored entry's Raw, replacing Lines but
+// keeping ID/Seq. For config reload only (the pipeline changed). If renderFn
+// returns ok=false for an entry, its Lines are left unchanged.
+func (b *Buffer) Rerender(renderFn func(group, file, raw string) (render.Event, bool)) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	for _, e := range b.entries {
+		rev, ok := renderFn(e.Group, e.File, e.Raw)
+		if !ok {
+			continue
+		}
+		e.Lines = b.decompose(rev)
+	}
+	b.dirty = true
+}
