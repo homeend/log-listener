@@ -126,6 +126,7 @@ type Options struct {
 	SetRendererOn     func(idx int, on bool) // called when shift+digit toggles a renderer
 	RenderFn          RenderFunc             // called per scrollback entry when toggling triggers re-render
 	InitialEvents     []render.Event         // seeded into scrollback before Run (preload)
+	SetViewport       func(from, to string)  // publishes the on-screen entry range (TUI mode only)
 }
 
 // New creates an App from Options. Files and groups must be passed
@@ -153,6 +154,7 @@ func New(opts Options) *App {
 	}
 	m.setRendererEnabled = opts.SetRendererOn
 	m.renderFn = opts.RenderFn
+	m.setViewport = opts.SetViewport
 	for _, ev := range opts.InitialEvents {
 		m.appendEvent(ev)
 	}
@@ -333,6 +335,7 @@ type model struct {
 	renderersScroll    int
 	setRendererEnabled func(idx int, on bool) // pipeline-side flip
 	renderFn           RenderFunc             // re-render a single source
+	setViewport        func(from, to string)  // publishes on-screen entry range to the shared buffer
 
 	// collapseMultiline hides continuation rows in the stream view —
 	// a line whose body starts with whitespace, or any pretty-printed
@@ -1382,12 +1385,29 @@ func (m *model) collectVisible(rows int) []int {
 	return out
 }
 
+// publishViewport reports the on-screen entry range (first..last visible entry
+// id) to the shared buffer, if a publisher is wired. No-op when the callback is
+// nil (tests) or nothing is visible (publishes empty).
+func (m *model) publishViewport(visible []int) {
+	if m.setViewport == nil {
+		return
+	}
+	if len(visible) == 0 {
+		m.setViewport("", "")
+		return
+	}
+	from := m.entryIDForLine(visible[0])
+	to := m.entryIDForLine(visible[len(visible)-1])
+	m.setViewport(from, to)
+}
+
 func (m *model) renderStream(rows int) string {
 	if len(m.lines) == 0 {
 		return m.blankRows(rows)
 	}
 	m.ensureBlocks()
 	visible := m.collectVisible(rows)
+	m.publishViewport(visible)
 	rendered := make([]string, 0, rows)
 	for _, idx := range visible {
 		styled, visW := m.renderDisplayLineAt(idx)

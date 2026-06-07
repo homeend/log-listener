@@ -479,6 +479,7 @@ func runWatchTUI(cfg *config.Config, args []string, dropUnmatched bool, assignme
 		RenderFn: func(group, file, raw string) (render.Event, bool) {
 			return pipePtr.Load().Render(time.Now(), group, file, raw)
 		},
+		SetViewport: buf.SetViewport,
 	})
 
 	ctx, cancel := context.WithCancel(context.Background())
