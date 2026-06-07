@@ -104,3 +104,23 @@ func TestRecentPagination(t *testing.T) {
 		t.Fatalf("recent(2,0): %+v", got)
 	}
 }
+
+func TestExceptionsMapsBlockToEntries(t *testing.T) {
+	b := New(100, decomp)
+	b.Append(ev("g", "/a.log", "panic: boom"))            // L0 (head)
+	b.Append(ev("g", "/a.log", "goroutine 1 [running]:")) // L1 (continuation entry)
+	b.Append(ev("g", "/a.log", "ordinary line"))          // L2
+	exc := b.Exceptions()
+	if len(exc) != 1 {
+		t.Fatalf("want 1 exception block, got %d: %+v", len(exc), exc)
+	}
+	if exc[0].HeadID != "L0" {
+		t.Errorf("head: %s", exc[0].HeadID)
+	}
+	if exc[0].Exception == nil || exc[0].Exception.Language != "go" {
+		t.Errorf("language: %+v", exc[0].Exception)
+	}
+	if got := b.BlockOf("L0"); got == nil || got.HeadID != "L0" {
+		t.Errorf("BlockOf(L0): %+v", got)
+	}
+}

@@ -234,3 +234,69 @@ func (b *Buffer) Recent(limit, offset int) []*Entry {
 	}
 	return out
 }
+
+// ensureBlocks recomputes block segmentation when dirty. Caller must hold the
+// write lock.
+func (b *Buffer) ensureBlocks() {
+	if !b.dirty {
+		return
+	}
+	var flat []blocks.Line
+	var owner []int // flat row index → entry index
+	for ei, e := range b.entries {
+		for _, ln := range e.Lines {
+			flat = append(flat, blocks.Line{Text: ln.Text, IsRenderBlock: ln.IsCont})
+			owner = append(owner, ei)
+		}
+	}
+	segs := blocks.Segment(flat)
+	b.blocks = b.blocks[:0]
+	b.blockOf = map[string]int{}
+	for _, s := range segs {
+		headEntry := b.entries[owner[s.Start]]
+		endEntry := b.entries[owner[s.End]]
+		ids := []string{}
+		seen := map[string]bool{}
+		for f := s.Start; f <= s.End; f++ {
+			id := b.entries[owner[f]].ID
+			if !seen[id] {
+				seen[id] = true
+				ids = append(ids, id)
+			}
+		}
+		blk := Block{HeadID: headEntry.ID, EndID: endEntry.ID,
+			EntryIDs: ids, Exception: s.Exception}
+		idx := len(b.blocks)
+		b.blocks = append(b.blocks, blk)
+		for _, id := range ids {
+			b.blockOf[id] = idx
+		}
+	}
+	b.dirty = false
+}
+
+// Exceptions returns the current exception blocks (head/end IDs + language).
+func (b *Buffer) Exceptions() []Block {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.ensureBlocks()
+	var out []Block
+	for _, blk := range b.blocks {
+		if blk.Exception != nil {
+			out = append(out, blk)
+		}
+	}
+	return out
+}
+
+// BlockOf returns the block containing entry id, or nil.
+func (b *Buffer) BlockOf(id string) *Block {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.ensureBlocks()
+	if idx, ok := b.blockOf[id]; ok {
+		blk := b.blocks[idx]
+		return &blk
+	}
+	return nil
+}
