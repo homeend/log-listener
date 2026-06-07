@@ -161,6 +161,25 @@ func (s *Server) listExceptions(_ context.Context, _ *mcpsdk.CallToolRequest, _ 
 	return nil, out, nil
 }
 
+type ViewportOutput struct {
+	From    string     `json:"from"`
+	To      string     `json:"to"`
+	Entries []EntryDTO `json:"entries"`
+}
+
+func (s *Server) getViewport(_ context.Context, _ *mcpsdk.CallToolRequest, _ EmptyInput) (*mcpsdk.CallToolResult, ViewportOutput, error) {
+	from, to, attached := s.buf.Viewport()
+	if !attached {
+		return nil, ViewportOutput{}, fmt.Errorf("viewport not available — no TUI attached (use get_scrollback)")
+	}
+	es := s.buf.Range(from, to)
+	out := ViewportOutput{From: from, To: to, Entries: make([]EntryDTO, 0, len(es))}
+	for _, e := range es {
+		out.Entries = append(out.Entries, toDTO(e, ""))
+	}
+	return nil, out, nil
+}
+
 func (s *Server) registerTools(srv *mcpsdk.Server) {
 	mcpsdk.AddTool(srv, &mcpsdk.Tool{Name: "get_line",
 		Description: "Get one log record by its id."}, s.getLine)
@@ -174,4 +193,6 @@ func (s *Server) registerTools(srv *mcpsdk.Server) {
 		Description: "Find records matching a substring (or regex). Newest-first."}, s.search)
 	mcpsdk.AddTool(srv, &mcpsdk.Tool{Name: "list_exceptions",
 		Description: "List detected exception blocks as id ranges + language."}, s.listExceptions)
+	mcpsdk.AddTool(srv, &mcpsdk.Tool{Name: "get_viewport",
+		Description: "The TUI's current on-screen entry range and entries (what the user sees / y copies). Errors when no TUI is attached."}, s.getViewport)
 }

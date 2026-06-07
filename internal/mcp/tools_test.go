@@ -92,3 +92,24 @@ func TestListExceptionsTool(t *testing.T) {
 		t.Fatalf("list_exceptions: %+v", out)
 	}
 }
+
+func TestGetViewportAttached(t *testing.T) {
+	s := New("127.0.0.1:0", newTestBuf())
+	seed(s, "a", "b", "c")
+	s.buf.SetViewport("L0", "L2")
+	_, out, err := s.getViewport(context.Background(), nil, EmptyInput{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out.From != "L0" || out.To != "L2" || len(out.Entries) != 3 {
+		t.Fatalf("get_viewport: %+v", out)
+	}
+}
+
+func TestGetViewportErrorsWhenNoTUI(t *testing.T) {
+	s := New("127.0.0.1:0", newTestBuf())
+	seed(s, "a", "b")
+	if _, _, err := s.getViewport(context.Background(), nil, EmptyInput{}); err == nil {
+		t.Error("get_viewport must error when no TUI has attached")
+	}
+}
