@@ -44,6 +44,7 @@ const (
 	ActionPrevMarkedBlock      Action = "prev_marked_block"
 	ActionToggleExceptionMarks Action = "toggle_exception_marks"
 	ActionCopyReference        Action = "copy_reference"
+	ActionCopyText             Action = "copy_text"
 	ActionVisualSelect         Action = "visual_select"
 )
 
@@ -92,6 +93,7 @@ var AllActions = []ActionDef{
 	{ActionPrevMarkedBlock, "Previous marked block", "Jump to the previous processor-matched block.", "main"},
 	{ActionToggleExceptionMarks, "Toggle exception marks", "Show/hide the exception left-bar.", "main"},
 	{ActionCopyReference, "Copy reference", "Copy a paste-ready id reference (search line, block range, or viewport range) for an agent.", "main"},
+	{ActionCopyText, "Copy text", "Copy the selected text (search line, block, viewport, or visual selection) as displayed.", "main"},
 	{ActionVisualSelect, "Visual select", "Enter visual line-selection mode (space sets then copies a range; esc cancels).", "main"},
 }
 

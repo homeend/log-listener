@@ -38,6 +38,7 @@ func defaultFor(goos string) map[Action][]string {
 		ActionPrevMarkedBlock:      {"{"},
 		ActionToggleExceptionMarks: {"e"},
 		ActionCopyReference:        {"y"},
+		ActionCopyText:             {"Y"},
 		ActionVisualSelect:         {"v"},
 		// Fast scroll defaults differ per-OS; set below.
 	}
