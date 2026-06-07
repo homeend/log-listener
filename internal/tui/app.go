@@ -419,6 +419,18 @@ func (m *model) maybeReStick() {
 	}
 }
 
+// cursorIndex returns the focused absolute m.lines index: the active search hit
+// when searching, else the top visible row (browse anchor), else -1.
+func (m *model) cursorIndex() int {
+	if m.searchHit >= 0 {
+		return m.searchHit
+	}
+	if !m.tailMode && m.streamTop >= 0 && m.streamTop < len(m.lines) {
+		return m.streamTop
+	}
+	return -1
+}
+
 func (m *model) Init() tea.Cmd { return nil }
 
 var (
