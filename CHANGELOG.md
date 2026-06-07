@@ -27,11 +27,18 @@ and this project adheres to phased delivery per `PLAN.md`.
   TUI / stdout / SSE sinks. Optional value: bare `--mcp` uses the default;
   `--mcp host:port` overrides. Not active in `--once` mode. No authentication
   — local dev aid only. CLI flag only (no YAML `output.mcp` field this cycle).
-- **Six read-only MCP tools**: `get_line(id)`, `get_range(from,to)`,
+- **Seven read-only MCP tools**: `get_line(id)`, `get_range(from,to)`,
   `get_context(id,before,after)`, `get_scrollback(limit,offset)`,
-  `search(query,regex,limit)`, `list_exceptions()`. All operate on the shared
-  `linebuf.Buffer` and return JSON. Implemented in the new `internal/mcp`
-  package using the official Go MCP SDK (`github.com/modelcontextprotocol/go-sdk`).
+  `search(query,regex,limit)`, `list_exceptions()`, and the new
+  **`get_viewport()`** — returns the TUI's current on-screen entry range and
+  entries (exactly what the user sees / what `y` copies as the fallback viewport
+  range); returns an error when no TUI is attached (headless / `--no-tui`) — use
+  `get_scrollback` instead. All operate on the shared `linebuf.Buffer` and return
+  JSON. Implemented in the new `internal/mcp` package using the official Go MCP
+  SDK (`github.com/modelcontextprotocol/go-sdk`).
+- **End-to-end MCP tests**: integration tests drive the real embedded server with
+  the Go MCP client against a preloaded fixture, exercising `get_viewport`,
+  `search`, `list_exceptions`, and `get_range` end-to-end (no mocking).
 - **Stable per-record IDs**: every log record is assigned a permanent opaque ID
   (`L0`, `L1`, … base-36) at fan-out ingest by the new `internal/linebuf`
   concurrency-safe ring buffer. IDs are stable for the lifetime of the record

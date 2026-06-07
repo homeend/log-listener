@@ -41,7 +41,7 @@ linker flag.
   [`KEYBINDINGS.md`](KEYBINDINGS.md).
 - **Embedded MCP server for agent hand-off.** `--mcp [addr]` starts a
   Streamable-HTTP MCP server (default `127.0.0.1:7777`) sharing the live log
-  buffer. An AI agent can call six read tools against it; press `y` in the TUI
+  buffer. An AI agent can call seven read tools against it; press `y` in the TUI
   to copy a paste-ready reference to the clipboard (OSC 52) that the agent
   resolves immediately. Local dev aid only — no authentication.
 - **Static binary, CGO-free.** No CGO; `build-static` produces a fully static
@@ -553,6 +553,7 @@ the TUI is watching. An AI agent connects and calls six read-only tools:
 | `get_scrollback(limit, offset)` | The most recent records, newest-first, paginated by `limit`/`offset`. |
 | `search(query, regex, limit)`  | Records whose text contains `query` (or matches `regex`), newest-first. |
 | `list_exceptions()`            | All exception-annotated blocks detected in the buffer.                  |
+| `get_viewport()`               | The TUI's current on-screen entry range and entries — exactly what the user sees and what `y` copies as the fallback viewport range. Returns an error when no TUI is attached (headless / `--no-tui`) — use `get_scrollback` instead. |
 
 **Record IDs** are stable opaque strings (`L0`, `L1`, `L2`, … base-36) assigned
 at ingest and never reused. IDs in the buffer can be evicted as the ring fills,
