@@ -185,3 +185,39 @@ func TestBadKeybindingExitsNonZero(t *testing.T) {
 		t.Errorf("stderr should explain the collision; got %q", errb.String())
 	}
 }
+
+func TestRunOnceWritesOutputFile(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "app.log"), []byte("hello\nworld\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Output file lives in a SEPARATE temp dir so it isn't itself discovered
+	// and tailed by -d.
+	out := filepath.Join(t.TempDir(), "capture.txt")
+	if err := os.WriteFile(out, []byte("STALE\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var stdout, stderr bytes.Buffer
+	code := run([]string{"-d", dir, "--once", "--no-color", "-o", out}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("exit %d, stderr=%q", code, stderr.String())
+	}
+
+	b, err := os.ReadFile(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := string(b)
+	if strings.Contains(got, "STALE") {
+		t.Fatalf("output file was not truncated: %q", got)
+	}
+	for _, want := range []string{"app.log: hello", "app.log: world"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("missing %q in output file: %q", want, got)
+		}
+	}
+	if strings.Contains(got, "\x1b[") {
+		t.Fatalf("ANSI escape leaked into output file: %q", got)
+	}
+}
