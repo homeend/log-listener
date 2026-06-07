@@ -29,15 +29,20 @@ visual-mode span — but emits the rendered, no-color text instead of an
   identical to what the save-to-file feature writes (`plainExportLine`).
 - Multi-row selections joined by `\n`.
 - A flash shows a **count** (`copied N lines`), never the dumped text.
-- `y` (lowercase / `ActionCopyReference`) is **completely unchanged**.
+- **Unified visual-mode copy keys (coherence change):** the visual flow becomes
+  `v` → `space` (set selection start / anchor) → up/down → `y` (copy range
+  **reference**, exit) or `Y` (copy **text**, exit); `esc` cancels. `space` only
+  anchors — it no longer copies; pressing it again re-anchors to the current
+  row. With no anchor set, `y`/`Y` copy just the caret row. So `y`/`Y` mean the
+  same thing in normal and visual mode (reference vs text).
 - A parity test guarantees `y` and `Y` resolve the same entries per context.
 
 **Non-goals (YAGNI):**
 - No refactor of `buildReference` / `copyref.go` into a shared resolver
   (load-bearing, just-merged, with explicit-focus + single-entry-block
-  special-casing). `Y` mirrors its precedence in a separate function.
-- No change to the two-`space` visual flow (still copies the range reference).
-- No lowercase-`y`-in-visual-mode behavior.
+  special-casing). `Y` mirrors its precedence in a separate function. (Normal-
+  mode `y` / `buildReference` behavior is unchanged; only its *visual-mode*
+  routing is added.)
 - No working around terminal OSC 52 payload size caps — very large
   viewport/scrollback copies may be truncated by the terminal; save-to-file
   (`s`/`S`) remains the escape hatch for big content. Documented, not solved.
@@ -57,9 +62,11 @@ visual-mode span — but emits the rendered, no-color text instead of an
   ": " + stripANSI(dl.body)`. `snapshotViewport()` maps `collectVisible(...)`
   rows through it.
 - `internal/tui/visual.go`: visual mode tracks `visualAnchor`/`visualCursor`
-  (absolute `m.lines` indices; anchor `-1` = unset). `handleVisualKey` handles
-  up/k, down/j, space (sets anchor, then copies range ref + exits), esc.
-  `buildVisualRef(m)` → `range:<entryID(lo)>..<entryID(hi)>`.
+  (absolute `m.lines` indices; anchor `-1` = unset). `handleVisualKey` CURRENTLY
+  handles up/k, down/j, space (first sets anchor, second copies range ref +
+  exits), esc — this two-`space` copy behavior is being REPLACED (see below).
+  `buildVisualRef(m)` → `range:<entryID(lo)>..<entryID(hi)>` (currently returns
+  "" when no anchor is set; will be extended to the caret row).
 - `internal/tui/app.go`: `km.Lookup(key) (Action, bool)` resolves keys to
   actions in the main `Update` switch. Visual mode intercepts **before** that
   switch (`if m.visualMode { return m.handleVisualKey(msg), nil }`), so visual
@@ -207,9 +214,34 @@ func (m *model) copyVisualText() {
 (Adds `fmt`/`strings` imports to `visual.go` as needed — `fmt` is already
 imported.)
 
-## Component 4: dispatch (`internal/tui/app.go`)
+Also extend the EXISTING `buildVisualRef` to handle the no-anchor case (so `y`
+in visual mode with no anchor yet copies the caret row's reference), matching
+`buildVisualText`:
+```go
+func buildVisualRef(m *model) string {
+	lo, hi := m.visualCursor, m.visualCursor
+	if m.visualAnchor >= 0 {
+		lo, hi = m.visualAnchor, m.visualCursor
+		if lo > hi {
+			lo, hi = hi, lo
+		}
+	}
+	a, b := m.entryIDForLine(lo), m.entryIDForLine(hi)
+	if a == "" || b == "" {
+		return ""
+	}
+	if a == b {
+		return "line:" + a
+	}
+	return fmt.Sprintf("range:%s..%s", a, b)
+}
+```
+(Single-row visual selections now yield `line:<id>`, consistent with how `y`
+copies a single entry in normal mode.)
 
-**Normal mode** — add a case next to `ActionCopyReference`:
+## Component 4: dispatch
+
+**Normal mode (`internal/tui/app.go`)** — add a case next to `ActionCopyReference`:
 ```go
 		case keymap.ActionCopyText:
 			if _, n := m.copySelectionText(); n > 0 {
@@ -219,31 +251,67 @@ imported.)
 			}
 ```
 
-**Visual mode** — in `handleVisualKey`, route the keymap-bound copy-text key so
-`Y` stays remappable (visual mode otherwise bypasses the keymap). Add, before
-the existing `switch msg.String()` hardcoded cases, a keymap check:
+**Visual mode (`internal/tui/visual.go`, `handleVisualKey`) — UNIFIED COPY KEYS.**
+This replaces the two-`space` flow. The new key semantics:
+- `space` → set the anchor (`m.visualAnchor = m.visualCursor`) only; never
+  copies, never exits. Pressing it again re-anchors.
+- `y` (`ActionCopyReference`) → `copyVisualSelection()` (range/line reference)
+  then `exitVisual()`.
+- `Y` (`ActionCopyText`) → `copyVisualText()` (text) then `exitVisual()`.
+- up/k, down/j, esc → unchanged.
+
+Route the copy keys through the keymap (so they stay remappable even though
+visual mode bypasses the main keymap dispatch). Structure `handleVisualKey` as:
 ```go
-	if act, ok := m.km.Lookup(msg.String()); ok && act == keymap.ActionCopyText {
-		m.copyVisualText()
-		m.exitVisual()
-		return m
+func (m *model) handleVisualKey(msg tea.KeyMsg) *model {
+	if act, ok := m.km.Lookup(msg.String()); ok {
+		switch act {
+		case keymap.ActionCopyReference:
+			m.copyVisualSelection()
+			m.exitVisual()
+			return m
+		case keymap.ActionCopyText:
+			m.copyVisualText()
+			m.exitVisual()
+			return m
+		}
 	}
+	switch msg.String() {
+	case "up", "k":
+		// ... unchanged ...
+	case "down", "j":
+		// ... unchanged ...
+	case " ":
+		m.visualAnchor = m.visualCursor // set/re-set the selection start
+	case "esc":
+		m.exitVisual()
+	}
+	return m
+}
 ```
-The two-`space` reference flow and esc/j/k handling are untouched.
+`copyVisualSelection()` already builds the ref via `buildVisualRef` and sets the
+`copied <ref>` flash; it just needs `exitVisual()` after (the old second-`space`
+case did this — that case is removed). Requires importing `keymap` in
+`visual.go`.
 
 ## Data flow
 
-`Y` keypress → (visual mode?) `handleVisualKey` keymap check → `copyVisualText`
-→ `osc52Copy` + flash, `exitVisual`. Otherwise main `Update` switch →
-`ActionCopyText` → `copySelectionText` → `selectedRows` (mirrors
-`buildReference`) → `textForRows` → `plainExportLine` per row → `osc52Copy` +
+In visual mode a key first resolves via `m.km.Lookup`: `ActionCopyReference`
+(`y`) → `copyVisualSelection` + `exitVisual`; `ActionCopyText` (`Y`) →
+`copyVisualText` + `exitVisual`. Other keys fall through to the hardcoded
+up/down/space/esc switch (`space` sets the anchor). In normal mode, the main
+`Update` switch routes `ActionCopyText` → `copySelectionText` → `selectedRows`
+(mirrors `buildReference`) → `textForRows` → `plainExportLine` → `osc52Copy` +
 flash.
 
 ## Edge cases
 
 - Empty buffer / nothing visible → `selectedRows` empty → `buildSelectionText`
   "" → `nothing to copy` flash, no clipboard write.
-- Visual mode, no anchor → single caret row copied.
+- Visual mode, no anchor → single caret row copied (`y` → `line:<id>`, `Y` →
+  that row's text).
+- Visual `space` pressed repeatedly → re-anchors to the current caret row; never
+  copies or exits.
 - Search hit whose entry spans multiple rows → all rows of that entry (head +
   continuations), matching `y` copying `line:<id>`.
 - Out-of-range row indices defensively skipped in `textForRows`.
@@ -277,6 +345,19 @@ test helpers / `push`), then assert `buildSelectionText`:
   those rows; with `visualAnchor = -1` → just the caret row.
 - **empty**: empty model → `buildSelectionText` == "" and `copySelectionText`
   returns `("",0)`.
+
+**Visual-mode flow (`internal/tui`)** — the new unified keys:
+- `v` → `space` → `j` → `Y` copies the span's text and exits (flash
+  `copied N lines`).
+- `v` → `space` → `j` → `y` copies the span's range reference and exits (flash
+  `copied range:<id>..<id>`).
+- `space` only sets the anchor (assert `visualAnchor` set, still in visual mode,
+  nothing copied).
+- no-anchor `y` → `line:<caret id>`; no-anchor `Y` → caret row text.
+- **REPLACE** the existing `TestVisualTwoSpaceCopiesRange` (in `visual_test.go`)
+  — the second-`space`-copies behavior is gone; rewrite it to the `…→y`/`…→Y`
+  flow. Keep `TestVisualEnter`, `TestVisualRefNormalisesOrder`, etc. (update the
+  latter if `buildVisualRef`'s single-row `line:` change affects it).
 
 **Parity (`internal/tui`)** — the y/Y anti-drift guard: for each context
 (search / block / viewport / visual), assert the **entry ids** at the ends of
