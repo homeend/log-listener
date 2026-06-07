@@ -85,6 +85,8 @@ func (m *model) blockHeadEnabled(b blocks.Block) bool {
 
 // jumpToBlockHead moves the viewport so the block head at line idx is the top
 // row, leaving tail mode. Mirrors search-hit navigation's "anchor at top".
+// Sets blockFocused so focusBar and buildReference know the user explicitly
+// arrived via block navigation (not plain scrolling).
 func (m *model) jumpToBlockHead(idx int) {
 	m.unstickFromTail()
 	m.tailMode = false
@@ -92,6 +94,7 @@ func (m *model) jumpToBlockHead(idx int) {
 	if m.streamTop < 0 {
 		m.streamTop = 0
 	}
+	m.blockFocused = true
 }
 
 // isNavTarget reports whether b is a destination for block navigation. Marked

@@ -354,6 +354,12 @@ type model struct {
 	blocks             []blocks.Block
 	blocksDirty        bool
 	showExceptionMarks bool
+
+	// blockFocused is true when the user explicitly navigated to a multi-line
+	// block via block-nav keys (]/[/}/{). Set by jumpToBlockHead; cleared by
+	// any vertical scroll, esc, or cap eviction. Gates the focusBar indicator
+	// and the block-copy rule in buildReference.
+	blockFocused bool
 }
 
 // RenderFunc runs a single (group, file, raw) tuple through the
@@ -425,18 +431,6 @@ func (m *model) maybeReStick() {
 	if enabled <= rows {
 		m.tailMode = true
 	}
-}
-
-// cursorIndex returns the focused absolute m.lines index: the active search hit
-// when searching, else the top visible row (browse anchor), else -1.
-func (m *model) cursorIndex() int {
-	if m.searchHit >= 0 {
-		return m.searchHit
-	}
-	if !m.tailMode && m.streamTop >= 0 && m.streamTop < len(m.lines) {
-		return m.streamTop
-	}
-	return -1
 }
 
 func (m *model) Init() tea.Cmd { return nil }
@@ -518,6 +512,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.groupsScroll = 0
 		case keymap.ActionCloseOverlay:
+			m.blockFocused = false
 			if m.showFiles {
 				m.showFiles = false
 			}
@@ -563,6 +558,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Filtering an emptied buffer would render blank; drop it.
 			m.filterMode = false
 		case keymap.ActionScrollUp:
+			m.blockFocused = false
 			if m.showFiles {
 				if m.filesScroll > 0 {
 					m.filesScroll--
@@ -577,6 +573,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		case keymap.ActionScrollDown:
+			m.blockFocused = false
 			if m.showFiles {
 				if m.filesScroll < len(m.files)-1 {
 					m.filesScroll++
@@ -588,6 +585,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.maybeReStick()
 			}
 		case keymap.ActionPageUp:
+			m.blockFocused = false
 			page := m.contentHeight()
 			if m.showFiles {
 				m.filesScroll -= page
@@ -602,6 +600,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		case keymap.ActionPageDown:
+			m.blockFocused = false
 			page := m.contentHeight()
 			if m.showFiles {
 				m.filesScroll += page
@@ -616,6 +615,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.maybeReStick()
 			}
 		case keymap.ActionFastUp:
+			m.blockFocused = false
 			if m.showFiles {
 				m.filesScroll -= vertFastStep
 				if m.filesScroll < 0 {
@@ -629,6 +629,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		case keymap.ActionFastDown:
+			m.blockFocused = false
 			if m.showFiles {
 				m.filesScroll += vertFastStep
 				if m.filesScroll > len(m.files)-1 {
@@ -642,6 +643,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.maybeReStick()
 			}
 		case keymap.ActionTop:
+			m.blockFocused = false
 			if m.showFiles {
 				m.filesScroll = 0
 			} else {
@@ -649,6 +651,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.streamTop = 0
 			}
 		case keymap.ActionBottom:
+			m.blockFocused = false
 			if m.showFiles {
 				m.filesScroll = len(m.files) - 1
 				if m.filesScroll < 0 {
@@ -831,6 +834,7 @@ func (m *model) trimToCap() {
 			}
 		}
 	}
+	m.blockFocused = false
 	m.blocksDirty = true
 }
 

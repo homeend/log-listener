@@ -26,6 +26,7 @@ func TestFocusBarOnBlockOnly(t *testing.T) {
 	m.tailMode = false
 	m.streamTop = 1 // cursor in the block
 	m.ensureBlocks()
+	m.blockFocused = true
 	if _, ok := m.focusBar(1); !ok {
 		t.Error("block head (1) should be focused")
 	}
@@ -48,8 +49,9 @@ func TestFocusBarGoneWhenCursorOffBlock(t *testing.T) {
 	m.groupEnabled["g"] = true
 	seedFocus(m, "block head:\n  cont a", "single")
 	m.tailMode = false
-	m.streamTop = 2 // the trailing single line (block is lines 0-1)
+	m.streamTop = 2 // the trailing single line (block is lines 0-1); single-line block → focusedBlockRange returns false
 	m.ensureBlocks()
+	m.blockFocused = true
 	if _, ok := m.focusBar(0); ok {
 		t.Error("cursor off the block → no focus bar")
 	}
@@ -84,6 +86,7 @@ func TestFocusBarWidthSafe(t *testing.T) {
 	seedFocus(m, "panic: "+strings.Repeat("X", 80), "  at frame")
 	m.tailMode = false
 	m.streamTop = 0
+	m.blockFocused = true
 	view := m.renderStream(m.contentHeight())
 	if !strings.Contains(view, "│") || !strings.Contains(view, "▌") {
 		t.Fatalf("expected both focus and exception bars:\n%s", view)
@@ -92,5 +95,33 @@ func TestFocusBarWidthSafe(t *testing.T) {
 		if w := dispWidth(ln); w != m.width {
 			t.Errorf("row should be exactly width %d, got %d: %q", m.width, w, ln)
 		}
+	}
+}
+
+func TestFocusBarRequiresExplicitFocus(t *testing.T) {
+	m := newModel(100)
+	m2, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 10})
+	m = m2.(*model)
+	m.groupOrder = []string{"g"}
+	m.groupEnabled["g"] = true
+	seedFocus(m, "lead", "block head:\n  cont a") // lines: 0 lead, [1,2] block
+	m.tailMode = false
+	m.streamTop = 1 // scrolled onto the block, but NOT via block nav
+	m.ensureBlocks()
+	if _, ok := m.focusBar(1); ok {
+		t.Error("scrolling onto a block must NOT focus it (no explicit block nav)")
+	}
+	// Explicit block navigation focuses it: start from streamTop=0 so ] finds the block at line 1.
+	m.streamTop = 0
+	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{']'}})
+	m = m2.(*model)
+	if _, ok := m.focusBar(1); !ok {
+		t.Error("after ] block nav, the block should be focused")
+	}
+	// Vertical scroll clears focus (j = ActionScrollDown).
+	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+	m = m2.(*model)
+	if _, ok := m.focusBar(1); ok {
+		t.Error("scrolling after focus must clear the block focus")
 	}
 }

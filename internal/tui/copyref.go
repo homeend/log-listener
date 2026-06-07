@@ -26,7 +26,8 @@ func (m *model) entryIDForLine(idx int) string {
 
 // buildReference produces the paste-ready reference string by precedence:
 //  1. search active + hit selected → line:<hit entry id>
-//  2. cursor inside a multi-line block → range:<headEntry>..<endEntry>
+//  2. explicitly focused block (set via block navigation). A single-entry
+//     block copies as line:<id>; a multi-entry block as range:<head>..<end>.
 //  3. else → range:<first visible entry>..<last visible entry>
 func buildReference(m *model) string {
 	if m.searchTerm != "" && m.searchHit >= 0 {
@@ -34,17 +35,16 @@ func buildReference(m *model) string {
 			return "line:" + id
 		}
 	}
-	cur := m.cursorIndex()
-	if cur >= 0 {
-		m.ensureBlocks()
-		for _, b := range m.blocks {
-			if cur >= b.Start && cur <= b.End && b.End > b.Start {
-				head := m.entryIDForLine(b.Start)
-				end := m.entryIDForLine(b.End)
-				if head != "" && end != "" {
-					return fmt.Sprintf("range:%s..%s", head, end)
-				}
+	// 2. explicitly focused block (set via block navigation). A single-entry
+	// block copies as line:<id>; a multi-entry block as range:<head>..<end>.
+	if s, e, ok := m.focusedBlockRange(); ok {
+		head := m.entryIDForLine(s)
+		end := m.entryIDForLine(e)
+		if head != "" && end != "" {
+			if head == end {
+				return "line:" + head
 			}
+			return fmt.Sprintf("range:%s..%s", head, end)
 		}
 	}
 	idxs := m.collectVisible(m.contentHeight())
