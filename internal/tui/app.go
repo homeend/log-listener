@@ -16,6 +16,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/mattn/go-runewidth"
 
+	"github.com/homeend/log-listener/internal/blocks"
 	"github.com/homeend/log-listener/internal/keymap"
 	"github.com/homeend/log-listener/internal/render"
 )
@@ -359,6 +360,13 @@ type model struct {
 	// (default "" = cwd); it is a test seam, never set in production.
 	flash   string
 	saveDir string
+
+	// blocks is the cached segmentation of m.lines (see internal/blocks).
+	// blocksDirty is set by every m.lines mutator; ensureBlocks recomputes
+	// when dirty. showExceptionMarks toggles the renderException left bar.
+	blocks             []blocks.Block
+	blocksDirty        bool
+	showExceptionMarks bool
 }
 
 // RenderFunc runs a single (group, file, raw) tuple through the
@@ -385,6 +393,8 @@ func newModel(scrollback int) *model {
 		showFile:     true,
 		groupEnabled: map[string]bool{},
 		searchHit:    -1,
+
+		showExceptionMarks: true,
 	}
 }
 
@@ -729,6 +739,7 @@ func (m *model) applyReload(msg ReloadMsg) {
 		m.renderersScroll = 0
 	}
 	m.reRenderAll()
+	m.blocksDirty = true
 }
 
 func (m *model) appendEvent(ev render.Event) {
@@ -741,6 +752,7 @@ func (m *model) appendEvent(ev render.Event) {
 	})
 	m.lines = append(m.lines, lines...)
 	m.trimToCap()
+	m.blocksDirty = true
 }
 
 // appendStored pushes a pre-built scrollbackEvent (used when re-running
@@ -787,6 +799,7 @@ func (m *model) trimToCap() {
 			m.searchHit = -1 // hit scrolled off-screen
 		}
 	}
+	m.blocksDirty = true
 }
 
 // reRenderAll walks every stored entry through renderFn and rebuilds
@@ -828,6 +841,7 @@ func (m *model) reRenderAll() {
 	if m.searchHit >= len(m.lines) {
 		m.searchHit = -1
 	}
+	m.blocksDirty = true
 }
 
 // decomposeEvent splits one render.Event into the per-line display rows
