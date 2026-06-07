@@ -25,6 +25,7 @@ type Config struct {
 	NoColor    bool
 	SSEAddr    string
 	ConfigFile string
+	Preloads   []PreloadSpec
 
 	// SourcePath is the absolute/relative path of the YAML file that was
 	// actually loaded (resolved from --config or the default lookup), or ""
@@ -88,6 +89,30 @@ func ParseArgs(args []string, now time.Time) (*Config, error) {
 			}
 			cfg.SSEAddr = v
 			cfg.cliExplicit["sse_addr"] = true
+			i = next
+		case a == "--preload":
+			v, next, err := requireValue(args, i, "--preload")
+			if err != nil {
+				return nil, err
+			}
+			g, p := parsePreloadValue(v)
+			cfg.Preloads = append(cfg.Preloads, PreloadSpec{Group: g, Path: p, Mode: PreloadAuto})
+			i = next
+		case a == "--preload-raw":
+			v, next, err := requireValue(args, i, "--preload-raw")
+			if err != nil {
+				return nil, err
+			}
+			g, p := parsePreloadValue(v)
+			cfg.Preloads = append(cfg.Preloads, PreloadSpec{Group: g, Path: p, Mode: PreloadRaw})
+			i = next
+		case a == "--preload-capture":
+			v, next, err := requireValue(args, i, "--preload-capture")
+			if err != nil {
+				return nil, err
+			}
+			_, p := parsePreloadValue(v) // group ignored for capture
+			cfg.Preloads = append(cfg.Preloads, PreloadSpec{Path: p, Mode: PreloadCapture})
 			i = next
 		case a == "-R":
 			vals, next := slurpValues(args, i+1)
