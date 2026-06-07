@@ -677,6 +677,9 @@ below. The authoritative per-OS reference is generated from the code into
 | **`m`**             | **Collapse multiline entries to one line + `[...]`.** |
 | **`s`**             | **Save the visible viewport to a `screen-log-listener-*.txt` file (cwd).** |
 | **`S`**             | **Save the full scrollback buffer to a `screen-log-listener-*.txt` file (cwd).** |
+| **`]`** / **`[`**   | **Jump to the next / previous multi-line block.**     |
+| **`}`** / **`{`**   | **Jump to the next / previous processor-matched block (e.g. exception).** |
+| **`e`**             | **Toggle the exception left-bar marker.**             |
 
 When you pan horizontally (`←` / `→`), the visible window is clipped from
 the left while ANSI styling (colors and the search highlight) is preserved

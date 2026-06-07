@@ -7,6 +7,19 @@ and this project adheres to phased delivery per `PLAN.md`.
 
 ## [Unreleased]
 
+### Block annotation + exception marks
+- Multi-line log units (stack traces, pretty-printed JSON/XML, indented
+  continuations) are grouped into **blocks** by a neutral `internal/blocks`
+  package: indentation plus a small signature set (`Caused by:`, `goroutine `,
+  PHP `#<n>`) so multi-part traces group together.
+- An **exception processor** flags blocks that look like stack traces and
+  guesses the language (Python/Java/Kotlin/Go/JS/TS/Rust/C-C++/PHP). Detection
+  is heuristic; Go panics may still split into multiple blocks.
+- **`e`** toggles a red left-bar (`▌`) drawn on exception blocks. **`]`/`[`**
+  jump between all blocks; **`}`/`{`** jump between processor-matched blocks.
+  All keys are remappable via the `keybindings:` block. IDs/clipboard for
+  agent hand-off arrive with the MCP server.
+
 ### Installable via `go install`
 - The module path is now `github.com/homeend/log-listener` (was the bare
   `log-listener`), and the `package main` entry point moved from
