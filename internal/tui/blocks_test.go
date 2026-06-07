@@ -73,3 +73,29 @@ func TestExceptionBarPrependedAndWidthSafe(t *testing.T) {
 		t.Errorf("bar should disappear when marks are toggled off")
 	}
 }
+
+func TestExceptionBarWidthSafeOnLongLine(t *testing.T) {
+	m := newModel(100)
+	m2, _ := m.Update(tea.WindowSizeMsg{Width: 20, Height: 6})
+	m = m2.(*model)
+	m.groupOrder = []string{"g"}
+	m.groupEnabled["g"] = true
+	// A panic head far wider than the 20-col terminal → forces the clip path.
+	m.appendEvent(render.Event{Group: "g", File: "/a.log",
+		Rendered: []render.Part{{Type: "text", Value: "panic: " + strings.Repeat("X", 200)}}})
+	m.appendEvent(render.Event{Group: "g", File: "/a.log",
+		Rendered: []render.Part{{Type: "text", Value: "  at frame"}}})
+
+	view := m.renderStream(m.contentHeight())
+	if !strings.Contains(view, "▌") {
+		t.Fatalf("expected the bar on the long exception line:\n%s", view)
+	}
+	// Every rendered row (clipped long line, padded short line, blank fillers)
+	// must be EXACTLY the terminal width — a barred row whose width accounting
+	// were wrong would clip to width-2 or overflow to width+1.
+	for _, ln := range strings.Split(view, "\n") {
+		if w := dispWidth(ln); w != m.width {
+			t.Errorf("row should be exactly width %d, got %d: %q", m.width, w, ln)
+		}
+	}
+}
