@@ -372,20 +372,40 @@ git commit -m "feat(tui): copytext selection→plain-text helpers (mirrors y pre
 
 ---
 
-## Task 3: visual-mode text + `Y` dispatch
+## Task 3: visual-mode text + unified `y`/`Y` dispatch
+
+**UNIFIED VISUAL FLOW (replaces the old two-`space` copy):** `v` → `space`
+(set anchor) → up/down → `y` (copy range reference, exit) or `Y` (copy text,
+exit); `esc` cancels. `space` ONLY anchors now — it no longer copies. No-anchor
+`y`/`Y` copy the caret row.
 
 **Files:**
-- Modify: `internal/tui/visual.go` (add `buildVisualText`, `copyVisualText`)
-- Modify: `internal/tui/app.go` (`ActionCopyText` case; visual keymap route in `handleVisualKey`)
+- Modify: `internal/tui/visual.go` (add `buildVisualText`/`copyVisualText`;
+  extend `buildVisualRef` for no-anchor + single-row `line:`; rewrite
+  `handleVisualKey` routing)
+- Modify: `internal/tui/app.go` (`ActionCopyText` normal-mode case)
 - Test: `internal/tui/visual_test.go`
 
-- [ ] **Step 1: Write the failing tests**
+- [ ] **Step 1: Write/replace the tests**
 
-Add to `internal/tui/visual_test.go` (it already imports `strings`, `testing`, `tea`, `render`; add a `keyY` var near the other key vars):
+In `internal/tui/visual_test.go`: add `"fmt"` to the imports; add key vars; add
+the new tests; and **REPLACE** the existing `TestVisualTwoSpaceCopiesRange` with
+`TestVisualYCopiesRangeAndExits` (delete the old func, add the new). The other
+existing visual tests (`TestVisualEnter`, `TestVisualEscCancels`,
+`TestVisualBarRendersCursorAndSelection`, `TestVisualEnterClosesOverlays`,
+`TestVisualIndicesClampOnEviction`, `TestVisualRefNormalisesOrder`) stay
+unchanged — they use `space` only to set the anchor, which still holds.
 
+Add near the other key vars:
 ```go
-var keyY = tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'Y'}}
+var (
+	keyY      = tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'Y'}}
+	keyYlower = tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}}
+)
+```
 
+Add these tests:
+```go
 func TestVisualTextSpan(t *testing.T) {
 	m := newVisualModel(t, "a", "b", "c", "d")
 	m.visualAnchor = 1
@@ -408,11 +428,54 @@ func TestVisualTextNoAnchorIsCaretRow(t *testing.T) {
 	}
 }
 
+func TestVisualSpaceOnlyAnchors(t *testing.T) {
+	m := newVisualModel(t, "a", "b", "c")
+	m.tailMode = false
+	m.streamTop = 0
+	m = key(m, keyV)
+	m = key(m, keyJ)     // cursor → 1
+	m = key(m, keySpace) // anchor = 1
+	if !m.visualMode {
+		t.Error("space must NOT exit visual mode")
+	}
+	if m.visualAnchor != 1 {
+		t.Fatalf("space should set anchor to 1, got %d", m.visualAnchor)
+	}
+	if m.flash != "" {
+		t.Errorf("space must not copy/flash, got %q", m.flash)
+	}
+	m = key(m, keySpace) // re-anchor (cursor still 1) — stays in visual
+	if m.visualAnchor != 1 || !m.visualMode {
+		t.Errorf("second space should re-anchor and stay in visual (anchor=%d visual=%v)", m.visualAnchor, m.visualMode)
+	}
+}
+
+// Replaces TestVisualTwoSpaceCopiesRange: y (not a second space) copies + exits.
+func TestVisualYCopiesRangeAndExits(t *testing.T) {
+	m := newVisualModel(t, "a", "b", "c", "d")
+	m.tailMode = false
+	m.streamTop = 0
+	m = key(m, keyV)      // cursor at row 0
+	m = key(m, keyJ)      // cursor → 1
+	m = key(m, keySpace)  // anchor = 1
+	if m.visualAnchor != 1 {
+		t.Fatalf("anchor should be 1, got %d", m.visualAnchor)
+	}
+	m = key(m, keyJ)      // cursor → 2
+	m = key(m, keyYlower) // copy range L1..L2, exit
+	if m.visualMode {
+		t.Error("y should exit visual mode")
+	}
+	if m.flash != "copied range:L1..L2" {
+		t.Fatalf("flash = %q, want copied range:L1..L2", m.flash)
+	}
+}
+
 func TestVisualCapitalYCopiesTextAndExits(t *testing.T) {
 	m := newVisualModel(t, "a", "b", "c", "d")
 	m.tailMode = false
 	m.streamTop = 0
-	m = key(m, keyV)     // enter visual, cursor at row 0
+	m = key(m, keyV)     // cursor at row 0
 	m = key(m, keyJ)     // row 1
 	m = key(m, keySpace) // anchor = 1
 	m = key(m, keyJ)     // cursor → row 2
@@ -422,6 +485,22 @@ func TestVisualCapitalYCopiesTextAndExits(t *testing.T) {
 	}
 	if m.flash != "copied 2 lines" {
 		t.Fatalf("flash = %q, want \"copied 2 lines\"", m.flash)
+	}
+}
+
+// No-anchor y in visual mode copies the caret row as line:<id>.
+func TestVisualNoAnchorYCopiesCaretLine(t *testing.T) {
+	m := newVisualModel(t, "a", "b", "c")
+	m.tailMode = false
+	m.streamTop = 0
+	m = key(m, keyV)      // cursor at row 0 (L0), no anchor
+	m = key(m, keyJ)      // cursor → row 1 (L1)
+	m = key(m, keyYlower) // copy caret line, exit
+	if m.visualMode {
+		t.Error("y should exit visual mode")
+	}
+	if m.flash != "copied line:L1" {
+		t.Fatalf("flash = %q, want copied line:L1", m.flash)
 	}
 }
 
@@ -442,17 +521,17 @@ func TestNormalCapitalYCopiesViewportText(t *testing.T) {
 }
 ```
 
-This test uses `fmt.Sprintf`, so add `"fmt"` to `visual_test.go`'s import block
-(it currently imports `strings`, `testing`, `tea`, `render`).
-
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `go test ./internal/tui/ -run 'TestVisualText|TestVisualCapitalY|TestNormalCapitalY' -v`
-Expected: FAIL — `buildVisualText`/`copyVisualText` undefined and `Y` not wired (compile error, then assertion failures).
+Run: `go test ./internal/tui/ -run 'TestVisual|TestNormalCapitalY' -v`
+Expected: FAIL — `buildVisualText`/`copyVisualText` undefined, `Y`/`y` not yet
+routed in visual mode, `space` still copies (compile errors then assertion
+failures).
 
-- [ ] **Step 3: Add visual-mode text helpers**
+- [ ] **Step 3: Add visual-mode text helpers + extend `buildVisualRef`**
 
-In `internal/tui/visual.go`, add (the file already imports `fmt`; add `strings`):
+In `internal/tui/visual.go`, add `"strings"` to the imports (`fmt` is already
+imported). Add the text helpers:
 
 ```go
 // buildVisualText renders the inclusive visual span [min(anchor,cursor),max] to
@@ -480,26 +559,76 @@ func (m *model) copyVisualText() {
 }
 ```
 
-- [ ] **Step 4: Route `Y` inside `handleVisualKey`**
+REPLACE the existing `buildVisualRef` with a version that handles the no-anchor
+caret row and a single owning entry (→ `line:<id>`):
+```go
+// buildVisualRef is the reference seam: the visual span as line:<id> (single
+// owning entry) or range:<a>..<b>. With no anchor it is the caret row.
+func buildVisualRef(m *model) string {
+	lo, hi := m.visualCursor, m.visualCursor
+	if m.visualAnchor >= 0 {
+		lo, hi = m.visualAnchor, m.visualCursor
+		if lo > hi {
+			lo, hi = hi, lo
+		}
+	}
+	a, b := m.entryIDForLine(lo), m.entryIDForLine(hi)
+	if a == "" || b == "" {
+		return ""
+	}
+	if a == b {
+		return "line:" + a
+	}
+	return fmt.Sprintf("range:%s..%s", a, b)
+}
+```
 
-In `internal/tui/visual.go`, in `handleVisualKey`, BEFORE the `switch msg.String()`, add a keymap-resolved route so `Y` stays remappable (visual mode otherwise bypasses the keymap):
+- [ ] **Step 4: Rewrite `handleVisualKey` for the unified flow**
+
+In `internal/tui/visual.go`, replace the whole `handleVisualKey` with:
 
 ```go
 func (m *model) handleVisualKey(msg tea.KeyMsg) *model {
-	if act, ok := m.km.Lookup(msg.String()); ok && act == keymap.ActionCopyText {
-		m.copyVisualText()
-		m.exitVisual()
-		return m
+	// Copy keys resolve through the keymap so y/Y stay remappable even though
+	// visual mode otherwise bypasses the main keymap dispatch. Only the copy
+	// actions return here; every other key (incl. j/k/space/esc, which may also
+	// be keymap-bound) falls through to the hardcoded movement switch below.
+	if act, ok := m.km.Lookup(msg.String()); ok {
+		switch act {
+		case keymap.ActionCopyReference:
+			m.copyVisualSelection()
+			m.exitVisual()
+			return m
+		case keymap.ActionCopyText:
+			m.copyVisualText()
+			m.exitVisual()
+			return m
+		}
 	}
 	switch msg.String() {
-	// ... existing up/down/space/esc cases unchanged ...
+	case "up", "k":
+		if m.visualCursor > 0 {
+			m.visualCursor--
+		}
+		m.ensureVisualVisible()
+	case "down", "j":
+		if m.visualCursor < len(m.lines)-1 {
+			m.visualCursor++
+		}
+		m.ensureVisualVisible()
+	case " ":
+		m.visualAnchor = m.visualCursor // set/re-set the selection start
+	case "esc":
+		m.exitVisual()
 	}
 	return m
 }
 ```
 
 Add the import `"github.com/homeend/log-listener/internal/keymap"` to
-`visual.go` if not already present.
+`visual.go`. (`copyVisualSelection` already builds the ref via `buildVisualRef`
+and sets the `copied <ref>` flash; the unified flow just calls it then
+`exitVisual`.)
 
 - [ ] **Step 5: Add the normal-mode dispatch case**
 
@@ -518,10 +647,11 @@ In `internal/tui/app.go`, in the main `Update` action switch, immediately after 
 
 - [ ] **Step 6: Run the new tests + full tui package**
 
-Run: `go test ./internal/tui/ -run 'TestVisualText|TestVisualCapitalY|TestNormalCapitalY' -v`
+Run: `go test ./internal/tui/ -run 'TestVisual|TestNormalCapitalY|TestSelectionText|TestCopyTextParity' -v`
 Expected: PASS.
 Run: `go test ./internal/tui/`
-Expected: PASS (no regression in existing visual/copyref tests — confirms `y` and the two-`space` flow still work).
+Expected: PASS — confirms no regression (the old two-`space` test is gone;
+normal-mode `y`/`buildReference` and the other visual tests still pass).
 
 - [ ] **Step 7: Build, full test, race**
 
@@ -532,7 +662,7 @@ Expected: all PASS.
 
 ```bash
 git add internal/tui/visual.go internal/tui/app.go internal/tui/visual_test.go
-git commit -m "feat(tui): Y copies selection text (normal + visual)"
+git commit -m "feat(tui): unified y/Y copy in visual mode (space anchors; y/Y copy+exit)"
 ```
 
 ---
