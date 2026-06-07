@@ -24,6 +24,7 @@ import (
 	"github.com/homeend/log-listener/internal/configwatch"
 	"github.com/homeend/log-listener/internal/discover"
 	"github.com/homeend/log-listener/internal/keymap"
+	"github.com/homeend/log-listener/internal/linebuf"
 	"github.com/homeend/log-listener/internal/preload"
 	"github.com/homeend/log-listener/internal/render"
 	"github.com/homeend/log-listener/internal/sink"
@@ -91,6 +92,20 @@ func run(args []string, stdout, stderr io.Writer) int {
 	var pipePtr atomic.Pointer[render.Pipeline]
 	pipePtr.Store(pipeline)
 
+	bufDecompose := func(ev render.Event) []linebuf.Line {
+		rows := render.DecomposeLines(ev)
+		out := make([]linebuf.Line, len(rows))
+		for i, r := range rows {
+			out[i] = linebuf.Line{Text: r.Text, IsCont: r.IsCont}
+		}
+		return out
+	}
+	bufCap := cfg.TUIScrollback
+	if bufCap <= 0 {
+		bufCap = 10000
+	}
+	buf := linebuf.New(bufCap, bufDecompose)
+
 	// Preload: seed events from files before live tailing. Raw lines run
 	// through the pipeline; capture files are reconstructed (see internal/preload).
 	renderFn := func(group, file, line string) (render.Event, bool) {
@@ -110,6 +125,9 @@ func run(args []string, stdout, stderr io.Writer) int {
 			return 1
 		}
 		preloadEvents = append(preloadEvents, evs...)
+	}
+	for i := range preloadEvents {
+		preloadEvents[i].ID = buf.Append(preloadEvents[i])
 	}
 
 	// Color is on only when (a) the user didn't pass --no-color AND (b) the
@@ -152,14 +170,14 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 
 	if useTUI {
-		if err := runWatchTUI(cfg, args, cfg.DropUnmatched, assignments, &pipePtr, sseHub, km, preloadEvents, stderr); err != nil {
+		if err := runWatchTUI(cfg, args, cfg.DropUnmatched, assignments, &pipePtr, buf, sseHub, km, preloadEvents, stderr); err != nil {
 			fmt.Fprintln(stderr, "log-listener:", err)
 			return 1
 		}
 		return 0
 	}
 
-	if err := runWatch(cfg, args, cfg.DropUnmatched, assignments, &pipePtr, stdoutSink, sseHub, preloadEvents, stderr); err != nil {
+	if err := runWatch(cfg, args, cfg.DropUnmatched, assignments, &pipePtr, buf, stdoutSink, sseHub, preloadEvents, stderr); err != nil {
 		fmt.Fprintln(stderr, "log-listener:", err)
 		return 1
 	}
@@ -307,7 +325,7 @@ func runOnce(preloadEvents []render.Event, assignments []discover.Assignment, pi
 	return nil
 }
 
-func runWatch(cfg *config.Config, args []string, dropUnmatched bool, assignments []discover.Assignment, pipePtr *atomic.Pointer[render.Pipeline], stdoutSink *sink.Stdout, sseHub *sink.SSEHub, preloadEvents []render.Event, stderr io.Writer) error {
+func runWatch(cfg *config.Config, args []string, dropUnmatched bool, assignments []discover.Assignment, pipePtr *atomic.Pointer[render.Pipeline], buf *linebuf.Buffer, stdoutSink *sink.Stdout, sseHub *sink.SSEHub, preloadEvents []render.Event, stderr io.Writer) error {
 	w, err := buildWatcher(cfg, assignments, stderr)
 	if err != nil {
 		return err
@@ -355,7 +373,7 @@ func runWatch(cfg *config.Config, args []string, dropUnmatched bool, assignments
 	for {
 		select {
 		case ev := <-w.Events():
-			emit(pipePtr, stdoutSink, sseHub, ev.Group, ev.Path, ev.Line)
+			emit(pipePtr, buf, stdoutSink, sseHub, ev.Group, ev.Path, ev.Line)
 		case e := <-w.Errors():
 			fmt.Fprintf(stderr, "log-listener: %v\n", e)
 		case <-cfgChanges:
@@ -375,6 +393,9 @@ func runWatch(cfg *config.Config, args []string, dropUnmatched bool, assignments
 			// line renders under a mismatched renderer. Close the superseded
 			// watcher here; the deferred closure closes the final one.
 			pipePtr.Store(rt.pipeline)
+			buf.Rerender(func(g, f, raw string) (render.Event, bool) {
+				return rt.pipeline.Render(time.Now(), g, f, raw)
+			})
 			w.Close()
 			w = newW
 		case <-ctx.Done():
@@ -382,7 +403,7 @@ func runWatch(cfg *config.Config, args []string, dropUnmatched bool, assignments
 			for {
 				select {
 				case ev := <-w.Events():
-					emit(pipePtr, stdoutSink, sseHub, ev.Group, ev.Path, ev.Line)
+					emit(pipePtr, buf, stdoutSink, sseHub, ev.Group, ev.Path, ev.Line)
 				case e := <-w.Errors():
 					fmt.Fprintf(stderr, "log-listener: %v\n", e)
 				case <-drainDeadline:
@@ -394,12 +415,14 @@ func runWatch(cfg *config.Config, args []string, dropUnmatched bool, assignments
 }
 
 // emit routes a raw line through the renderer pipeline then fans out to the
-// stdout sink and (if running) the SSE broadcast hub.
-func emit(pipePtr *atomic.Pointer[render.Pipeline], stdoutSink *sink.Stdout, sseHub *sink.SSEHub, group, path, line string) {
+// stdout sink and (if running) the SSE broadcast hub. The buffer is the ID
+// authority: Append assigns the ID, which is threaded into ev before emission.
+func emit(pipePtr *atomic.Pointer[render.Pipeline], buf *linebuf.Buffer, stdoutSink *sink.Stdout, sseHub *sink.SSEHub, group, path, line string) {
 	ev, ok := pipePtr.Load().Render(time.Now(), group, path, line)
 	if !ok {
 		return
 	}
+	ev.ID = buf.Append(ev)
 	stdoutSink.Emit(ev)
 	if sseHub != nil {
 		sseHub.Emit(ev)
@@ -410,7 +433,7 @@ func emit(pipePtr *atomic.Pointer[render.Pipeline], stdoutSink *sink.Stdout, sse
 // terminal on the main goroutine, while a background goroutine pumps watcher
 // events through the renderer pipeline into app.Push() and (if configured)
 // the SSE hub.
-func runWatchTUI(cfg *config.Config, args []string, dropUnmatched bool, assignments []discover.Assignment, pipePtr *atomic.Pointer[render.Pipeline], sseHub *sink.SSEHub, km *keymap.Keymap, preloadEvents []render.Event, stderr io.Writer) error {
+func runWatchTUI(cfg *config.Config, args []string, dropUnmatched bool, assignments []discover.Assignment, pipePtr *atomic.Pointer[render.Pipeline], buf *linebuf.Buffer, sseHub *sink.SSEHub, km *keymap.Keymap, preloadEvents []render.Event, stderr io.Writer) error {
 	w, err := buildWatcher(cfg, assignments, stderr)
 	if err != nil {
 		return err
@@ -473,6 +496,7 @@ func runWatchTUI(cfg *config.Config, args []string, dropUnmatched bool, assignme
 				if !ok {
 					continue
 				}
+				rev.ID = buf.Append(rev)
 				app.Push(rev)
 				if sseHub != nil {
 					sseHub.Emit(rev)
@@ -497,6 +521,9 @@ func runWatchTUI(cfg *config.Config, args []string, dropUnmatched bool, assignme
 				// renderers. Close the superseded watcher here; the deferred
 				// closure closes the final one.
 				pipePtr.Store(rt.pipeline)
+				buf.Rerender(func(g, f, raw string) (render.Event, bool) {
+					return rt.pipeline.Render(time.Now(), g, f, raw)
+				})
 				w.Close()
 				w = newW
 

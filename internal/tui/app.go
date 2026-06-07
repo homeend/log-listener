@@ -245,6 +245,7 @@ func (a *App) Quit() {
 // survive any number of re-renders; the lines field is regenerated
 // whenever a renderer toggle changes how the line should look.
 type scrollbackEvent struct {
+	id               string
 	group, file, raw string
 	lines            []displayLine
 }
@@ -734,6 +735,7 @@ func (m *model) applyReload(msg ReloadMsg) {
 func (m *model) appendEvent(ev render.Event) {
 	lines := decomposeEvent(ev)
 	m.entries = append(m.entries, scrollbackEvent{
+		id:    ev.ID,
 		group: ev.Group,
 		file:  ev.File,
 		raw:   ev.Raw,
