@@ -59,6 +59,12 @@ func buildReference(m *model) string {
 	return fmt.Sprintf("range:%s..%s", first, last)
 }
 
+// osc52Copy writes ref to the terminal clipboard via the OSC 52 escape on
+// stderr (stderr, not stdout, so it does not corrupt the stdout-driven render).
+func osc52Copy(ref string) {
+	_, _ = osc52.New(ref).WriteTo(os.Stderr)
+}
+
 // copyReference writes the reference to the terminal clipboard via OSC 52
 // (to stderr, so it does not corrupt the stdout-driven render) and returns the
 // reference string (empty if nothing to copy).
@@ -67,6 +73,6 @@ func copyReference(m *model) string {
 	if ref == "" {
 		return ""
 	}
-	_, _ = osc52.New(ref).WriteTo(os.Stderr)
+	osc52Copy(ref)
 	return ref
 }
