@@ -147,6 +147,24 @@ func TestVisualIndicesClampOnEviction(t *testing.T) {
 	}
 }
 
+// The visual-mode footer hint must describe the unified flow (space anchors;
+// y/Y copy), not the removed two-space behavior.
+func TestVisualFooterDescribesUnifiedFlow(t *testing.T) {
+	m := newVisualModel(t, "a", "b", "c")
+	m.tailMode = false
+	m.streamTop = 0
+	m = key(m, keyV)
+	foot := m.renderFooter()
+	for _, want := range []string{"space anchor", "y ref", "Y text"} {
+		if !strings.Contains(foot, want) {
+			t.Fatalf("visual footer missing %q: %q", want, foot)
+		}
+	}
+	if strings.Contains(foot, "set/copy") {
+		t.Fatalf("visual footer still shows the removed two-space hint: %q", foot)
+	}
+}
+
 func TestVisualTextSpan(t *testing.T) {
 	m := newVisualModel(t, "a", "b", "c", "d")
 	m.visualAnchor = 1
