@@ -820,3 +820,37 @@ func TestE2EOnceMatchesRawContent(t *testing.T) {
 		}
 	}
 }
+
+func TestE2EPreloadRawOnce(t *testing.T) {
+	dir := t.TempDir()
+	raw := filepath.Join(dir, "app.log")
+	if err := os.WriteFile(raw, []byte("hello world\nsecond line\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	s := startListener(t, "--preload", raw, "--once", "--no-tui", "--no-color")
+	_, all, _ := s.Await(20*time.Second, func(string) bool { return false })
+	joined := strings.Join(all, "\n")
+	if !strings.Contains(joined, "hello world") || !strings.Contains(joined, "second line") {
+		t.Errorf("preload raw --once missing lines:\n%s", joined)
+	}
+	if !strings.Contains(joined, "[preload]") {
+		t.Errorf("raw preload should render under the synthetic [preload] group:\n%s", joined)
+	}
+}
+
+func TestE2EPreloadCaptureOnce(t *testing.T) {
+	dir := t.TempDir()
+	capPath := filepath.Join(dir, "screen-log-listener-x.txt")
+	if err := os.WriteFile(capPath, []byte("[app] a.log: hello\n[app] a.log: world\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	s := startListener(t, "--preload", capPath, "--once", "--no-tui", "--no-color")
+	_, all, _ := s.Await(20*time.Second, func(string) bool { return false })
+	joined := strings.Join(all, "\n")
+	if !strings.Contains(joined, "hello") || !strings.Contains(joined, "world") {
+		t.Errorf("preload capture --once missing lines:\n%s", joined)
+	}
+	if !strings.Contains(joined, "[app]") {
+		t.Errorf("capture mode should recover the [app] group prefix:\n%s", joined)
+	}
+}

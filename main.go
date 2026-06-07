@@ -24,6 +24,7 @@ import (
 	"github.com/homeend/log-listener/internal/configwatch"
 	"github.com/homeend/log-listener/internal/discover"
 	"github.com/homeend/log-listener/internal/keymap"
+	"github.com/homeend/log-listener/internal/preload"
 	"github.com/homeend/log-listener/internal/render"
 	"github.com/homeend/log-listener/internal/sink"
 	"github.com/homeend/log-listener/internal/tui"
@@ -90,6 +91,27 @@ func run(args []string, stdout, stderr io.Writer) int {
 	var pipePtr atomic.Pointer[render.Pipeline]
 	pipePtr.Store(pipeline)
 
+	// Preload: seed events from files before live tailing. Raw lines run
+	// through the pipeline; capture files are reconstructed (see internal/preload).
+	renderFn := func(group, file, line string) (render.Event, bool) {
+		return pipeline.Render(time.Now(), group, file, line)
+	}
+	var preloadEvents []render.Event
+	for _, spec := range cfg.Preloads {
+		mode := preload.ResolveMode(spec.Mode, spec.Path)
+		label := "raw"
+		if mode == config.PreloadCapture {
+			label = "capture"
+		}
+		fmt.Fprintf(stderr, "log-listener: preload %s → %s\n", spec.Path, label)
+		evs, err := preload.Load(spec, mode, renderFn)
+		if err != nil {
+			fmt.Fprintln(stderr, "log-listener:", err)
+			return 1
+		}
+		preloadEvents = append(preloadEvents, evs...)
+	}
+
 	// Color is on only when (a) the user didn't pass --no-color AND (b) the
 	// output is a real TTY. Non-*os.File writers (e.g. a test bytes.Buffer)
 	// are treated as non-TTY.
@@ -113,7 +135,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 
 	if cfg.Once {
-		if err := runOnce(assignments, pipeline, stdoutSink, sseHub); err != nil {
+		if err := runOnce(preloadEvents, assignments, pipeline, stdoutSink, sseHub); err != nil {
 			fmt.Fprintln(stderr, "log-listener:", err)
 			return 1
 		}
@@ -130,14 +152,14 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 
 	if useTUI {
-		if err := runWatchTUI(cfg, args, cfg.DropUnmatched, assignments, &pipePtr, sseHub, km, stderr); err != nil {
+		if err := runWatchTUI(cfg, args, cfg.DropUnmatched, assignments, &pipePtr, sseHub, km, preloadEvents, stderr); err != nil {
 			fmt.Fprintln(stderr, "log-listener:", err)
 			return 1
 		}
 		return 0
 	}
 
-	if err := runWatch(cfg, args, cfg.DropUnmatched, assignments, &pipePtr, stdoutSink, sseHub, stderr); err != nil {
+	if err := runWatch(cfg, args, cfg.DropUnmatched, assignments, &pipePtr, stdoutSink, sseHub, preloadEvents, stderr); err != nil {
 		fmt.Fprintln(stderr, "log-listener:", err)
 		return 1
 	}
@@ -221,10 +243,45 @@ func tuiPanelState(cfg *config.Config, p *render.Pipeline, assignments []discove
 	return groups, renderers, files
 }
 
+// mergePreloadPanels appends the distinct groups and files carried by the
+// preload events to the TUI panel seeds (dedup against config-derived entries),
+// so the groups panel, digit toggles, group column, and files overlay include
+// preloaded synthetic sources. Empty group/file (orphan capture rows) are skipped.
+func mergePreloadPanels(groups []tui.GroupInfo, files []tui.FileEntry, evs []render.Event) ([]tui.GroupInfo, []tui.FileEntry) {
+	haveGroup := map[string]bool{}
+	for _, g := range groups {
+		haveGroup[g.ID] = true
+	}
+	haveFile := map[string]bool{}
+	for _, f := range files {
+		haveFile[f.Group+"\x00"+f.Path] = true
+	}
+	for _, ev := range evs {
+		if ev.Group != "" && !haveGroup[ev.Group] {
+			haveGroup[ev.Group] = true
+			groups = append(groups, tui.GroupInfo{ID: ev.Group})
+		}
+		if ev.File != "" {
+			key := ev.Group + "\x00" + ev.File
+			if !haveFile[key] {
+				haveFile[key] = true
+				files = append(files, tui.FileEntry{Path: ev.File, Group: ev.Group})
+			}
+		}
+	}
+	return groups, files
+}
+
 // runOnce uses the concrete pipeline directly — --once exits before the
 // watcher or reload machinery starts, so no swap can occur. That's why it
 // can't share emit(), which loads through the atomic pointer.
-func runOnce(assignments []discover.Assignment, pipeline *render.Pipeline, stdoutSink *sink.Stdout, sseHub *sink.SSEHub) error {
+func runOnce(preloadEvents []render.Event, assignments []discover.Assignment, pipeline *render.Pipeline, stdoutSink *sink.Stdout, sseHub *sink.SSEHub) error {
+	for _, ev := range preloadEvents {
+		stdoutSink.Emit(ev)
+		if sseHub != nil {
+			sseHub.Emit(ev)
+		}
+	}
 	for _, a := range assignments {
 		f, err := os.Open(a.Path)
 		if err != nil {
@@ -250,7 +307,7 @@ func runOnce(assignments []discover.Assignment, pipeline *render.Pipeline, stdou
 	return nil
 }
 
-func runWatch(cfg *config.Config, args []string, dropUnmatched bool, assignments []discover.Assignment, pipePtr *atomic.Pointer[render.Pipeline], stdoutSink *sink.Stdout, sseHub *sink.SSEHub, stderr io.Writer) error {
+func runWatch(cfg *config.Config, args []string, dropUnmatched bool, assignments []discover.Assignment, pipePtr *atomic.Pointer[render.Pipeline], stdoutSink *sink.Stdout, sseHub *sink.SSEHub, preloadEvents []render.Event, stderr io.Writer) error {
 	w, err := buildWatcher(cfg, assignments, stderr)
 	if err != nil {
 		return err
@@ -260,6 +317,13 @@ func runWatch(cfg *config.Config, args []string, dropUnmatched bool, assignments
 	// leaking the final one. The closure reads w at shutdown. Superseded
 	// watchers are closed inline in the reload branch.
 	defer func() { w.Close() }()
+
+	for _, ev := range preloadEvents {
+		stdoutSink.Emit(ev)
+		if sseHub != nil {
+			sseHub.Emit(ev)
+		}
+	}
 
 	var cfgChanges <-chan struct{}
 	if cfg.SourcePath != "" {
@@ -346,7 +410,7 @@ func emit(pipePtr *atomic.Pointer[render.Pipeline], stdoutSink *sink.Stdout, sse
 // terminal on the main goroutine, while a background goroutine pumps watcher
 // events through the renderer pipeline into app.Push() and (if configured)
 // the SSE hub.
-func runWatchTUI(cfg *config.Config, args []string, dropUnmatched bool, assignments []discover.Assignment, pipePtr *atomic.Pointer[render.Pipeline], sseHub *sink.SSEHub, km *keymap.Keymap, stderr io.Writer) error {
+func runWatchTUI(cfg *config.Config, args []string, dropUnmatched bool, assignments []discover.Assignment, pipePtr *atomic.Pointer[render.Pipeline], sseHub *sink.SSEHub, km *keymap.Keymap, preloadEvents []render.Event, stderr io.Writer) error {
 	w, err := buildWatcher(cfg, assignments, stderr)
 	if err != nil {
 		return err
@@ -368,12 +432,14 @@ func runWatchTUI(cfg *config.Config, args []string, dropUnmatched bool, assignme
 	// before Run would deadlock: bubbletea's msgs channel is unbuffered
 	// and Run hasn't started reading from it yet.
 	groups, renderers, initial := tuiPanelState(cfg, pipePtr.Load(), assignments)
+	groups, initial = mergePreloadPanels(groups, initial, preloadEvents)
 	app := tui.New(tui.Options{
-		Scrollback:   cfg.TUIScrollback,
-		InitialFiles: initial,
-		Groups:       groups,
-		Renderers:    renderers,
-		Keymap:       km,
+		Scrollback:    cfg.TUIScrollback,
+		InitialFiles:  initial,
+		Groups:        groups,
+		Renderers:     renderers,
+		Keymap:        km,
+		InitialEvents: preloadEvents,
 		SetRendererOn: func(i int, on bool) { pipePtr.Load().SetRendererEnabled(i, on) },
 		RenderFn: func(group, file, raw string) (render.Event, bool) {
 			return pipePtr.Load().Render(time.Now(), group, file, raw)

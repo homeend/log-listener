@@ -197,7 +197,7 @@ func (c *Config) ensureFileGroup(id string) *discover.Group {
 
 // Validate checks structural completeness. Call after CLI + YAML merge.
 func (c *Config) Validate() error {
-	if len(c.Groups) == 0 {
+	if len(c.Groups) == 0 && len(c.Preloads) == 0 {
 		return fmt.Errorf("no directories (-d) or files (-f) given")
 	}
 	for _, g := range c.Groups {
