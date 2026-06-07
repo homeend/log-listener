@@ -1,7 +1,10 @@
 package tui
 
 import (
+	"strings"
 	"testing"
+
+	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/homeend/log-listener/internal/render"
 )
@@ -40,5 +43,33 @@ func TestInExceptionBlock(t *testing.T) {
 	m.ensureBlocks()
 	if !m.inExceptionBlock(0) || !m.inExceptionBlock(1) {
 		t.Errorf("both rows of a python traceback should be in an exception block")
+	}
+}
+
+func TestExceptionBarPrependedAndWidthSafe(t *testing.T) {
+	m := newModel(100)
+	m2, _ := m.Update(tea.WindowSizeMsg{Width: 40, Height: 10})
+	m = m2.(*model)
+	m.groupOrder = []string{"g"}
+	m.groupEnabled["g"] = true
+	m.appendEvent(render.Event{Group: "g", File: "/a.log",
+		Rendered: []render.Part{{Type: "text", Value: "panic: boom"}}})
+	m.appendEvent(render.Event{Group: "g", File: "/a.log",
+		Rendered: []render.Part{{Type: "text", Value: "goroutine 1 [running]:"}}})
+
+	view := m.renderStream(m.contentHeight())
+	if !strings.Contains(view, "▌") {
+		t.Fatalf("expected exception bar glyph in view:\n%s", view)
+	}
+	for _, ln := range strings.Split(view, "\n") {
+		if w := dispWidth(ln); w > m.width {
+			t.Errorf("row exceeds width %d (got %d): %q", m.width, w, ln)
+		}
+	}
+
+	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
+	m = m2.(*model)
+	if strings.Contains(m.renderStream(m.contentHeight()), "▌") {
+		t.Errorf("bar should disappear when marks are toggled off")
 	}
 }

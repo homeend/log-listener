@@ -678,6 +678,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Collapse multiline entries (continuation rows hidden behind
 			// a "[...]" marker on the head). Toggles repeatedly.
 			m.collapseMultiline = !m.collapseMultiline
+		case keymap.ActionToggleExceptionMarks:
+			m.showExceptionMarks = !m.showExceptionMarks
 		case keymap.ActionToggleRenderers:
 			m.showRenderersPanel = !m.showRenderersPanel
 			if m.showRenderersPanel {
@@ -1383,10 +1385,15 @@ func (m *model) renderStream(rows int) string {
 	if len(m.lines) == 0 {
 		return m.blankRows(rows)
 	}
+	m.ensureBlocks()
 	visible := m.collectVisible(rows)
 	rendered := make([]string, 0, rows)
 	for _, idx := range visible {
 		styled, visW := m.renderDisplayLineAt(idx)
+		if bar, ok := m.exceptionBar(idx); ok {
+			styled = bar + styled
+			visW += exceptionBarWidth
+		}
 		rendered = append(rendered, m.clipLine(styled, visW))
 	}
 	missing := rows - len(rendered)
