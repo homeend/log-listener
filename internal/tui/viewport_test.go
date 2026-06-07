@@ -40,3 +40,17 @@ func TestPublishViewportNoopWhenNilCallback(t *testing.T) {
 		Rendered: []render.Part{{Type: "text", Value: "x"}}})
 	_ = m.renderStream(m.contentHeight())
 }
+
+func TestPublishViewportEmptyBufferStillPublishes(t *testing.T) {
+	var called bool
+	var gotFrom, gotTo string
+	m := newModel(100)
+	m.setViewport = func(from, to string) { called = true; gotFrom, gotTo = from, to }
+	m2, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 10})
+	m = m2.(*model)
+	// no events → empty buffer
+	_ = m.renderStream(m.contentHeight())
+	if !called || gotFrom != "" || gotTo != "" {
+		t.Fatalf("empty buffer must publish empty/attached: called=%v from=%q to=%q", called, gotFrom, gotTo)
+	}
+}

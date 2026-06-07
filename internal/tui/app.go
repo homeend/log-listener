@@ -1403,6 +1403,7 @@ func (m *model) publishViewport(visible []int) {
 
 func (m *model) renderStream(rows int) string {
 	if len(m.lines) == 0 {
+		m.publishViewport(nil) // attached TUI, nothing on screen → from/to ""
 		return m.blankRows(rows)
 	}
 	m.ensureBlocks()
