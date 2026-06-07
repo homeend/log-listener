@@ -6,6 +6,7 @@
 package linebuf
 
 import (
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -161,6 +162,74 @@ func (b *Buffer) Context(id string, before, after int) []*Entry {
 	}
 	out := make([]*Entry, 0, hi-lo+1)
 	for i := lo; i <= hi; i++ {
+		out = append(out, b.entries[i])
+	}
+	return out
+}
+
+// SearchHit is one search result: the entry ID, location, and the matching
+// line's text as a snippet.
+type SearchHit struct {
+	ID          string
+	Group       string
+	File        string
+	Snippet     string
+	MatchedLine int
+}
+
+// Search returns entries whose any line matches query (substring, or regexp
+// when regex=true), newest-first, capped at limit (limit<=0 → 50).
+func (b *Buffer) Search(query string, regex bool, limit int) ([]SearchHit, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	var re *regexp.Regexp
+	if regex {
+		var err error
+		if re, err = regexp.Compile(query); err != nil {
+			return nil, err
+		}
+	}
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	var out []SearchHit
+	for i := len(b.entries) - 1; i >= 0 && len(out) < limit; i-- {
+		e := b.entries[i]
+		for li, ln := range e.Lines {
+			match := false
+			if re != nil {
+				match = re.MatchString(ln.Text)
+			} else {
+				match = strings.Contains(ln.Text, query)
+			}
+			if match {
+				out = append(out, SearchHit{ID: e.ID, Group: e.Group,
+					File: e.File, Snippet: ln.Text, MatchedLine: li})
+				break
+			}
+		}
+	}
+	return out, nil
+}
+
+// Recent returns up to limit entries ending `offset` from the newest, in
+// chronological order (oldest-first within the page).
+func (b *Buffer) Recent(limit, offset int) []*Entry {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	end := len(b.entries) - offset
+	if end > len(b.entries) {
+		end = len(b.entries)
+	}
+	if end <= 0 {
+		return nil
+	}
+	start := end - limit
+	if start < 0 {
+		start = 0
+	}
+	out := make([]*Entry, 0, end-start)
+	for i := start; i < end; i++ {
 		out = append(out, b.entries[i])
 	}
 	return out

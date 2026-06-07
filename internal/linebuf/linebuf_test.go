@@ -71,3 +71,36 @@ func TestContextBounds(t *testing.T) {
 		t.Fatalf("context L2 ±1: %+v", got)
 	}
 }
+
+func TestSearchSubstringAndRegexAndLimit(t *testing.T) {
+	b := New(100, decomp)
+	for _, s := range []string{"alpha", "beta", "gamma alpha", "delta"} {
+		b.Append(ev("g", "/x.log", s))
+	}
+	hits, err := b.Search("alpha", false, 10)
+	if err != nil || len(hits) != 2 {
+		t.Fatalf("substring hits: %+v err=%v", hits, err)
+	}
+	if hits[0].ID != "L2" { // newest-first
+		t.Errorf("want newest first (L2), got %s", hits[0].ID)
+	}
+	rx, err := b.Search("^a", true, 10)
+	if err != nil || len(rx) != 1 || rx[0].ID != "L0" {
+		t.Fatalf("regex hits: %+v err=%v", rx, err)
+	}
+	lim, _ := b.Search("a", false, 1)
+	if len(lim) != 1 {
+		t.Errorf("limit not honoured: %d", len(lim))
+	}
+}
+
+func TestRecentPagination(t *testing.T) {
+	b := New(100, decomp)
+	for _, s := range []string{"a", "b", "c", "d"} {
+		b.Append(ev("g", "/x.log", s))
+	}
+	got := b.Recent(2, 0) // last 2, chronological: c,d
+	if len(got) != 2 || got[0].Lines[0].Text != "c" || got[1].Lines[0].Text != "d" {
+		t.Fatalf("recent(2,0): %+v", got)
+	}
+}
