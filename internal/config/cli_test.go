@@ -153,3 +153,20 @@ func TestValidateErrors(t *testing.T) {
 		})
 	}
 }
+
+func TestMCPFlagDefaultAndExplicit(t *testing.T) {
+	cfg, err := ParseArgs([]string{"--mcp"}, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.MCPAddr != "127.0.0.1:7777" {
+		t.Errorf("bare --mcp default: %q", cfg.MCPAddr)
+	}
+	cfg2, err := ParseArgs([]string{"--mcp", "127.0.0.1:9100"}, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg2.MCPAddr != "127.0.0.1:9100" {
+		t.Errorf("--mcp addr: %q", cfg2.MCPAddr)
+	}
+}

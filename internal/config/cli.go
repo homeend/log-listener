@@ -24,6 +24,7 @@ type Config struct {
 	NoTUI      bool
 	NoColor    bool
 	SSEAddr    string
+	MCPAddr    string
 	ConfigFile string
 	Preloads   []PreloadSpec
 
@@ -90,6 +91,17 @@ func ParseArgs(args []string, now time.Time) (*Config, error) {
 			cfg.SSEAddr = v
 			cfg.cliExplicit["sse_addr"] = true
 			i = next
+		case a == "--mcp":
+			// Optional value: bare --mcp enables on the default loopback addr.
+			// The CLI has no positional args (sources use -f/-d/-r), so a
+			// following non-flag token is unambiguously the address.
+			cfg.MCPAddr = "127.0.0.1:7777"
+			if i+1 < len(args) && !strings.HasPrefix(args[i+1], "-") {
+				cfg.MCPAddr = args[i+1]
+				i++
+			}
+			cfg.cliExplicit["mcp_addr"] = true
+			i++
 		case a == "--preload":
 			v, next, err := requireValue(args, i, "--preload")
 			if err != nil {
