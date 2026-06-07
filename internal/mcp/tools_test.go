@@ -66,3 +66,29 @@ func TestGetScrollbackPaginates(t *testing.T) {
 		t.Fatalf("get_scrollback: %+v", out)
 	}
 }
+
+func TestSearchTool(t *testing.T) {
+	s := New("127.0.0.1:0", newTestBuf())
+	seed(s, "alpha", "beta", "gamma alpha")
+	_, out, err := s.search(context.Background(), nil,
+		SearchInput{Query: "alpha", Regex: false, Limit: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(out.Hits) != 2 || out.Hits[0].ID != "L2" {
+		t.Fatalf("search: %+v", out)
+	}
+}
+
+func TestListExceptionsTool(t *testing.T) {
+	s := New("127.0.0.1:0", newTestBuf())
+	seed(s, "panic: boom", "goroutine 1 [running]:", "normal")
+	_, out, err := s.listExceptions(context.Background(), nil, EmptyInput{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(out.Exceptions) != 1 || out.Exceptions[0].From != "L0" ||
+		out.Exceptions[0].Language != "go" {
+		t.Fatalf("list_exceptions: %+v", out)
+	}
+}

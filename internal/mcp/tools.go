@@ -106,6 +106,61 @@ func (s *Server) getScrollback(_ context.Context, _ *mcpsdk.CallToolRequest, in 
 	return nil, out, nil
 }
 
+type SearchInput struct {
+	Query string `json:"query"`
+	Regex bool   `json:"regex"`
+	Limit int    `json:"limit"`
+}
+type SearchHitDTO struct {
+	ID          string `json:"id"`
+	Group       string `json:"group"`
+	File        string `json:"file"`
+	Snippet     string `json:"snippet"`
+	MatchedLine int    `json:"matched_line"`
+}
+type SearchOutput struct {
+	Hits []SearchHitDTO `json:"hits"`
+}
+type EmptyInput struct{}
+type ExceptionDTO struct {
+	From     string `json:"from"`
+	To       string `json:"to"`
+	Language string `json:"language"`
+}
+type ExceptionsOutput struct {
+	Exceptions []ExceptionDTO `json:"exceptions"`
+}
+
+func (s *Server) search(_ context.Context, _ *mcpsdk.CallToolRequest, in SearchInput) (*mcpsdk.CallToolResult, SearchOutput, error) {
+	limit := in.Limit
+	if limit > 500 {
+		limit = 500
+	}
+	hits, err := s.buf.Search(in.Query, in.Regex, limit)
+	if err != nil {
+		return nil, SearchOutput{}, err
+	}
+	out := SearchOutput{Hits: make([]SearchHitDTO, 0, len(hits))}
+	for _, h := range hits {
+		out.Hits = append(out.Hits, SearchHitDTO{ID: h.ID, Group: h.Group,
+			File: h.File, Snippet: h.Snippet, MatchedLine: h.MatchedLine})
+	}
+	return nil, out, nil
+}
+
+func (s *Server) listExceptions(_ context.Context, _ *mcpsdk.CallToolRequest, _ EmptyInput) (*mcpsdk.CallToolResult, ExceptionsOutput, error) {
+	out := ExceptionsOutput{}
+	for _, b := range s.buf.Exceptions() {
+		lang := ""
+		if b.Exception != nil {
+			lang = b.Exception.Language
+		}
+		out.Exceptions = append(out.Exceptions,
+			ExceptionDTO{From: b.HeadID, To: b.EndID, Language: lang})
+	}
+	return nil, out, nil
+}
+
 func (s *Server) registerTools(srv *mcpsdk.Server) {
 	mcpsdk.AddTool(srv, &mcpsdk.Tool{Name: "get_line",
 		Description: "Get one log record by its id."}, s.getLine)
@@ -115,4 +170,8 @@ func (s *Server) registerTools(srv *mcpsdk.Server) {
 		Description: "Get N records before and after an id (default 5/5)."}, s.getContext)
 	mcpsdk.AddTool(srv, &mcpsdk.Tool{Name: "get_scrollback",
 		Description: "Get a page of the whole buffer (newest-last)."}, s.getScrollback)
+	mcpsdk.AddTool(srv, &mcpsdk.Tool{Name: "search",
+		Description: "Find records matching a substring (or regex). Newest-first."}, s.search)
+	mcpsdk.AddTool(srv, &mcpsdk.Tool{Name: "list_exceptions",
+		Description: "List detected exception blocks as id ranges + language."}, s.listExceptions)
 }
