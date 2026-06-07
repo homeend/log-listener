@@ -464,6 +464,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Modal key paths take priority — search input swallows almost
 		// everything, and a pending wrap prompt swallows y/n/Esc before
 		// the normal dispatcher sees them.
+		if m.visualMode {
+			return m.handleVisualKey(msg), nil
+		}
 		if m.searchInput {
 			return m.handleSearchInputKey(msg), nil
 		}
@@ -674,6 +677,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if ref := copyReference(m); ref != "" {
 				m.flash = "copied " + ref
 			}
+		case keymap.ActionVisualSelect:
+			m.enterVisual()
 		case keymap.ActionSaveViewport:
 			return m, m.saveCmd(m.snapshotViewport())
 		case keymap.ActionSaveScrollback:

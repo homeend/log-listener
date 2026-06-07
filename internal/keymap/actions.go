@@ -44,6 +44,7 @@ const (
 	ActionPrevMarkedBlock      Action = "prev_marked_block"
 	ActionToggleExceptionMarks Action = "toggle_exception_marks"
 	ActionCopyReference        Action = "copy_reference"
+	ActionVisualSelect         Action = "visual_select"
 )
 
 // ActionDef is the documentation/metadata for one action. Context groups
@@ -91,6 +92,7 @@ var AllActions = []ActionDef{
 	{ActionPrevMarkedBlock, "Previous marked block", "Jump to the previous processor-matched block.", "main"},
 	{ActionToggleExceptionMarks, "Toggle exception marks", "Show/hide the exception left-bar.", "main"},
 	{ActionCopyReference, "Copy reference", "Copy a paste-ready id reference (search line, block range, or viewport range) for an agent.", "main"},
+	{ActionVisualSelect, "Visual select", "Enter visual line-selection mode (space sets then copies a range; esc cancels).", "main"},
 }
 
 // IsAction reports whether name is a known action.

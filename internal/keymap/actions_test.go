@@ -16,7 +16,7 @@ func TestAllActionsUniqueAndNonEmpty(t *testing.T) {
 		}
 		seen[d.Action] = true
 	}
-	if len(AllActions) != 34 {
-		t.Errorf("expected 34 named actions, got %d", len(AllActions))
+	if len(AllActions) != 35 {
+		t.Errorf("expected 35 named actions, got %d", len(AllActions))
 	}
 }
