@@ -3,7 +3,6 @@
 package tui
 
 import (
-	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"regexp"
@@ -40,30 +39,6 @@ func dispWidth(s string) int { return runewidth.StringWidth(stripANSI(s)) }
 // allocation-free, so it's cheap on the per-rune clip hot path.
 func runeWidth(r rune) int { return runewidth.RuneWidth(r) }
 
-// expandTabs replaces tabs with spaces to 8-column tab stops so a body's rune
-// count equals its terminal display width. Without this a tab (1 rune, up to 8
-// columns) makes the width math underestimate, and the row overflows and wraps
-// in the terminal — pushing the header off-screen and corrupting the layout
-// (Java stack-trace frames start with a tab). Fast-returns when there's no tab.
-func expandTabs(s string) string {
-	if !strings.ContainsRune(s, '\t') {
-		return s
-	}
-	const tabStop = 8
-	var b strings.Builder
-	col := 0
-	for _, r := range s {
-		if r == '\t' {
-			n := tabStop - col%tabStop
-			b.WriteString(strings.Repeat(" ", n))
-			col += n
-			continue
-		}
-		b.WriteRune(r)
-		col++
-	}
-	return b.String()
-}
 
 // Note: an earlier version had init() calls into lipgloss.SetColorProfile
 // and SetHasDarkBackground. Removed — those weren't needed (the
@@ -859,62 +834,26 @@ func (m *model) reRenderAll() {
 }
 
 // decomposeEvent splits one render.Event into the per-line display rows
-// used by the model. The text body becomes a head row plus one dim block row
-// per embedded newline (a template "\n" literal), then zero-or-more
-// pre-dim-styled block rows for JSON/XML pretty-prints. Splitting on newlines
-// keeps the "one displayLine = one terminal row" invariant. The styled prefix
-// is NOT baked in here so column toggles take effect without rebuilding the
-// cache.
+// used by the model. Delegates to render.DecomposeLines for the plain-text
+// splitting logic (shared with the MCP buffer), then applies TUI styling.
+// The styled prefix is NOT baked in here so column toggles take effect
+// without rebuilding the cache.
 func decomposeEvent(ev render.Event) []displayLine {
-	var textBuf strings.Builder
-	var blocks []string
-	for _, p := range ev.Rendered {
-		switch p.Type {
-		case "text":
-			textBuf.WriteString(p.Value.(string))
-		case "json":
-			b, err := json.MarshalIndent(p.Value, "", "  ")
-			if err == nil {
-				blocks = append(blocks, string(b))
-			}
-		case "xml":
-			blocks = append(blocks, p.Value.(string))
-		}
-	}
 	base := filepath.Base(ev.File)
-	text := strings.TrimRight(textBuf.String(), "\n")
-	// A text part may carry embedded newlines (a template "\n" literal). Each
-	// physical line must be its own displayLine so the "one displayLine = one
-	// terminal row" invariant holds — otherwise the row wraps and breaks the
-	// layout. The first line is the head (keeps the [group] file: prefix);
-	// the rest render as block continuation rows, exactly like JSON/XML lines.
-	textLines := strings.Split(text, "\n")
-	head := expandTabs(textLines[0])
-	out := []displayLine{{
-		group: ev.Group, file: base,
-		body:      head,
-		bodyWidth: dispWidth(head),
-	}}
-	for _, ln := range textLines[1:] {
-		ln = expandTabs(ln)
+	rows := render.DecomposeLines(ev)
+	out := make([]displayLine, 0, len(rows))
+	for _, r := range rows {
+		body := r.Text
+		if r.IsCont {
+			body = dimStyle.Render(r.Text)
+		}
 		out = append(out, displayLine{
 			group:     ev.Group,
 			file:      base,
-			body:      dimStyle.Render(ln),
-			bodyWidth: dispWidth(ln),
-			isBlock:   true,
+			body:      body,
+			bodyWidth: dispWidth(r.Text),
+			isBlock:   r.IsCont,
 		})
-	}
-	for _, b := range blocks {
-		for _, ln := range strings.Split(b, "\n") {
-			out = append(out, displayLine{
-				group:     ev.Group,
-				file:      base,
-				body:      dimStyle.Render(ln),
-				bodyWidth: dispWidth(ln),
-				isBlock:   true,
-			})
-		}
 	}
 	return out
 }
