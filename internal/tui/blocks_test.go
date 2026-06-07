@@ -74,6 +74,43 @@ func TestExceptionBarPrependedAndWidthSafe(t *testing.T) {
 	}
 }
 
+func TestBlockNavigation(t *testing.T) {
+	m := newModel(100)
+	m2, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 10})
+	m = m2.(*model)
+	m.groupOrder = []string{"g"}
+	m.groupEnabled["g"] = true
+	for _, v := range []string{"head A", "head B", "panic: boom"} {
+		m.appendEvent(render.Event{Group: "g", File: "/a.log",
+			Rendered: []render.Part{{Type: "text", Value: v}}})
+	}
+	m.appendEvent(render.Event{Group: "g", File: "/a.log",
+		Rendered: []render.Part{{Type: "text", Value: "goroutine 1 [running]:"}}})
+	// blocks: [0,0] head A, [1,1] head B, [2,3] panic (go).
+
+	m.tailMode = false
+	m.streamTop = 0
+	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{']'}})
+	m = m2.(*model)
+	if m.streamTop != 1 {
+		t.Errorf("] from 0 → streamTop %d, want 1", m.streamTop)
+	}
+
+	m.tailMode = false
+	m.streamTop = 0
+	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'}'}})
+	m = m2.(*model)
+	if m.streamTop != 2 {
+		t.Errorf("} from 0 → streamTop %d, want 2 (exception head)", m.streamTop)
+	}
+
+	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'['}})
+	m = m2.(*model)
+	if m.streamTop != 1 {
+		t.Errorf("[ from 2 → streamTop %d, want 1", m.streamTop)
+	}
+}
+
 func TestExceptionBarWidthSafeOnLongLine(t *testing.T) {
 	m := newModel(100)
 	m2, _ := m.Update(tea.WindowSizeMsg{Width: 20, Height: 6})

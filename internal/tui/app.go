@@ -680,6 +680,14 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.collapseMultiline = !m.collapseMultiline
 		case keymap.ActionToggleExceptionMarks:
 			m.showExceptionMarks = !m.showExceptionMarks
+		case keymap.ActionNextBlock:
+			m.gotoNextBlock(false)
+		case keymap.ActionPrevBlock:
+			m.gotoPrevBlock(false)
+		case keymap.ActionNextMarkedBlock:
+			m.gotoNextBlock(true)
+		case keymap.ActionPrevMarkedBlock:
+			m.gotoPrevBlock(true)
 		case keymap.ActionToggleRenderers:
 			m.showRenderersPanel = !m.showRenderersPanel
 			if m.showRenderersPanel {
