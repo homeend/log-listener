@@ -141,13 +141,17 @@ func (m *model) copyVisualSelection() {
 	m.flash = "copied " + ref
 }
 
-// handleVisualKey processes keys while in visual mode. Only up/down (arrows +
-// j/k), space, and esc act; any other key is ignored (stays in visual mode).
+// handleVisualKey processes keys while in visual mode. Movement (up/down/j/k),
+// space (set the selection start), and esc (cancel) are handled directly; the
+// copy actions y/Y are resolved through the keymap so they stay remappable,
+// then exit visual mode. Any other key is ignored (stays in visual mode).
 func (m *model) handleVisualKey(msg tea.KeyMsg) *model {
 	// Copy keys resolve through the keymap so y/Y stay remappable even though
 	// visual mode otherwise bypasses the main keymap dispatch. Only the copy
 	// actions return here; every other key (incl. j/k/space/esc, which may also
 	// be keymap-bound) falls through to the hardcoded movement switch below.
+	// NOTE: add returning cases here with care — movement/esc intentionally
+	// fall through to the switch below and must not be swallowed.
 	if act, ok := m.resolvedKM().Lookup(msg.String()); ok {
 		switch act {
 		case keymap.ActionCopyReference:

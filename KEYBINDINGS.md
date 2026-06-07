@@ -42,7 +42,7 @@ A terminal TUI cannot capture the macOS Cmd (⌘) key, so macOS bindings use the
 | Toggle exception marks | e | e | Show/hide the exception left-bar. |
 | Copy reference | y | y | Copy a paste-ready id reference (search line, block range, or viewport range) for an agent. |
 | Copy text | Y | Y | Copy the selected text (search line, block, viewport, or visual selection) as displayed. |
-| Visual select | v | v | Enter visual line-selection mode (space sets then copies a range; esc cancels). |
+| Visual select | v | v | Enter visual line-selection mode (space sets the start; y copies the range, Y the text, both exit; esc cancels). |
 
 ## Positional toggles (not individually overridable)
 
