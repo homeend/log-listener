@@ -25,6 +25,7 @@ type Config struct {
 	NoColor    bool
 	SSEAddr    string
 	MCPAddr    string
+	OutputFile string // -o/--output; "" = no file capture. CLI-only (no YAML).
 	ConfigFile string
 	Preloads   []PreloadSpec
 
@@ -70,6 +71,14 @@ func ParseArgs(args []string, now time.Time) (*Config, error) {
 				return nil, err
 			}
 			cfg.ConfigFile = v
+			i = next
+		case a == "-o" || a == "--output":
+			v, next, err := requireValue(args, i, a)
+			if err != nil {
+				return nil, err
+			}
+			cfg.OutputFile = v
+			cfg.cliExplicit["output"] = true
 			i = next
 		case a == "--once":
 			cfg.Once = true

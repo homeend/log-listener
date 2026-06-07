@@ -170,3 +170,26 @@ func TestMCPFlagDefaultAndExplicit(t *testing.T) {
 		t.Errorf("--mcp addr: %q", cfg2.MCPAddr)
 	}
 }
+
+func TestParseArgsOutputFile(t *testing.T) {
+	cfg, err := ParseArgs([]string{"-d", "/a", "-o", "out.log"}, refNow)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.OutputFile != "out.log" {
+		t.Fatalf("OutputFile = %q, want out.log", cfg.OutputFile)
+	}
+	cfg2, err := ParseArgs([]string{"-d", "/a", "--output", "out2.log"}, refNow)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg2.OutputFile != "out2.log" {
+		t.Fatalf("OutputFile = %q, want out2.log", cfg2.OutputFile)
+	}
+}
+
+func TestParseArgsOutputRequiresValue(t *testing.T) {
+	if _, err := ParseArgs([]string{"-o"}, refNow); err == nil {
+		t.Fatal("expected error for -o with no value")
+	}
+}
