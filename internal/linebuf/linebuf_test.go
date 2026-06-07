@@ -165,6 +165,21 @@ func TestViewportSlotRoundTrip(t *testing.T) {
 	}
 }
 
+func TestViewportConcurrentAccess(t *testing.T) {
+	b := New(100, decomp)
+	done := make(chan struct{})
+	go func() {
+		for i := 0; i < 2000; i++ {
+			b.SetViewport("L0", "L1")
+		}
+		close(done)
+	}()
+	for i := 0; i < 2000; i++ {
+		_, _, _ = b.Viewport()
+	}
+	<-done
+}
+
 func TestRerenderKeepsIDsChangesContent(t *testing.T) {
 	b := New(100, decomp)
 	b.Append(ev("g", "/a.log", "original"))
