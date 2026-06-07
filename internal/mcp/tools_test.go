@@ -40,3 +40,29 @@ func TestGetRangeTool(t *testing.T) {
 		t.Fatalf("get_range: %+v", out)
 	}
 }
+
+func TestGetContextTool(t *testing.T) {
+	s := New("127.0.0.1:0", newTestBuf())
+	seed(s, "a", "b", "c", "d", "e")
+	_, out, err := s.getContext(context.Background(), nil,
+		GetContextInput{ID: "L2", Before: 1, After: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(out.Entries) != 3 || out.Entries[0].Lines[0] != "b" {
+		t.Fatalf("get_context: %+v", out)
+	}
+}
+
+func TestGetScrollbackPaginates(t *testing.T) {
+	s := New("127.0.0.1:0", newTestBuf())
+	seed(s, "a", "b", "c", "d")
+	_, out, err := s.getScrollback(context.Background(), nil,
+		GetScrollbackInput{Limit: 2, Offset: 0})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(out.Entries) != 2 || out.Entries[1].Lines[0] != "d" {
+		t.Fatalf("get_scrollback: %+v", out)
+	}
+}

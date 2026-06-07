@@ -61,9 +61,58 @@ func (s *Server) getRange(_ context.Context, _ *mcpsdk.CallToolRequest, in GetRa
 	return nil, out, nil
 }
 
+type GetContextInput struct {
+	ID     string `json:"id"`
+	Before int    `json:"before"`
+	After  int    `json:"after"`
+}
+type GetScrollbackInput struct {
+	Limit  int `json:"limit"`
+	Offset int `json:"offset"`
+}
+
+func (s *Server) getContext(_ context.Context, _ *mcpsdk.CallToolRequest, in GetContextInput) (*mcpsdk.CallToolResult, EntriesOutput, error) {
+	before, after := in.Before, in.After
+	if before == 0 && after == 0 {
+		before, after = 5, 5
+	}
+	if before > 200 {
+		before = 200
+	}
+	if after > 200 {
+		after = 200
+	}
+	es := s.buf.Context(in.ID, before, after)
+	out := EntriesOutput{Entries: make([]EntryDTO, 0, len(es))}
+	for _, e := range es {
+		out.Entries = append(out.Entries, toDTO(e, ""))
+	}
+	return nil, out, nil
+}
+
+func (s *Server) getScrollback(_ context.Context, _ *mcpsdk.CallToolRequest, in GetScrollbackInput) (*mcpsdk.CallToolResult, EntriesOutput, error) {
+	limit := in.Limit
+	if limit <= 0 {
+		limit = 200
+	}
+	if limit > 2000 {
+		limit = 2000
+	}
+	es := s.buf.Recent(limit, in.Offset)
+	out := EntriesOutput{Entries: make([]EntryDTO, 0, len(es))}
+	for _, e := range es {
+		out.Entries = append(out.Entries, toDTO(e, ""))
+	}
+	return nil, out, nil
+}
+
 func (s *Server) registerTools(srv *mcpsdk.Server) {
 	mcpsdk.AddTool(srv, &mcpsdk.Tool{Name: "get_line",
 		Description: "Get one log record by its id."}, s.getLine)
 	mcpsdk.AddTool(srv, &mcpsdk.Tool{Name: "get_range",
 		Description: "Get all log records between two ids (inclusive)."}, s.getRange)
+	mcpsdk.AddTool(srv, &mcpsdk.Tool{Name: "get_context",
+		Description: "Get N records before and after an id (default 5/5)."}, s.getContext)
+	mcpsdk.AddTool(srv, &mcpsdk.Tool{Name: "get_scrollback",
+		Description: "Get a page of the whole buffer (newest-last)."}, s.getScrollback)
 }
