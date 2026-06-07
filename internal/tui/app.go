@@ -1113,6 +1113,9 @@ func (m *model) View() string {
 //  3. Normal — events / position / column / group / file counters,
 //     plus a "/term" suffix when a committed search term is active.
 func (m *model) renderFooter() string {
+	if m.visualMode {
+		return headerBg.Width(m.width).MaxHeight(1).Render(" VISUAL  ↑↓ move · space set/copy · esc cancel ")
+	}
 	if m.searchInput {
 		return headerBg.Width(m.width).MaxHeight(1).Render(" /" + m.searchQuery + "_")
 	}
@@ -1372,13 +1375,20 @@ func (m *model) renderStream(rows int) string {
 	rendered := make([]string, 0, rows)
 	for _, idx := range visible {
 		styled, visW := m.renderDisplayLineAt(idx)
-		if bar, ok := m.exceptionBar(idx); ok {
-			styled = bar + styled
-			visW += exceptionBarWidth
-		}
-		if fb, ok := m.focusBar(idx); ok {
-			styled = fb + styled
-			visW += focusBarWidth
+		if m.visualMode {
+			if vb, ok := m.visualBar(idx); ok {
+				styled = vb + styled
+				visW += visualBarWidth
+			}
+		} else {
+			if bar, ok := m.exceptionBar(idx); ok {
+				styled = bar + styled
+				visW += exceptionBarWidth
+			}
+			if fb, ok := m.focusBar(idx); ok {
+				styled = fb + styled
+				visW += focusBarWidth
+			}
 		}
 		rendered = append(rendered, m.clipLine(styled, visW))
 	}

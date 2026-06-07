@@ -4,7 +4,39 @@ import (
 	"fmt"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
+
+// visualCaretStyle/visualSelStyle: bright caret for the cursor row, accent bar
+// for the rest of the selection.
+var (
+	visualCaretStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("11")) // bright yellow
+	visualSelStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("14")) // cyan
+	// Both prefixes MUST render to the same display width so clipLine accounts
+	// for them uniformly. Measured; ▶ and ┃ are East-Asian ambiguous.
+	visualBarWidth = dispWidth("▶ ")
+)
+
+// visualBar returns the gutter prefix and true for rows in visual mode: a caret
+// on the cursor row, a selection bar on rows within the (anchored) selection.
+func (m *model) visualBar(idx int) (string, bool) {
+	if !m.visualMode {
+		return "", false
+	}
+	if idx == m.visualCursor {
+		return visualCaretStyle.Render("▶") + " ", true
+	}
+	if m.visualAnchor >= 0 {
+		lo, hi := m.visualAnchor, m.visualCursor
+		if lo > hi {
+			lo, hi = hi, lo
+		}
+		if idx >= lo && idx <= hi {
+			return visualSelStyle.Render("┃") + " ", true
+		}
+	}
+	return "", false
+}
 
 // enterVisual starts visual selection mode with the cursor on the top visible
 // row and no anchor yet. Leaves tail mode so the cursor is stable.

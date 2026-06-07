@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"strings"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -93,5 +94,27 @@ func TestVisualEscCancels(t *testing.T) {
 	}
 	if m.flash != "" {
 		t.Errorf("esc must not copy/flash, got %q", m.flash)
+	}
+}
+
+func TestVisualBarRendersCursorAndSelection(t *testing.T) {
+	m := newVisualModel(t, "a", "b", "c", "d")
+	m.tailMode = false
+	m.streamTop = 0
+	m = key(m, keyV)     // cursor on line 0
+	m = key(m, keyJ)     // cursor → 1
+	m = key(m, keySpace) // anchor = 1
+	m = key(m, keyJ)     // cursor → 2 (selection 1..2)
+	view := m.renderStream(m.contentHeight())
+	if !strings.Contains(view, "▶") {
+		t.Fatalf("expected the visual cursor caret ▶:\n%s", view)
+	}
+	if !strings.Contains(view, "┃") {
+		t.Fatalf("expected a selection bar ┃:\n%s", view)
+	}
+	for _, ln := range strings.Split(view, "\n") {
+		if w := dispWidth(ln); w != m.width {
+			t.Errorf("row should be exactly width %d, got %d: %q", m.width, w, ln)
+		}
 	}
 }
