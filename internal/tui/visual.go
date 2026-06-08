@@ -102,6 +102,11 @@ func (m *model) ensureVisualVisible() {
 // moveVisualCursor moves the visual caret by delta rows, clamped to the line
 // range [0, len(m.lines)-1], then scrolls to keep it on screen. Centralizes the
 // up/down cursor-move cases in handleVisualKey.
+//
+// Safe at the lower clamp because visualMode ⇒ len(m.lines) > 0: enterVisual
+// refuses to start on an empty buffer, and eviction (dragViewStateDown) shifts
+// indices but never empties m.lines. Without that invariant len(m.lines)-1
+// would be -1 and the clamp would set visualCursor = -1.
 func (m *model) moveVisualCursor(delta int) {
 	m.visualCursor += delta
 	if m.visualCursor < 0 {
