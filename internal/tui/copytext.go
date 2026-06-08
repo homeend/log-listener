@@ -10,8 +10,8 @@ func (m *model) entryRowSpan(idx int) (start, end int, ok bool) {
 		return 0, 0, false
 	}
 	off := 0
-	for _, e := range m.entries {
-		n := len(e.lines)
+	for _, e := range m.visibleEntries() {
+		n := len(m.displayCache[e.ID])
 		if idx < off+n {
 			return off, off + n - 1, true
 		}

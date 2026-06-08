@@ -465,9 +465,10 @@ func TestFilterShowsWholeMatchingEntries(t *testing.T) {
 	m = typeQuery(t, m, "userId")
 	m.filterMode = true
 
-	e0 := len(m.entries[0].lines)
-	e1 := len(m.entries[1].lines)
-	e2 := len(m.entries[2].lines)
+	ve := m.visibleEntries()
+	e0 := len(m.displayCache[ve[0].ID])
+	e1 := len(m.displayCache[ve[1].ID])
+	e2 := len(m.displayCache[ve[2].ID])
 	if e1 < 2 {
 		t.Fatalf("setup: entry1 should have a multi-line json block, got %d lines", e1)
 	}

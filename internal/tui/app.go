@@ -158,20 +158,12 @@ func New(opts Options) *App {
 	m.renderFn = opts.RenderFn
 	m.setViewport = opts.SetViewport
 	if opts.Buffer != nil {
-		m.buf = opts.Buffer
-	} else {
-		m.buf = linebuf.New(scrollback, func(ev render.Event) []linebuf.Line {
-			rows := render.DecomposeLines(ev)
-			out := make([]linebuf.Line, len(rows))
-			for i, r := range rows {
-				out[i] = linebuf.Line{Text: r.Text, IsCont: r.IsCont}
-			}
-			return out
-		})
+		m.buf = opts.Buffer // shared store; replaces newModel's owned buffer
 	}
 	for _, ev := range opts.InitialEvents {
 		m.appendEvent(ev)
 	}
+	m.reconcile() // seed m.lines from the buffer (preload may already be present)
 	// tea.WithEnvironment hands a controlled env to bubbletea's internal
 	// termenv.Output. With COLORTERM=truecolor termenv accepts the
 	// profile from env and skips the OSC 11 / CSI 6n probes that hang
@@ -274,7 +266,6 @@ type model struct {
 	// hot path (View, search, collectVisible, streamTop/searchHit
 	// indexing) reads from m.lines, so the cached layout means no
 	// per-render walk of m.entries.
-	entries     []scrollbackEvent
 	lines       []displayLine
 
 	// Shared-buffer sourcing (slice 5-1). buf is the authoritative record
@@ -408,7 +399,7 @@ const (
 )
 
 func newModel(scrollback int) *model {
-	return &model{
+	m := &model{
 		scrollback:   scrollback,
 		tailMode:     true,
 		showGroup:    true,
@@ -422,6 +413,21 @@ func newModel(scrollback int) *model {
 
 		showExceptionMarks: true,
 	}
+	// Every model owns a buffer so newModel-built models (tests/standalone)
+	// can seed via appendEvent. New overrides this with the shared buffer.
+	m.buf = linebuf.New(scrollback, tuiDecompose)
+	return m
+}
+
+// tuiDecompose adapts render.DecomposeLines to linebuf.Line for the owned
+// buffer (mirrors main.go's bufDecompose).
+func tuiDecompose(ev render.Event) []linebuf.Line {
+	rows := render.DecomposeLines(ev)
+	out := make([]linebuf.Line, len(rows))
+	for i, r := range rows {
+		out[i] = linebuf.Line{Text: r.Text, IsCont: r.IsCont}
+	}
+	return out
 }
 
 // unstickFromTail flips out of tail mode while keeping the visible window
@@ -578,17 +584,25 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case keymap.ActionToggleFileCol:
 			m.showFile = !m.showFile
 		case keymap.ActionClear:
-			// Clear the TUI's scrollback. The watcher / sinks / SSE hub
-			// keep running; only the in-memory view is reset. Re-enter
-			// tail mode so the next event appears immediately at the top.
-			m.entries = nil
+			// Clear the TUI's scrollback. The shared buffer / watcher / sinks
+			// keep running (MCP still sees everything); only the in-memory view
+			// is reset by raising the Clear floor to the latest entry's Seq, so
+			// reconcile hides everything at or before it. Re-enter tail mode so
+			// the next event appears immediately at the top.
+			if snap, _ := m.buf.Snapshot(0); len(snap) > 0 {
+				m.clearedSeq = snap[len(snap)-1].Seq
+			}
+			m.displayCache = map[string][]displayLine{}
+			m.prevIDLines = map[string]int{}
 			m.lines = nil
+			m.lastGen = 0 // force the next reconcile
 			m.streamTop = 0
 			m.tailMode = true
 			m.horizScroll = 0
 			m.searchHit = -1
 			// Filtering an emptied buffer would render blank; drop it.
 			m.filterMode = false
+			m.reconcile()
 		case keymap.ActionScrollUp:
 			m.blockFocused = false
 			if m.showFiles {
@@ -747,7 +761,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.renderersScroll = 0
 		}
 	case EventMsg:
-		m.appendEvent(msg.Event)
+		// The pump already appended to the shared buffer before Push; just
+		// reconcile from it (the event payload is redundant).
+		m.reconcile()
 	case FileListMsg:
 		m.files = msg.Files
 		if m.filesScroll >= len(m.files) {
@@ -802,78 +818,26 @@ func (m *model) applyReload(msg ReloadMsg) {
 	m.blocksDirty = true
 }
 
+// appendEvent appends an event to the shared buffer and reconciles. In
+// production the pump appends to the buffer and Push triggers a reconcile via
+// EventMsg; this is the seed/test path (and any in-model append) doing both.
+// The buffer assigns the ID (ev.ID is ignored).
 func (m *model) appendEvent(ev render.Event) {
-	lines := decomposeEvent(ev)
-	m.entries = append(m.entries, scrollbackEvent{
-		id:    ev.ID,
-		group: ev.Group,
-		file:  ev.File,
-		raw:   ev.Raw,
-		lines: lines,
-	})
-	m.lines = append(m.lines, lines...)
-	m.trimToCap()
-	m.blocksDirty = true
+	if m.buf == nil {
+		return
+	}
+	m.buf.Append(ev)
+	m.reconcile()
 }
 
-// appendStored pushes a pre-built scrollbackEvent (used when re-running
-// the pipeline on existing scrollback isn't applicable — e.g. tests
-// that bypass the pipeline). lines may be empty.
+// appendStored seeds a pre-built event by its source fields (tests). It routes
+// through the shared buffer so the model stays single-sourced.
 func (m *model) appendStored(e scrollbackEvent) {
-	m.entries = append(m.entries, e)
-	m.lines = append(m.lines, e.lines...)
-	m.trimToCap()
-}
-
-// trimToCap enforces the scrollback line-count cap by evicting WHOLE
-// entries from the head of m.entries until the flat-line count fits.
-// Whole-entry eviction keeps m.entries and m.lines in lockstep — no
-// half-evicted event whose head row is gone but blocks remain.
-//
-// When the user is browsing (!tailMode), streamTop and searchHit are
-// dragged down by exactly the number of lines evicted so the absolute
-// rows they reference don't drift.
-func (m *model) trimToCap() {
-	if m.scrollback <= 0 || len(m.lines) <= m.scrollback {
+	if m.buf == nil {
 		return
 	}
-	dropLines := 0
-	dropEntries := 0
-	for dropEntries < len(m.entries) && len(m.lines)-dropLines > m.scrollback {
-		dropLines += len(m.entries[dropEntries].lines)
-		dropEntries++
-	}
-	if dropEntries == 0 {
-		return
-	}
-	m.entries = m.entries[dropEntries:]
-	m.lines = m.lines[dropLines:]
-	if !m.tailMode {
-		m.streamTop -= dropLines
-		if m.streamTop < 0 {
-			m.streamTop = 0
-		}
-	}
-	if m.searchHit >= 0 {
-		m.searchHit -= dropLines
-		if m.searchHit < 0 {
-			m.searchHit = -1 // hit scrolled off-screen
-		}
-	}
-	if m.visualMode {
-		m.visualCursor -= dropLines
-		if m.visualCursor < 0 {
-			m.visualCursor = 0
-		}
-		if m.visualAnchor >= 0 {
-			m.visualAnchor -= dropLines
-			if m.visualAnchor < 0 {
-				m.visualAnchor = -1 // anchor scrolled off → unset
-			}
-		}
-	}
-	m.blockFocused = false
-	m.blocksDirty = true
+	m.buf.Append(render.Event{Group: e.group, File: e.file, Raw: e.raw})
+	m.reconcile()
 }
 
 // displayLinesFromEntry builds the TUI display rows for a linebuf entry as a
@@ -1023,25 +987,19 @@ func (m *model) visibleEntries() []*linebuf.Entry {
 // If renderFn is nil (no pipeline plumbed — early bootstrap, tests
 // that bypass main.go) reRenderAll is a no-op.
 func (m *model) reRenderAll() {
-	if m.renderFn == nil {
+	if m.renderFn == nil || m.buf == nil {
 		return
 	}
-	totalLines := 0
-	for i := range m.entries {
-		ev, ok := m.renderFn(m.entries[i].group, m.entries[i].file, m.entries[i].raw)
-		var lines []displayLine
-		if ok {
-			lines = decomposeEvent(ev)
-		}
-		m.entries[i].lines = lines
-		totalLines += len(lines)
-	}
-	flat := make([]displayLine, 0, totalLines)
-	for i := range m.entries {
-		flat = append(flat, m.entries[i].lines...)
-	}
-	m.lines = flat
-	// Clamp anchors to the new line count.
+	// Re-render the shared buffer under the current pipeline so linebuf.Entry
+	// Lines reflect the new rendering (this also keeps MCP consistent), then
+	// drop the stale display cache and reconcile.
+	m.buf.Rerender(func(g, f, raw string) (render.Event, bool) {
+		return m.renderFn(g, f, raw)
+	})
+	m.displayCache = map[string][]displayLine{}
+	m.lastGen = 0 // force reconcile
+	m.reconcile()
+	// Clamp anchors to the new line count (a toggle can change row counts).
 	if m.streamTop > len(m.lines) {
 		m.streamTop = len(m.lines)
 	}
@@ -1051,7 +1009,6 @@ func (m *model) reRenderAll() {
 	if m.searchHit >= len(m.lines) {
 		m.searchHit = -1
 	}
-	m.blocksDirty = true
 }
 
 // decomposeEvent splits one render.Event into the per-line display rows
@@ -1186,10 +1143,11 @@ func (m *model) filteredIndices() []int {
 	}
 	var out []int
 	off := 0
-	for _, e := range m.entries {
-		n := len(e.lines)
+	for _, e := range m.visibleEntries() {
+		dls := m.displayCache[e.ID]
+		n := len(dls)
 		matched := false
-		for _, dl := range e.lines {
+		for _, dl := range dls {
 			if strings.Contains(strings.ToLower(matchHaystack(dl)), m.searchTerm) {
 				matched = true
 				break

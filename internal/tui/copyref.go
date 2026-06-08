@@ -14,10 +14,10 @@ func (m *model) entryIDForLine(idx int) string {
 		return ""
 	}
 	off := 0
-	for _, e := range m.entries {
-		n := len(e.lines)
+	for _, e := range m.visibleEntries() {
+		n := len(m.displayCache[e.ID])
 		if idx < off+n {
-			return e.id
+			return e.ID
 		}
 		off += n
 	}

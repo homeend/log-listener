@@ -253,7 +253,9 @@ func TestModelViewShowsEventAfterUpdate(t *testing.T) {
 		Group: "g1", File: "/tmp/abc.log",
 		Rendered: []render.Part{{Type: "text", Value: "MARKER-9999"}},
 	}
-	m, _ = m.Update(EventMsg{Event: ev})
+	// Production: the pump appends to the shared buffer, then Push→EventMsg
+	// triggers a reconcile. appendEvent does both (buffer + reconcile).
+	m.(*model).appendEvent(ev)
 	view := m.View()
 	if !strings.Contains(view, "MARKER-9999") {
 		t.Fatalf("View() does not contain pushed event marker:\n%s", view)
@@ -680,8 +682,9 @@ func TestReloadMsgReseedsPanelsAndState(t *testing.T) {
 		t.Fatalf("files = %+v, want one /x/new.log", m.files)
 	}
 	// Scrollback content is preserved (one source entry survives).
-	if len(m.entries) != 1 || m.entries[0].raw != "line1" {
-		t.Fatalf("entries = %+v, want preserved line1", m.entries)
+	ve := m.visibleEntries()
+	if len(ve) != 1 || ve[0].Raw != "line1" {
+		t.Fatalf("entries = %+v, want preserved line1", ve)
 	}
 }
 

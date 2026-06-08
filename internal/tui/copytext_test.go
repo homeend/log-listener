@@ -48,7 +48,7 @@ func TestSelectionTextSearchHitCopiesWholeEntry(t *testing.T) {
 	m.searchTerm = "config"
 	m.searchHit = 1 // row 1 is L1's head row
 	got := buildSelectionText(m)
-	want := joinPlain(m.entries[1].lines) // ALL of L1's rows, not just the hit row
+	want := joinPlain(m.displayCache[m.visibleEntries()[1].ID]) // ALL of L1's rows, not just the hit row
 	if got != want {
 		t.Fatalf("search-hit selection text:\n got %q\nwant %q", got, want)
 	}

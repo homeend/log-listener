@@ -474,7 +474,8 @@ func runWatchTUI(cfg *config.Config, args []string, dropUnmatched bool, assignme
 		Renderers:     renderers,
 		Keymap:        km,
 		Buffer:        buf,
-		InitialEvents: preloadEvents,
+		// Preload is already in buf (appended at startup); the model's first
+		// reconcile renders it. Passing InitialEvents too would double it.
 		SetRendererOn: func(i int, on bool) { pipePtr.Load().SetRendererEnabled(i, on) },
 		RenderFn: func(group, file, raw string) (render.Event, bool) {
 			return pipePtr.Load().Render(time.Now(), group, file, raw)

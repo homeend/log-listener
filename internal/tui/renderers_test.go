@@ -118,8 +118,8 @@ func TestModelRendererToggleReRendersScrollback(t *testing.T) {
 	// Seed via the full path so an entry is created.
 	ev, _ := fp.render("g", "/x.log", "line-A")
 	m.appendEvent(ev)
-	if len(m.entries) != 1 {
-		t.Fatalf("want 1 entry, got %d", len(m.entries))
+	if len(m.visibleEntries()) != 1 {
+		t.Fatalf("want 1 entry, got %d", len(m.visibleEntries()))
 	}
 	preToggleLines := len(m.lines)
 	if preToggleLines < 2 {
@@ -133,7 +133,7 @@ func TestModelRendererToggleReRendersScrollback(t *testing.T) {
 		t.Fatalf("toggling renderer off should shrink line count: pre=%d post=%d",
 			preToggleLines, len(m.lines))
 	}
-	if len(m.entries) != 1 {
+	if len(m.visibleEntries()) != 1 {
 		t.Fatal("toggling must not delete the source entry")
 	}
 

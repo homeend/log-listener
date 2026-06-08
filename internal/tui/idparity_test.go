@@ -3,7 +3,6 @@ package tui
 import (
 	"testing"
 
-	"github.com/homeend/log-listener/internal/linebuf"
 	"github.com/homeend/log-listener/internal/render"
 )
 
@@ -11,14 +10,6 @@ import (
 // entry carries. Here we simulate the fan-out — buffer assigns, the event is
 // pushed to the model with that ID — and assert 1:1 parity.
 func TestTUIEntryIDsMatchBufferIDs(t *testing.T) {
-	decomp := func(ev render.Event) []linebuf.Line {
-		out := make([]linebuf.Line, 0)
-		for _, r := range render.DecomposeLines(ev) {
-			out = append(out, linebuf.Line{Text: r.Text, IsCont: r.IsCont})
-		}
-		return out
-	}
-	buf := linebuf.New(100, decomp)
 	m := newModel(100)
 	events := []render.Event{
 		{Group: "g", File: "/a.log", Raw: "one",
@@ -26,17 +17,20 @@ func TestTUIEntryIDsMatchBufferIDs(t *testing.T) {
 		{Group: "g", File: "/a.log", Raw: "trace",
 			Rendered: []render.Part{{Type: "text", Value: "panic: x\n  at y"}}},
 	}
+	// The TUI now sources records from its (owned) buffer, which is the ID
+	// authority; appendEvent routes through it. Assert the visible entries
+	// carry the buffer-assigned IDs L0, L1, ...
 	for _, ev := range events {
-		ev.ID = buf.Append(ev) // fan-out: buffer is the authority
 		m.appendEvent(ev)
 	}
-	if len(m.entries) != len(events) {
-		t.Fatalf("entry count: %d", len(m.entries))
+	ve := m.visibleEntries()
+	if len(ve) != len(events) {
+		t.Fatalf("entry count: %d", len(ve))
 	}
-	for i, e := range m.entries {
+	for i, e := range ve {
 		want := "L" + itoa36(i)
-		if e.id != want {
-			t.Errorf("entry %d id = %q, want %q", i, e.id, want)
+		if e.ID != want {
+			t.Errorf("entry %d id = %q, want %q", i, e.ID, want)
 		}
 	}
 }
