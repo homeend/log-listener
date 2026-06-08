@@ -620,11 +620,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else if m.matcher != nil {
 				m.searchPrev()
 			} else {
-				m.unstickFromTail()
-				m.streamTop--
-				if m.streamTop < 0 {
-					m.streamTop = 0
-				}
+				m.scrollBy(-1)
 			}
 		case keymap.ActionScrollDown:
 			m.blockFocused = false
@@ -634,9 +630,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			} else if m.matcher != nil {
 				m.searchNext()
-			} else if !m.tailMode {
-				m.streamTop++
-				m.maybeReStick()
+			} else {
+				m.scrollBy(1)
 			}
 		case keymap.ActionPageUp:
 			m.blockFocused = false
@@ -647,11 +642,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.filesScroll = 0
 				}
 			} else {
-				m.unstickFromTail()
-				m.streamTop -= page
-				if m.streamTop < 0 {
-					m.streamTop = 0
-				}
+				m.scrollBy(-page)
 			}
 		case keymap.ActionPageDown:
 			m.blockFocused = false
@@ -664,9 +655,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.filesScroll < 0 {
 					m.filesScroll = 0
 				}
-			} else if !m.tailMode {
-				m.streamTop += page
-				m.maybeReStick()
+			} else {
+				m.scrollBy(page)
 			}
 		case keymap.ActionFastUp:
 			m.blockFocused = false
@@ -676,11 +666,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.filesScroll = 0
 				}
 			} else {
-				m.unstickFromTail()
-				m.streamTop -= vertFastStep
-				if m.streamTop < 0 {
-					m.streamTop = 0
-				}
+				m.scrollBy(-vertFastStep)
 			}
 		case keymap.ActionFastDown:
 			m.blockFocused = false
@@ -692,9 +678,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.filesScroll < 0 {
 					m.filesScroll = 0
 				}
-			} else if !m.tailMode {
-				m.streamTop += vertFastStep
-				m.maybeReStick()
+			} else {
+				m.scrollBy(vertFastStep)
 			}
 		case keymap.ActionTop:
 			m.blockFocused = false
