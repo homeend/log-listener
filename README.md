@@ -666,9 +666,22 @@ not surfaced, mirroring how a hit in a disabled group isn't surfaced.
 
 Press **`/`** to enter search mode. Type the term — the footer shows
 what's being typed — and press **Enter** to find the first hit, or
-**Esc** to cancel. The match is case-insensitive substring matching
-(no regex), runs against the rendered line body, and respects the
-group enable/disable toggles (hits in disabled groups are skipped).
+**Esc** to cancel. Search uses **smart-case** substring matching: the
+query is case-insensitive unless it contains an uppercase letter, in
+which case it is case-sensitive. This is the same predicate used by the
+MCP `search` tool, so an agent and a human looking at the same log see
+identical matches.
+
+Press **`Ctrl+R`** while the search box is open to toggle **regex
+mode**. The footer prefix changes from `/ ` to `/(regex) ` to confirm
+the mode is active. In regex mode the query is interpreted as a Go
+regular expression; an invalid regex keeps the input box open and
+flashes an error in the footer instead of committing. Smart-case still
+applies: an all-lowercase regex is matched case-insensitively. Toggle
+**`Ctrl+R`** again to return to substring mode.
+
+Matching runs against the rendered line body and respects the group
+enable/disable toggles (hits in disabled groups are skipped).
 
 Once committed, every visible occurrence is highlighted with a yellow
 background; the **current hit** is marked with a brighter red
@@ -737,6 +750,7 @@ below. The authoritative per-OS reference is generated from the code into
 | **`1` … `9`**       | **Toggle the N-th group on/off in the stream.**       |
 | **Ctrl+R**          | **Clear the TUI scrollback (watcher / SSE keep running).** |
 | **`/`**             | **Start a search. Type the term, Enter to find, Esc to cancel.** |
+| **Ctrl+R** *(in search box)* | **Toggle regex mode while typing a query. Footer shows `/(regex) ` when active.** |
 | **`n`**             | **Jump to the next hit (prompts to wrap if none below).** |
 | **`p`**             | **Jump to the previous hit (prompts to wrap if none above).** |
 | **`t`**             | **Toggle filter mode: show only entries containing the search term (whole JSON/XML blocks kept).** |

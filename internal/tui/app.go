@@ -329,6 +329,7 @@ type model struct {
 	//                         the opposite end of the buffer.
 	searchInput bool
 	searchQuery string
+	searchRegex bool
 	matcher     *searchmatch.Matcher
 	searchHit   int
 	wrapPrompt  rune
@@ -1269,7 +1270,11 @@ func (m *model) renderFooter() string {
 		return headerBg.Width(m.width).MaxHeight(1).Render(" VISUAL  ↑↓ move · space anchor · y ref · Y text · esc cancel ")
 	}
 	if m.searchInput {
-		return headerBg.Width(m.width).MaxHeight(1).Render(" /" + m.searchQuery + "_")
+		prefix := " /"
+		if m.searchRegex {
+			prefix = " /(regex) "
+		}
+		return headerBg.Width(m.width).MaxHeight(1).Render(prefix + m.searchQuery + "_")
 	}
 	if m.wrapPrompt != 0 {
 		text := " No more hits — wrap to top? (y/n) "

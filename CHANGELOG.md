@@ -7,6 +7,17 @@ and this project adheres to phased delivery per `PLAN.md`.
 
 ## [Unreleased]
 
+### Search: smart-case shared predicate + `Ctrl+R` regex toggle
+- TUI search now uses the same **smart-case** `searchmatch.Matcher` as the MCP
+  `search` tool — an all-lowercase query matches case-insensitively; any
+  uppercase letter makes the match case-sensitive. Agent and human now search
+  against an identical predicate.
+- **`Ctrl+R`** toggles regex mode while the search box is open. The footer
+  prefix changes to `/(regex) ` when active. An invalid regex keeps the input
+  box open and flashes an error instead of committing a broken matcher.
+- `clearSearch` now also resets the `searchRegex` flag, so opening a fresh
+  search always starts in substring mode.
+
 ### Build variants: `nomcp` / `nosse` tags
 - **`go build -tags nomcp`** compiles a binary without the embedded MCP server,
   dropping the `modelcontextprotocol/go-sdk` dependency entirely. **`-tags nosse`**

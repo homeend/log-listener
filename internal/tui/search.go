@@ -14,6 +14,7 @@ import (
 func (m *model) clearSearch() {
 	m.matcher = nil
 	m.searchQuery = ""
+	m.searchRegex = false
 	m.searchHit = -1
 	m.wrapPrompt = 0
 	m.filterMode = false
@@ -25,21 +26,21 @@ func (m *model) clearSearch() {
 // "from streamTop forward". If there's no hit anywhere in the buffer,
 // the term stays committed (so n/p can prompt for wrap) but no jump
 // happens.
-func (m *model) commitSearch() {
+func (m *model) commitSearch() bool {
 	q := strings.TrimSpace(m.searchQuery)
 	if q == "" {
 		if m.lastQuery == "" {
 			m.clearSearch()
-			return
+			return true
 		}
 		q = m.lastQuery // "/"+Enter repeats the last term
 	}
 	m.lastQuery = q
 	m.searchQuery = q
-	mm, err := searchmatch.Compile(q, false)
+	mm, err := searchmatch.Compile(q, m.searchRegex)
 	if err != nil {
 		m.flash = "invalid search: " + err.Error()
-		return
+		return false
 	}
 	m.matcher = mm
 	start := m.streamTop
@@ -50,7 +51,7 @@ func (m *model) commitSearch() {
 		hit := m.findHit(start, -1)
 		if hit >= 0 {
 			m.jumpToHit(hit)
-			return
+			return true
 		}
 		// Nothing earlier — try the buffer forward from the top as a
 		// fallback so a brand-new search that misses below the tail
@@ -59,18 +60,19 @@ func (m *model) commitSearch() {
 		if hit >= 0 {
 			m.jumpToHit(hit)
 		}
-		return
+		return true
 	}
 	hit := m.findHit(start, +1)
 	if hit >= 0 {
 		m.jumpToHit(hit)
-		return
+		return true
 	}
 	// Fallback: search before the cursor.
 	hit = m.findHit(start-1, -1)
 	if hit >= 0 {
 		m.jumpToHit(hit)
 	}
+	return true
 }
 
 // searchNext advances to the next hit after the current one. If no
@@ -123,8 +125,12 @@ func (m *model) handleSearchInputKey(msg tea.KeyMsg) tea.Model {
 		m.searchQuery = ""
 		return m
 	case tea.KeyEnter:
-		m.searchInput = false
-		m.commitSearch()
+		if m.commitSearch() {
+			m.searchInput = false
+		}
+		return m
+	case tea.KeyCtrlR:
+		m.searchRegex = !m.searchRegex
 		return m
 	case tea.KeyBackspace, tea.KeyDelete:
 		if n := len(m.searchQuery); n > 0 {
