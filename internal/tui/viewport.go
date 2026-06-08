@@ -10,21 +10,6 @@ package tui
 //     since the viewport is already pinned to the bottom; after moving, let
 //     maybeReStick re-enter tail mode if the view caught up to the latest line.
 //   - delta == 0 is a no-op.
-// scrollFiles moves the file-overlay cursor by delta entries, clamped to the
-// file list range [0, len(m.files)-1]. Centralizes the showFiles branches of
-// the six scroll actions. Clamp order (high then low) matches the old
-// PageDown/FastDown code, so the empty-list edge (len-1 == -1) resolves to 0,
-// and the ±1 result equals the old guard-and-skip moves.
-func (m *model) scrollFiles(delta int) {
-	m.filesScroll += delta
-	if m.filesScroll > len(m.files)-1 {
-		m.filesScroll = len(m.files) - 1
-	}
-	if m.filesScroll < 0 {
-		m.filesScroll = 0
-	}
-}
-
 func (m *model) scrollBy(delta int) {
 	switch {
 	case delta < 0:
@@ -39,5 +24,20 @@ func (m *model) scrollBy(delta int) {
 		}
 		m.streamTop += delta
 		m.maybeReStick()
+	}
+}
+
+// scrollFiles moves the file-overlay cursor by delta entries, clamped to the
+// file list range [0, len(m.files)-1]. Centralizes the showFiles branches of
+// the six scroll actions. Clamp order (high then low) matches the old
+// PageDown/FastDown code, so the empty-list edge (len-1 == -1) resolves to 0,
+// and the ±1 result equals the old guard-and-skip moves.
+func (m *model) scrollFiles(delta int) {
+	m.filesScroll += delta
+	if m.filesScroll > len(m.files)-1 {
+		m.filesScroll = len(m.files) - 1
+	}
+	if m.filesScroll < 0 {
+		m.filesScroll = 0
 	}
 }
