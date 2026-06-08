@@ -215,6 +215,19 @@ func TestGenBumpsOnAppendAndRerender(t *testing.T) {
 	}
 }
 
+func TestGenBumpsOnEviction(t *testing.T) {
+	b := New(1, func(ev render.Event) []Line { return []Line{{Text: ev.Raw}} })
+	b.Append(render.Event{Raw: "a"})
+	g := b.Gen()
+	b.Append(render.Event{Raw: "b"}) // evicts "a"
+	if b.Gen() <= g {
+		t.Fatalf("gen did not bump on eviction: %d <= %d", b.Gen(), g)
+	}
+	if snap, _ := b.Snapshot(0); len(snap) != 1 || snap[0].Raw != "b" {
+		t.Fatalf("after eviction Snapshot = %v, want [b]", snapRaws(snap))
+	}
+}
+
 func TestSnapshotReturnsLastLimitAndGen(t *testing.T) {
 	b := New(100, func(ev render.Event) []Line { return []Line{{Text: ev.Raw}} })
 	for _, s := range []string{"a", "b", "c", "d"} {
