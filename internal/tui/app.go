@@ -376,13 +376,6 @@ type model struct {
 // decompose internally (displayLine is unexported).
 type RenderFunc func(group, file, raw string) (ev render.Event, ok bool)
 
-const (
-	horizStep     = 10            // columns moved per Left/Right keypress
-	horizFastStep = 50            // columns moved per Ctrl+Left/Right
-	vertFastStep  = 10            // lines moved per Ctrl+Up/Down
-	hitMargin     = horizStep / 2 // left-margin columns when panning to a hit
-)
-
 func newModel(scrollback int) *model {
 	m := &model{
 		scrollback:   scrollback,
@@ -413,47 +406,6 @@ func tuiDecompose(ev render.Event) []linebuf.Line {
 		out[i] = linebuf.Line{Text: r.Text, IsCont: r.IsCont}
 	}
 	return out
-}
-
-// unstickFromTail flips out of tail mode while keeping the visible window
-// where it currently is — so the very next render shows exactly the same
-// lines as before, but new appends no longer scroll the view. The anchor
-// is the absolute index of the first visible event (computed by walking
-// backward through ENABLED events for one contentHeight worth).
-func (m *model) unstickFromTail() {
-	if !m.tailMode {
-		return
-	}
-	m.tailMode = false
-	rows := m.contentHeight()
-	count := 0
-	idx := len(m.lines) - 1
-	for ; idx >= 0 && count < rows; idx-- {
-		if m.lineEnabled(m.lines[idx]) {
-			count++
-		}
-	}
-	m.streamTop = idx + 1
-	if m.streamTop < 0 {
-		m.streamTop = 0
-	}
-}
-
-// maybeReStick re-pins to the tail if the browse window has caught up
-// with the latest enabled event. Call after any downward scroll.
-func (m *model) maybeReStick() {
-	// Count enabled events from streamTop onward; if that fits in one
-	// content-height window, we're effectively at the tail.
-	rows := m.contentHeight()
-	enabled := 0
-	for i := m.streamTop; i < len(m.lines); i++ {
-		if m.lineEnabled(m.lines[i]) {
-			enabled++
-		}
-	}
-	if enabled <= rows {
-		m.tailMode = true
-	}
 }
 
 func (m *model) Init() tea.Cmd { return nil }
@@ -1121,16 +1073,6 @@ func isContinuation(dl displayLine) bool {
 	}
 	first := dl.body[0]
 	return first == ' ' || first == '\t'
-}
-
-// contentHeight returns the number of rows available for the body between
-// the header (1 row) and the footer (1 row).
-func (m *model) contentHeight() int {
-	h := m.height - 2
-	if h < 1 {
-		h = 1
-	}
-	return h
 }
 
 // hint renders "<keys> <label>" for an action using the model's keymap, e.g.
