@@ -5,7 +5,6 @@ package tui
 import (
 	"fmt"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"strings"
 	"sync"
@@ -13,7 +12,6 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/mattn/go-runewidth"
 
 	"github.com/homeend/log-listener/internal/blocks"
 	"github.com/homeend/log-listener/internal/keymap"
@@ -21,26 +19,6 @@ import (
 	"github.com/homeend/log-listener/internal/render"
 	"github.com/homeend/log-listener/internal/searchmatch"
 )
-
-// ansiRE matches CSI / OSC escape sequences emitted by lipgloss. Used both
-// to strip styling (stripANSI) and to walk it while preserving it during
-// horizontal-scroll slicing (clipANSIWindow).
-var ansiRE = regexp.MustCompile(`\x1b\[[0-9;]*[A-Za-z]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)`)
-
-func stripANSI(s string) string { return ansiRE.ReplaceAllString(s, "") }
-
-func runeLen(s string) int { return utf8.RuneCountInString(s) }
-
-// dispWidth is the terminal cell width of s — wide (CJK) runes count as 2,
-// zero-width/combining as 0 — with any ANSI stripped first. Width/clip math
-// must use this, not runeLen: a rune is not always one column, and counting it
-// as one makes a row of wide characters overflow and wrap.
-func dispWidth(s string) int { return runewidth.StringWidth(stripANSI(s)) }
-
-// runeWidth is the cell width of a single rune (0, 1, or 2). A table lookup —
-// allocation-free, so it's cheap on the per-rune clip hot path.
-func runeWidth(r rune) int { return runewidth.RuneWidth(r) }
-
 
 // Note: an earlier version had init() calls into lipgloss.SetColorProfile
 // and SetHasDarkBackground. Removed — those weren't needed (the
@@ -120,16 +98,16 @@ type RendererInfo struct {
 // nil callbacks turn the corresponding feature into a no-op so tests
 // can construct an App without plumbing the pipeline.
 type Options struct {
-	Scrollback        int
-	InitialFiles      []FileEntry
-	Groups            []GroupInfo
-	Renderers         []RendererInfo
-	Keymap            *keymap.Keymap         // resolved key bindings; nil → built-in for runtime.GOOS
-	SetRendererOn     func(idx int, on bool) // called when shift+digit toggles a renderer
-	RenderFn          RenderFunc             // called per scrollback entry when toggling triggers re-render
-	InitialEvents     []render.Event         // seeded into scrollback before Run (preload)
-	SetViewport       func(from, to string)  // publishes the on-screen entry range (TUI mode only)
-	Buffer            *linebuf.Buffer        // shared record store; nil → an owned buffer (tests/standalone)
+	Scrollback    int
+	InitialFiles  []FileEntry
+	Groups        []GroupInfo
+	Renderers     []RendererInfo
+	Keymap        *keymap.Keymap         // resolved key bindings; nil → built-in for runtime.GOOS
+	SetRendererOn func(idx int, on bool) // called when shift+digit toggles a renderer
+	RenderFn      RenderFunc             // called per scrollback entry when toggling triggers re-render
+	InitialEvents []render.Event         // seeded into scrollback before Run (preload)
+	SetViewport   func(from, to string)  // publishes the on-screen entry range (TUI mode only)
+	Buffer        *linebuf.Buffer        // shared record store; nil → an owned buffer (tests/standalone)
 }
 
 // New creates an App from Options. Files and groups must be passed
@@ -267,7 +245,7 @@ type model struct {
 	// hot path (View, search, collectVisible, streamTop/searchHit
 	// indexing) reads from m.lines, so the cached layout means no
 	// per-render walk of m.entries.
-	lines       []displayLine
+	lines []displayLine
 
 	// Shared-buffer sourcing (slice 5-1). buf is the authoritative record
 	// store (shared with MCP in TUI mode; an owned buffer in tests).
@@ -284,7 +262,7 @@ type model struct {
 	// the same reconcile that built m.lines/displayCache — so readers index
 	// against a consistent snapshot and never re-snapshot the (concurrently
 	// mutated) buffer themselves.
-	window []*linebuf.Entry
+	window      []*linebuf.Entry
 	scrollback  int
 	width       int
 	height      int
@@ -399,10 +377,10 @@ type model struct {
 type RenderFunc func(group, file, raw string) (ev render.Event, ok bool)
 
 const (
-	horizStep      = 10 // columns moved per Left/Right keypress
-	horizFastStep  = 50 // columns moved per Ctrl+Left/Right
-	vertFastStep   = 10 // lines moved per Ctrl+Up/Down
-	hitMargin      = horizStep / 2 // left-margin columns when panning to a hit
+	horizStep     = 10            // columns moved per Left/Right keypress
+	horizFastStep = 50            // columns moved per Ctrl+Left/Right
+	vertFastStep  = 10            // lines moved per Ctrl+Up/Down
+	hitMargin     = horizStep / 2 // left-margin columns when panning to a hit
 )
 
 func newModel(scrollback int) *model {
@@ -488,7 +466,7 @@ var (
 	// Search match styles. matchStyle highlights every visible occurrence;
 	// currentMatchStyle marks the row holding the active hit so n/p
 	// navigation is visually unambiguous.
-	matchStyle        = lipgloss.NewStyle().Background(lipgloss.Color("11")).Foreground(lipgloss.Color("0"))  // yellow bg, black fg
+	matchStyle        = lipgloss.NewStyle().Background(lipgloss.Color("11")).Foreground(lipgloss.Color("0")) // yellow bg, black fg
 	currentMatchStyle = lipgloss.NewStyle().Background(lipgloss.Color("9")).Foreground(lipgloss.Color("15")) // red bg, white fg
 )
 
