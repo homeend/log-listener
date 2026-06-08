@@ -74,6 +74,20 @@ On Linux, `build-static` produces a fully static binary
 the resulting binary is still CGO-free and reproducible. (`build.cmd` is the
 Windows equivalent of `build.sh`.)
 
+### Build variants
+
+The default build (`go build`, `go install …@latest`, `./build.sh build`) includes
+everything. To produce leaner binaries, use build tags:
+
+| Command | Result |
+|---------|--------|
+| `go build -tags nomcp` (`./build.sh build-nomcp`) | No MCP server; **drops the `modelcontextprotocol/go-sdk` dependency**. |
+| `go build -tags nosse` (`./build.sh build-nosse`) | No SSE server. |
+| `go build -tags "nomcp nosse"` (`./build.sh build-minimal`) | Neither MCP nor SSE. |
+
+A stripped binary still recognizes the corresponding flag, but asking for the
+removed feature (`--mcp`, `--sse`, or an `output.sse` YAML block) is a hard error.
+
 ---
 
 ## Quick start with templates

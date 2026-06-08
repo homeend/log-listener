@@ -5,7 +5,13 @@
 # Usage: ./build.sh [target]
 #   build         local binary (default)
 #   build-static  CGO_ENABLED=0 static binary
+#   build-nomcp   binary without the MCP server (drops the go-sdk dependency)
+#   build-nosse   binary without the SSE server
+#   build-minimal binary without MCP and SSE
 #   test          go test ./...
+#   test-nomcp    go test -tags nomcp ./...
+#   test-nosse    go test -tags nosse ./...
+#   test-minimal  go test -tags "nomcp nosse" ./...
 #   vet           go vet ./...
 #   race          go test -race ./...
 #   cover         coverage summary
@@ -43,7 +49,22 @@ case "$target" in
     fi
     echo "built static ./$BINARY"
     ;;
+  build-nomcp)
+    go build -tags nomcp -o "$BINARY" "$CMD"
+    echo "built ./$BINARY (no MCP)"
+    ;;
+  build-nosse)
+    go build -tags nosse -o "$BINARY" "$CMD"
+    echo "built ./$BINARY (no SSE)"
+    ;;
+  build-minimal)
+    go build -tags "nomcp nosse" -o "$BINARY" "$CMD"
+    echo "built ./$BINARY (no MCP, no SSE)"
+    ;;
   test)  go test "$PKG" ;;
+  test-nomcp)   go test -tags nomcp "$PKG" ;;
+  test-nosse)   go test -tags nosse "$PKG" ;;
+  test-minimal) go test -tags "nomcp nosse" "$PKG" ;;
   vet)   go vet "$PKG" ;;
   race)  go test -race "$PKG" ;;
   cover) go test -cover "$PKG" ;;
@@ -56,7 +77,7 @@ case "$target" in
     echo "removed ./$BINARY"
     ;;
   help|-h|--help)
-    sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'
     ;;
   *)
     echo "unknown target: $target (try ./build.sh help)" >&2

@@ -7,6 +7,16 @@ and this project adheres to phased delivery per `PLAN.md`.
 
 ## [Unreleased]
 
+### Build variants: `nomcp` / `nosse` tags
+- **`go build -tags nomcp`** compiles a binary without the embedded MCP server,
+  dropping the `modelcontextprotocol/go-sdk` dependency entirely. **`-tags nosse`**
+  drops the SSE broadcast server. Tags compose (`-tags "nomcp nosse"`). The default
+  build is unchanged (full-featured), so `go install …@latest` is unaffected.
+- Asking a stripped binary for the removed feature (`--mcp`, `--sse`, or a YAML
+  `output.sse` block) is a hard error with a clear message and non-zero exit.
+- `./build.sh` gains `build-nomcp`, `build-nosse`, `build-minimal`, and
+  `test-nomcp` / `test-nosse` / `test-minimal`.
+
 ### Internal: sink fan-out via `sink.Fanout` registry
 - **`sink.Sink` interface + `sink.Fanout` registry**: the stdout, SSE, and
   output-file sinks now implement a common `Sink` interface and are dispatched
