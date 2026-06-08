@@ -50,7 +50,12 @@ func TestFanoutAddSkipsTypedNilPointer(t *testing.T) {
 	var fs *FileSink
 	f.Add(fs)
 
-	// Must not panic and must emit to nothing.
+	// Add must have skipped the typed-nil pointer entirely.
+	if len(f.sinks) != 0 {
+		t.Fatalf("Add registered a typed-nil sink: len(sinks) = %d, want 0", len(f.sinks))
+	}
+
+	// And Emit must not panic with nothing registered.
 	f.Emit(render.Event{ID: "L1"})
 }
 
