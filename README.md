@@ -676,8 +676,9 @@ Press **`Ctrl+R`** while the search box is open to toggle **regex
 mode**. The footer prefix changes from `/ ` to `/(regex) ` to confirm
 the mode is active. In regex mode the query is interpreted as a Go
 regular expression; an invalid regex keeps the input box open and
-flashes an error in the footer instead of committing. Smart-case still
-applies: an all-lowercase regex is matched case-insensitively. Toggle
+flashes an error in the footer instead of committing. Regex matching is
+case-sensitive — prefix the pattern with `(?i)` for a case-insensitive
+match (smart-case applies only to plain substring queries). Toggle
 **`Ctrl+R`** again to return to substring mode.
 
 Matching runs against the rendered line body and respects the group
