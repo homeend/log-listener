@@ -432,9 +432,8 @@ func runWatch(cfg *config.Config, args []string, dropUnmatched bool, assignments
 }
 
 // emit routes a raw line through the renderer pipeline then fans out to the
-// stdout sink and (if running) the SSE broadcast hub and the output-file sink.
-// The buffer is the ID authority: Append assigns the ID, which is threaded into
-// ev before emission.
+// registered sinks via fanout. The buffer is the ID authority: Append assigns
+// the ID, which is threaded into ev before emission.
 func emit(pipePtr *atomic.Pointer[render.Pipeline], buf *linebuf.Buffer, fanout *sink.Fanout, group, path, line string) {
 	ev, ok := pipePtr.Load().Render(time.Now(), group, path, line)
 	if !ok {
@@ -446,8 +445,8 @@ func emit(pipePtr *atomic.Pointer[render.Pipeline], buf *linebuf.Buffer, fanout 
 
 // runWatchTUI is the TUI variant of runWatch. The bubbletea program owns the
 // terminal on the main goroutine, while a background goroutine pumps watcher
-// events through the renderer pipeline into app.Push() and (if configured)
-// the SSE hub.
+// events through the renderer pipeline into app.Push() and out to the
+// registered sinks via fanout (SSE and/or output file, if configured).
 func runWatchTUI(cfg *config.Config, args []string, dropUnmatched bool, assignments []discover.Assignment, pipePtr *atomic.Pointer[render.Pipeline], buf *linebuf.Buffer, fanout *sink.Fanout, km *keymap.Keymap, preloadEvents []render.Event, stderr io.Writer) error {
 	w, err := buildWatcher(cfg, assignments, stderr)
 	if err != nil {
