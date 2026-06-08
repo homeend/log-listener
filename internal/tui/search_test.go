@@ -356,11 +356,11 @@ func TestUpDownScrollWhenNoSearch(t *testing.T) {
 	m2, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 20})
 	m = m2.(*model)
 	m.tailMode = false
-	m.streamTop = 20
+	m.setStreamTopRow(20)
 	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyUp})
 	m = m2.(*model)
-	if m.streamTop != 19 {
-		t.Fatalf("Up with no active search should scroll one line: streamTop=%d want 19", m.streamTop)
+	if m.streamTopRow() != 19 {
+		t.Fatalf("Up with no active search should scroll one line: streamTop=%d want 19", m.streamTopRow())
 	}
 }
 
@@ -513,7 +513,7 @@ func TestCollectVisibleFilterModeOnlyShowsFiltered(t *testing.T) {
 	m = m2.(*model)
 	m = typeQuery(t, m, "needle")
 	m.filterMode = true
-	m.streamTop = 0
+	m.setStreamTopRow(0)
 	vis := m.collectVisible(m.contentHeight())
 	filSet := map[int]bool{}
 	for _, i := range m.filteredIndices() {
@@ -559,8 +559,8 @@ func TestJumpToHitCentersInFilterMode(t *testing.T) {
 	m = typeQuery(t, m, "needle")
 	m.filterMode = true
 	m.jumpToHit(10) // fil = [0,2,...,18]; pos(10)=5; top=5-4/2=3 -> fil[3]=6
-	if m.streamTop != 6 {
-		t.Fatalf("filter-mode centering: streamTop=%d want 6 (fil=%v)", m.streamTop, m.filteredIndices())
+	if m.streamTopRow() != 6 {
+		t.Fatalf("filter-mode centering: streamTop=%d want 6 (fil=%v)", m.streamTopRow(), m.filteredIndices())
 	}
 }
 

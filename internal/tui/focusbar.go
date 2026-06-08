@@ -18,7 +18,7 @@ func (m *model) focusedBlockRange() (start, end int, ok bool) {
 	if !m.blockFocused || m.tailMode {
 		return 0, 0, false
 	}
-	ref := m.streamTop
+	ref := m.streamTopRow()
 	if ref < 0 || ref >= len(m.lines) {
 		return 0, 0, false
 	}

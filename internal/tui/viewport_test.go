@@ -66,23 +66,23 @@ func scrollModel(t *testing.T, n int) *model {
 	m := seedSearch(t, vals...)
 	m.reconcile()
 	m.tailMode = false
-	m.streamTop = 0
+	m.setStreamTopRow(0)
 	return m
 }
 
 func TestScrollByUpClampsAtZero(t *testing.T) {
 	m := scrollModel(t, 5)
-	m.streamTop = 1
+	m.setStreamTopRow(1)
 	m.scrollBy(-3) // would go to -2
-	if m.streamTop != 0 {
-		t.Fatalf("streamTop = %d, want 0 (clamped)", m.streamTop)
+	if m.streamTopRow() != 0 {
+		t.Fatalf("streamTop = %d, want 0 (clamped)", m.streamTopRow())
 	}
 }
 
 func TestScrollByUpLeavesTailMode(t *testing.T) {
 	m := scrollModel(t, 5)
 	m.tailMode = true
-	m.streamTop = 4
+	m.setStreamTopRow(4)
 	m.scrollBy(-1)
 	if m.tailMode {
 		t.Fatal("scrollBy(up) must leave tail mode (unstickFromTail)")
@@ -92,10 +92,10 @@ func TestScrollByUpLeavesTailMode(t *testing.T) {
 func TestScrollByDownIsNoOpInTailMode(t *testing.T) {
 	m := scrollModel(t, 5)
 	m.tailMode = true
-	before := m.streamTop
+	before := m.streamTopRow()
 	m.scrollBy(2)
-	if m.streamTop != before {
-		t.Fatalf("scrollBy(down) in tail mode moved streamTop %d->%d, want no-op", before, m.streamTop)
+	if m.streamTopRow() != before {
+		t.Fatalf("scrollBy(down) in tail mode moved streamTop %d->%d, want no-op", before, m.streamTopRow())
 	}
 	if !m.tailMode {
 		t.Fatal("scrollBy(down) in tail mode must stay in tail mode")
@@ -105,18 +105,18 @@ func TestScrollByDownIsNoOpInTailMode(t *testing.T) {
 func TestScrollByDownMovesWhenBrowsing(t *testing.T) {
 	m := scrollModel(t, 20)
 	m.tailMode = false
-	m.streamTop = 0
+	m.setStreamTopRow(0)
 	m.scrollBy(3)
-	if m.streamTop != 3 {
-		t.Fatalf("streamTop = %d, want 3", m.streamTop)
+	if m.streamTopRow() != 3 {
+		t.Fatalf("streamTop = %d, want 3", m.streamTopRow())
 	}
 }
 
 func TestScrollByZeroIsNoOp(t *testing.T) {
 	m := scrollModel(t, 5)
-	m.streamTop = 2
+	m.setStreamTopRow(2)
 	m.scrollBy(0)
-	if m.streamTop != 2 {
-		t.Fatalf("streamTop = %d, want 2 (zero delta no-op)", m.streamTop)
+	if m.streamTopRow() != 2 {
+		t.Fatalf("streamTop = %d, want 2 (zero delta no-op)", m.streamTopRow())
 	}
 }

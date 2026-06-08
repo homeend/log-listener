@@ -291,8 +291,8 @@ func TestModelPageUpPageDown(t *testing.T) {
 	}
 	// streamTop should be (bottom of view = events - page) - page.
 	wantTop := len(m.lines) - 2*page
-	if m.streamTop != wantTop {
-		t.Fatalf("after PgUp streamTop=%d want %d", m.streamTop, wantTop)
+	if m.streamTopRow() != wantTop {
+		t.Fatalf("after PgUp streamTop=%d want %d", m.streamTopRow(), wantTop)
 	}
 
 	// PgDn re-sticks once the bottom catches up.
@@ -307,8 +307,8 @@ func TestModelPageUpPageDown(t *testing.T) {
 		m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyPgUp})
 		m = m2.(*model)
 	}
-	if m.streamTop != 0 {
-		t.Fatalf("PgUp past start: streamTop=%d want 0", m.streamTop)
+	if m.streamTopRow() != 0 {
+		t.Fatalf("PgUp past start: streamTop=%d want 0", m.streamTopRow())
 	}
 }
 
@@ -329,7 +329,7 @@ func TestModelTailModeStaysOnAppend(t *testing.T) {
 	if m.tailMode {
 		t.Fatal("Up arrow should unstick from tail")
 	}
-	lockedTop := m.streamTop
+	lockedTop := m.streamTopRow()
 
 	// New events arriving must NOT shift the user's view.
 	for i := 100; i < 150; i++ {
@@ -338,8 +338,8 @@ func TestModelTailModeStaysOnAppend(t *testing.T) {
 			Rendered: []render.Part{{Type: "text", Value: fmt.Sprintf("line %d", i)}},
 		})
 	}
-	if m.streamTop != lockedTop {
-		t.Fatalf("streamTop drifted during append: got %d, want %d", m.streamTop, lockedTop)
+	if m.streamTopRow() != lockedTop {
+		t.Fatalf("streamTop drifted during append: got %d, want %d", m.streamTopRow(), lockedTop)
 	}
 	if m.tailMode {
 		t.Fatal("appends must not re-stick tailMode automatically")
@@ -368,8 +368,8 @@ func TestModelHomeJumpsToOldest(t *testing.T) {
 	if m.tailMode {
 		t.Fatal("Home should leave tail mode")
 	}
-	if m.streamTop != 0 {
-		t.Fatalf("Home streamTop=%d want 0", m.streamTop)
+	if m.streamTopRow() != 0 {
+		t.Fatalf("Home streamTop=%d want 0", m.streamTopRow())
 	}
 	// The View should contain the FIRST line (line 0), not line 49.
 	view := m.View()
@@ -400,8 +400,8 @@ func TestModelScrollbackTrimAdjustsStreamTop(t *testing.T) {
 			Rendered: []render.Part{{Type: "text", Value: fmt.Sprintf("ev %d", i)}},
 		})
 	}
-	if m.streamTop < 0 || m.streamTop >= len(m.lines) {
-		t.Fatalf("streamTop=%d out of range (events=%d)", m.streamTop, len(m.lines))
+	if m.streamTopRow() < 0 || m.streamTopRow() >= len(m.lines) {
+		t.Fatalf("streamTop=%d out of range (events=%d)", m.streamTopRow(), len(m.lines))
 	}
 	if m.tailMode {
 		t.Fatal("eviction must not silently re-stick to tail")
@@ -430,7 +430,7 @@ func TestStreamRowsNeverExceedWidth(t *testing.T) {
 	m = m2.(*model)
 	// Browse from the very top so the wide JSON block row is on screen.
 	m.tailMode = false
-	m.streamTop = 0
+	m.setStreamTopRow(0)
 
 	body := m.renderStream(m.contentHeight())
 	for i, ln := range strings.Split(body, "\n") {
@@ -524,8 +524,8 @@ func TestModelFastScrollKeys(t *testing.T) {
 		t.Fatal("Ctrl+Up should unstick from tail")
 	}
 	wantTop := len(m.lines) - m.contentHeight() - vertFastStep
-	if m.streamTop != wantTop {
-		t.Fatalf("Ctrl+Up: streamTop=%d want %d", m.streamTop, wantTop)
+	if m.streamTopRow() != wantTop {
+		t.Fatalf("Ctrl+Up: streamTop=%d want %d", m.streamTopRow(), wantTop)
 	}
 
 	// Ctrl+Down moves down by vertFastStep; when the bottom catches up, re-stick.
@@ -622,8 +622,8 @@ func TestModelClearSession(t *testing.T) {
 	if !m.tailMode {
 		t.Fatal("Ctrl+R should re-enter tail mode")
 	}
-	if m.streamTop != 0 || m.horizScroll != 0 {
-		t.Fatalf("scroll state not reset: streamTop=%d horizScroll=%d", m.streamTop, m.horizScroll)
+	if m.streamTopRow() != 0 || m.horizScroll != 0 {
+		t.Fatalf("scroll state not reset: streamTop=%d horizScroll=%d", m.streamTopRow(), m.horizScroll)
 	}
 	// View should not contain any pre-clear lines.
 	if strings.Contains(m.View(), "pre-clear") {

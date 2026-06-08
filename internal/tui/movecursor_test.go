@@ -6,7 +6,7 @@ func TestMoveVisualCursorWithinRange(t *testing.T) {
 	m := seedSearch(t, "a", "b", "c", "d")
 	m.reconcile()
 	m.tailMode = false
-	m.streamTop = 0
+	m.setStreamTopRow(0)
 	m.visualMode = true
 	m.visualCursor = 1
 	m.moveVisualCursor(1)
@@ -19,7 +19,7 @@ func TestMoveVisualCursorClampsAtTop(t *testing.T) {
 	m := seedSearch(t, "a", "b", "c")
 	m.reconcile()
 	m.tailMode = false
-	m.streamTop = 0
+	m.setStreamTopRow(0)
 	m.visualMode = true
 	m.visualCursor = 0
 	m.moveVisualCursor(-1)
@@ -32,7 +32,7 @@ func TestMoveVisualCursorClampsAtBottom(t *testing.T) {
 	m := seedSearch(t, "a", "b", "c")
 	m.reconcile()
 	m.tailMode = false
-	m.streamTop = 0
+	m.setStreamTopRow(0)
 	m.visualMode = true
 	m.visualCursor = 2 // last row (len 3 → max index 2)
 	m.moveVisualCursor(1)

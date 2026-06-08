@@ -27,7 +27,7 @@ func TestSelectionTextViewportMatchesSnapshot(t *testing.T) {
 	m.groupEnabled["g"] = true
 	seedIDs(m, "a", "b", "c", "d", "e", "f")
 	m.tailMode = false
-	m.streamTop = 0
+	m.setStreamTopRow(0)
 	got := buildSelectionText(m)
 	want := strings.Join(m.snapshotViewport(), "\n")
 	if got != want {
@@ -67,7 +67,7 @@ func TestSelectionTextFocusedBlock(t *testing.T) {
 	// L0 lead; L1+L2 form a go-panic block ("goroutine " is a continuation sig).
 	seedIDs(m, "start", "panic: boom", "goroutine 1 [running]:")
 	m.tailMode = false
-	m.streamTop = 0
+	m.setStreamTopRow(0)
 	m = key(m, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{']'}}) // focus block at line 1
 	s, e, ok := m.focusedBlockRange()
 	if !ok {
@@ -107,14 +107,14 @@ func TestCopyTextParityWithReference(t *testing.T) {
 	mv := mk()
 	seedIDs(mv, "a", "b", "c", "d")
 	mv.tailMode = false
-	mv.streamTop = 0
+	mv.setStreamTopRow(0)
 	assertParity(t, "viewport", mv, mv.selectedRows())
 
 	// focused-block context
 	mb := mk()
 	seedIDs(mb, "start", "panic: boom", "goroutine 1 [running]:")
 	mb.tailMode = false
-	mb.streamTop = 0
+	mb.setStreamTopRow(0)
 	mb = key(mb, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{']'}})
 	assertParity(t, "block", mb, mb.selectedRows())
 

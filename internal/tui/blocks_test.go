@@ -96,31 +96,31 @@ func TestBlockNavigation(t *testing.T) {
 	}
 
 	m.tailMode = false
-	m.streamTop = 0
+	m.setStreamTopRow(0)
 	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{']'}})
 	m = m2.(*model)
-	if m.streamTop != 1 {
-		t.Errorf("] from 0 → streamTop %d, want 1 (config-dump head)", m.streamTop)
+	if m.streamTopRow() != 1 {
+		t.Errorf("] from 0 → streamTop %d, want 1 (config-dump head)", m.streamTopRow())
 	}
 	// Next ] skips the single line at index 3 and lands on the exception block.
 	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{']'}})
 	m = m2.(*model)
-	if m.streamTop != 4 {
-		t.Errorf("] from 1 → streamTop %d, want 4 (skips single line at 3)", m.streamTop)
+	if m.streamTopRow() != 4 {
+		t.Errorf("] from 1 → streamTop %d, want 4 (skips single line at 3)", m.streamTopRow())
 	}
 
 	m.tailMode = false
-	m.streamTop = 0
+	m.setStreamTopRow(0)
 	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'}'}})
 	m = m2.(*model)
-	if m.streamTop != 4 {
-		t.Errorf("} from 0 → streamTop %d, want 4 (exception head)", m.streamTop)
+	if m.streamTopRow() != 4 {
+		t.Errorf("} from 0 → streamTop %d, want 4 (exception head)", m.streamTopRow())
 	}
 
 	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'['}})
 	m = m2.(*model)
-	if m.streamTop != 1 {
-		t.Errorf("[ from 4 → streamTop %d, want 1 (prev multi-line block)", m.streamTop)
+	if m.streamTopRow() != 1 {
+		t.Errorf("[ from 4 → streamTop %d, want 1 (prev multi-line block)", m.streamTopRow())
 	}
 }
 
@@ -154,28 +154,28 @@ func TestNavSkipsSingleLineLogEntries(t *testing.T) {
 	// The only multi-line block is the locale= entry (index 2) + its five
 	// indented continuations (indices 3-7).
 	m.tailMode = false
-	m.streamTop = 0
+	m.setStreamTopRow(0)
 	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{']'}})
 	m = m2.(*model)
-	if m.streamTop != 2 {
-		t.Errorf("] should land on the multi-line entry head (index 2), got %d", m.streamTop)
+	if m.streamTopRow() != 2 {
+		t.Errorf("] should land on the multi-line entry head (index 2), got %d", m.streamTopRow())
 	}
 	// No further multi-line block → another ] is a no-op (stays at 2).
 	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{']'}})
 	m = m2.(*model)
-	if m.streamTop != 2 {
-		t.Errorf("] past the last multi-line block should stay put, got %d", m.streamTop)
+	if m.streamTopRow() != 2 {
+		t.Errorf("] past the last multi-line block should stay put, got %d", m.streamTopRow())
 	}
 	// The config dump is not an exception → it is not in an exception block,
 	// and } finds nothing.
 	if m.inExceptionBlock(2) {
 		t.Errorf("the config-dump block must not be flagged as an exception")
 	}
-	m.streamTop = 0
+	m.setStreamTopRow(0)
 	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'}'}})
 	m = m2.(*model)
-	if m.streamTop != 0 {
-		t.Errorf("} should find no exception block here (stay at 0), got %d", m.streamTop)
+	if m.streamTopRow() != 0 {
+		t.Errorf("} should find no exception block here (stay at 0), got %d", m.streamTopRow())
 	}
 }
 

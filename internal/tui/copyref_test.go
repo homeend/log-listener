@@ -25,7 +25,7 @@ func TestBuildReferenceViewportRange(t *testing.T) {
 	m.groupEnabled["g"] = true
 	seedIDs(m, "a", "b", "c", "d", "e", "f")
 	m.tailMode = false
-	m.streamTop = 0
+	m.setStreamTopRow(0)
 	ref := buildReference(m)
 	if len(ref) < 6 || ref[:6] != "range:" {
 		t.Fatalf("viewport ref should be a range: %q", ref)
@@ -58,7 +58,7 @@ func TestBuildReferenceBlockRange(t *testing.T) {
 	m.appendEvent(render.Event{ID: "L0", Group: "g", File: "/a.log",
 		Rendered: []render.Part{{Type: "text", Value: "config:\n  k=v\n  j=w"}}})
 	m.tailMode = false
-	m.streamTop = 0
+	m.setStreamTopRow(0)
 	m.blockFocused = true
 	ref := buildReference(m)
 	if ref != "line:L0" {
@@ -76,7 +76,7 @@ func TestBuildReferenceMultiEntryBlockIsRange(t *testing.T) {
 	// "goroutine " is a hasContSignature prefix, so L2 is a continuation of L1's block.
 	seedIDs(m, "start", "panic: boom", "goroutine 1 [running]:")
 	m.tailMode = false
-	m.streamTop = 0
+	m.setStreamTopRow(0)
 	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{']'}}) // focus the block at line 1
 	m = m2.(*model)
 	if ref := buildReference(m); ref != "range:L1..L2" {
@@ -92,7 +92,7 @@ func TestBuildReferenceSingleEntryBlockIsLine(t *testing.T) {
 	m.groupEnabled["g"] = true
 	seedIDs(m, "start", "config:\n  k=v\n  j=w") // L0 lead, L1 multi-row entry
 	m.tailMode = false
-	m.streamTop = 0
+	m.setStreamTopRow(0)
 	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{']'}}) // focus L1's block
 	m = m2.(*model)
 	if ref := buildReference(m); ref != "line:L1" {
@@ -108,7 +108,7 @@ func TestBuildReferenceViewportWhenNotFocused(t *testing.T) {
 	m.groupEnabled["g"] = true
 	seedIDs(m, "start", "config:\n  k=v\n  j=w")
 	m.tailMode = false
-	m.streamTop = 1 // scrolled onto the block, NOT via nav
+	m.setStreamTopRow(1) // scrolled onto the block, NOT via nav
 	if ref := buildReference(m); strings.HasPrefix(ref, "line:") {
 		t.Fatalf("without explicit focus, must copy viewport range, got %q", ref)
 	}

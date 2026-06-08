@@ -54,7 +54,7 @@ func (m *model) enterVisual() {
 	if vis := m.collectVisible(m.contentHeight()); len(vis) > 0 {
 		m.visualCursor = vis[0]
 	} else {
-		m.visualCursor = m.streamTop
+		m.visualCursor = m.streamTopRow()
 	}
 	if m.visualCursor < 0 {
 		m.visualCursor = 0
@@ -89,13 +89,13 @@ func (m *model) ensureVisualVisible() {
 	if h <= 0 {
 		return
 	}
-	if m.visualCursor < m.streamTop {
-		m.streamTop = m.visualCursor
-	} else if m.visualCursor >= m.streamTop+h {
-		m.streamTop = m.visualCursor - h + 1
+	if m.visualCursor < m.streamTopRow() {
+		m.setStreamTopRow(m.visualCursor)
+	} else if m.visualCursor >= m.streamTopRow()+h {
+		m.setStreamTopRow(m.visualCursor - h + 1)
 	}
-	if m.streamTop < 0 {
-		m.streamTop = 0
+	if m.streamTopRow() < 0 {
+		m.setStreamTopRow(0)
 	}
 }
 

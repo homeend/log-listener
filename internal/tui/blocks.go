@@ -71,7 +71,7 @@ func (m *model) navAnchor() int {
 	if m.tailMode {
 		return len(m.lines)
 	}
-	return m.streamTop
+	return m.streamTopRow()
 }
 
 // blockHeadEnabled reports whether a block's head row is currently visible
@@ -90,9 +90,9 @@ func (m *model) blockHeadEnabled(b blocks.Block) bool {
 func (m *model) jumpToBlockHead(idx int) {
 	m.unstickFromTail()
 	m.tailMode = false
-	m.streamTop = idx
-	if m.streamTop < 0 {
-		m.streamTop = 0
+	m.setStreamTopRow(idx)
+	if m.streamTopRow() < 0 {
+		m.setStreamTopRow(0)
 	}
 	m.blockFocused = true
 }

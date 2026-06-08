@@ -24,7 +24,7 @@ func TestFocusBarOnBlockOnly(t *testing.T) {
 	m.groupEnabled["g"] = true
 	seedFocus(m, "single one", "block head:\n  cont a", "single two")
 	m.tailMode = false
-	m.streamTop = 1 // cursor in the block
+	m.setStreamTopRow(1) // cursor in the block
 	m.ensureBlocks()
 	m.blockFocused = true
 	if _, ok := m.focusBar(1); !ok {
@@ -49,7 +49,7 @@ func TestFocusBarGoneWhenCursorOffBlock(t *testing.T) {
 	m.groupEnabled["g"] = true
 	seedFocus(m, "block head:\n  cont a", "single")
 	m.tailMode = false
-	m.streamTop = 2 // the trailing single line (block is lines 0-1); single-line block → focusedBlockRange returns false
+	m.setStreamTopRow(2) // the trailing single line (block is lines 0-1); single-line block → focusedBlockRange returns false
 	m.ensureBlocks()
 	m.blockFocused = true
 	if _, ok := m.focusBar(0); ok {
@@ -70,7 +70,7 @@ func TestFocusBarSuppressedInTailAndVisual(t *testing.T) {
 		t.Error("tail mode → no focus bar")
 	}
 	m.tailMode = false
-	m.streamTop = 0
+	m.setStreamTopRow(0)
 	m.visualMode = true
 	if _, ok := m.focusBar(0); ok {
 		t.Error("visual mode → no focus bar")
@@ -85,7 +85,7 @@ func TestFocusBarWidthSafe(t *testing.T) {
 	m.groupEnabled["g"] = true
 	seedFocus(m, "panic: "+strings.Repeat("X", 80), "  at frame")
 	m.tailMode = false
-	m.streamTop = 0
+	m.setStreamTopRow(0)
 	m.blockFocused = true
 	view := m.renderStream(m.contentHeight())
 	if !strings.Contains(view, "│") || !strings.Contains(view, "▌") {
@@ -106,13 +106,13 @@ func TestFocusBarRequiresExplicitFocus(t *testing.T) {
 	m.groupEnabled["g"] = true
 	seedFocus(m, "lead", "block head:\n  cont a") // lines: 0 lead, [1,2] block
 	m.tailMode = false
-	m.streamTop = 1 // scrolled onto the block, but NOT via block nav
+	m.setStreamTopRow(1) // scrolled onto the block, but NOT via block nav
 	m.ensureBlocks()
 	if _, ok := m.focusBar(1); ok {
 		t.Error("scrolling onto a block must NOT focus it (no explicit block nav)")
 	}
 	// Explicit block navigation focuses it: start from streamTop=0 so ] finds the block at line 1.
-	m.streamTop = 0
+	m.setStreamTopRow(0)
 	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{']'}})
 	m = m2.(*model)
 	if _, ok := m.focusBar(1); !ok {

@@ -114,7 +114,7 @@ func (m *model) renderFooter() string {
 	}
 	pos := "tail"
 	if !m.tailMode {
-		pos = fmt.Sprintf("@%d/%d", m.streamTop, len(m.lines))
+		pos = fmt.Sprintf("@%d/%d", m.streamTopRow(), len(m.lines))
 	}
 	cols := ""
 	if !m.showGroup {
@@ -314,7 +314,7 @@ func (m *model) collectVisible(rows int) []int {
 			return nil
 		}
 		start := 0
-		for start < len(fil) && fil[start] < m.streamTop {
+		for start < len(fil) && fil[start] < m.streamTopRow() {
 			start++
 		}
 		if start >= len(fil) {
@@ -340,7 +340,7 @@ func (m *model) collectVisible(rows int) []int {
 		}
 		return out
 	}
-	for i := m.streamTop; i < len(m.lines) && len(out) < rows; i++ {
+	for i := m.streamTopRow(); i < len(m.lines) && len(out) < rows; i++ {
 		if !m.lineEnabled(m.lines[i]) {
 			continue
 		}

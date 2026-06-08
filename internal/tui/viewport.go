@@ -14,15 +14,15 @@ func (m *model) scrollBy(delta int) {
 	switch {
 	case delta < 0:
 		m.unstickFromTail()
-		m.streamTop += delta
-		if m.streamTop < 0 {
-			m.streamTop = 0
+		m.setStreamTopRow(m.streamTopRow() + delta)
+		if m.streamTopRow() < 0 {
+			m.setStreamTopRow(0)
 		}
 	case delta > 0:
 		if m.tailMode {
 			return
 		}
-		m.streamTop += delta
+		m.setStreamTopRow(m.streamTopRow() + delta)
 		m.maybeReStick()
 	}
 }
@@ -78,9 +78,9 @@ func (m *model) unstickFromTail() {
 			count++
 		}
 	}
-	m.streamTop = idx + 1
-	if m.streamTop < 0 {
-		m.streamTop = 0
+	m.setStreamTopRow(idx + 1)
+	if m.streamTopRow() < 0 {
+		m.setStreamTopRow(0)
 	}
 }
 
@@ -91,7 +91,7 @@ func (m *model) maybeReStick() {
 	// content-height window, we're effectively at the tail.
 	rows := m.contentHeight()
 	enabled := 0
-	for i := m.streamTop; i < len(m.lines); i++ {
+	for i := m.streamTopRow(); i < len(m.lines); i++ {
 		if m.lineEnabled(m.lines[i]) {
 			enabled++
 		}

@@ -45,7 +45,7 @@ func newVisualModel(t *testing.T, vals ...string) *model {
 func TestVisualEnter(t *testing.T) {
 	m := newVisualModel(t, "a", "b", "c")
 	m.tailMode = false
-	m.streamTop = 0
+	m.setStreamTopRow(0)
 	m = key(m, keyV)
 	if !m.visualMode || m.visualAnchor != -1 {
 		t.Fatalf("after v: visualMode=%v anchor=%d", m.visualMode, m.visualAnchor)
@@ -67,7 +67,7 @@ func TestVisualRefNormalisesOrder(t *testing.T) {
 func TestVisualEscCancels(t *testing.T) {
 	m := newVisualModel(t, "a", "b", "c")
 	m.tailMode = false
-	m.streamTop = 0
+	m.setStreamTopRow(0)
 	m = key(m, keyV)
 	m = key(m, keyJ)
 	m = key(m, keySpace) // anchor set
@@ -83,7 +83,7 @@ func TestVisualEscCancels(t *testing.T) {
 func TestVisualBarRendersCursorAndSelection(t *testing.T) {
 	m := newVisualModel(t, "a", "b", "c", "d")
 	m.tailMode = false
-	m.streamTop = 0
+	m.setStreamTopRow(0)
 	m = key(m, keyV)     // cursor on line 0
 	m = key(m, keyJ)     // cursor → 1
 	m = key(m, keySpace) // anchor = 1
@@ -105,7 +105,7 @@ func TestVisualBarRendersCursorAndSelection(t *testing.T) {
 func TestVisualEnterClosesOverlays(t *testing.T) {
 	m := newVisualModel(t, "a", "b", "c")
 	m.tailMode = false
-	m.streamTop = 0
+	m.setStreamTopRow(0)
 	m.showFiles = true // an overlay is open
 	m = key(m, keyV)
 	if !m.visualMode {
@@ -124,7 +124,7 @@ func TestVisualIndicesClampOnEviction(t *testing.T) {
 	m.groupEnabled["g"] = true
 	seedVisual(m, "a", "b", "c") // lines 0,1,2
 	m.tailMode = false
-	m.streamTop = 0
+	m.setStreamTopRow(0)
 	m = key(m, keyV)     // cursor 0
 	m = key(m, keyJ)     // cursor 1
 	m = key(m, keySpace) // anchor 1
@@ -152,7 +152,7 @@ func TestVisualIndicesClampOnEviction(t *testing.T) {
 func TestVisualFooterDescribesUnifiedFlow(t *testing.T) {
 	m := newVisualModel(t, "a", "b", "c")
 	m.tailMode = false
-	m.streamTop = 0
+	m.setStreamTopRow(0)
 	m = key(m, keyV)
 	foot := m.renderFooter()
 	for _, want := range []string{"space anchor", "y ref", "Y text"} {
@@ -190,7 +190,7 @@ func TestVisualTextNoAnchorIsCaretRow(t *testing.T) {
 func TestVisualSpaceOnlyAnchors(t *testing.T) {
 	m := newVisualModel(t, "a", "b", "c")
 	m.tailMode = false
-	m.streamTop = 0
+	m.setStreamTopRow(0)
 	m = key(m, keyV)
 	m = key(m, keyJ)     // cursor → 1
 	m = key(m, keySpace) // anchor = 1
@@ -212,7 +212,7 @@ func TestVisualSpaceOnlyAnchors(t *testing.T) {
 func TestVisualYCopiesRangeAndExits(t *testing.T) {
 	m := newVisualModel(t, "a", "b", "c", "d")
 	m.tailMode = false
-	m.streamTop = 0
+	m.setStreamTopRow(0)
 	m = key(m, keyV)      // cursor at row 0
 	m = key(m, keyJ)      // cursor → 1
 	m = key(m, keySpace)  // anchor = 1
@@ -232,7 +232,7 @@ func TestVisualYCopiesRangeAndExits(t *testing.T) {
 func TestVisualCapitalYCopiesTextAndExits(t *testing.T) {
 	m := newVisualModel(t, "a", "b", "c", "d")
 	m.tailMode = false
-	m.streamTop = 0
+	m.setStreamTopRow(0)
 	m = key(m, keyV)     // cursor at row 0
 	m = key(m, keyJ)     // row 1
 	m = key(m, keySpace) // anchor = 1
@@ -249,7 +249,7 @@ func TestVisualCapitalYCopiesTextAndExits(t *testing.T) {
 func TestVisualNoAnchorYCopiesCaretLine(t *testing.T) {
 	m := newVisualModel(t, "a", "b", "c")
 	m.tailMode = false
-	m.streamTop = 0
+	m.setStreamTopRow(0)
 	m = key(m, keyV)      // cursor at row 0 (L0), no anchor
 	m = key(m, keyJ)      // cursor → row 1 (L1)
 	m = key(m, keyYlower) // copy caret line, exit
@@ -269,7 +269,7 @@ func TestNormalCapitalYCopiesViewportText(t *testing.T) {
 	m.groupEnabled["g"] = true
 	seedIDs(m, "a", "b", "c")
 	m.tailMode = false
-	m.streamTop = 0
+	m.setStreamTopRow(0)
 	want := fmt.Sprintf("copied %d lines", len(m.snapshotViewport()))
 	m = key(m, keyY)
 	if m.flash != want {

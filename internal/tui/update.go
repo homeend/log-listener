@@ -121,7 +121,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.prevIDLines = map[string]int{}
 			m.lines = nil
 			m.lastGen = 0 // force the next reconcile
-			m.streamTop = 0
+			m.setStreamTopRow(0)
 			m.tailMode = true
 			m.horizScroll = 0
 			m.searchHit = -1
@@ -182,7 +182,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.filesScroll = 0
 			} else {
 				m.tailMode = false
-				m.streamTop = 0
+				m.setStreamTopRow(0)
 			}
 		case keymap.ActionBottom:
 			m.blockFocused = false

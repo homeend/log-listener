@@ -102,15 +102,15 @@ func TestReadersUseLastReconcileWindowNotFreshSnapshot(t *testing.T) {
 func TestReconcileEvictionDragsViewState(t *testing.T) {
 	m := newReconcileModel(t, 3) // 3-row window
 	m.tailMode = false
-	m.streamTop = 0
+	m.setStreamTopRow(0)
 	for _, s := range []string{"a", "b", "c"} {
 		m.buf.Append(textEv(s))
 	}
 	m.reconcile()
-	m.streamTop = 2
+	m.setStreamTopRow(2)
 	m.buf.Append(textEv("d")) // window slides by 1 row (oldest evicted)
 	m.reconcile()
-	if m.streamTop != 1 {
-		t.Fatalf("streamTop = %d, want 1 (dragged by 1 evicted row)", m.streamTop)
+	if m.streamTopRow() != 1 {
+		t.Fatalf("streamTop = %d, want 1 (dragged by 1 evicted row)", m.streamTopRow())
 	}
 }

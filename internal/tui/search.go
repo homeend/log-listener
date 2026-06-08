@@ -43,7 +43,7 @@ func (m *model) commitSearch() bool {
 		return false
 	}
 	m.matcher = mm
-	start := m.streamTop
+	start := m.streamTopRow()
 	if m.tailMode {
 		start = len(m.lines) - 1
 		// In tail mode walk backward — most-recent match is what the
@@ -83,7 +83,7 @@ func (m *model) searchNext() {
 	}
 	from := m.searchHit + 1
 	if m.searchHit < 0 {
-		from = m.streamTop
+		from = m.streamTopRow()
 	}
 	hit := m.findHit(from, +1)
 	if hit >= 0 {
@@ -101,7 +101,7 @@ func (m *model) searchPrev() {
 	}
 	from := m.searchHit - 1
 	if m.searchHit < 0 {
-		from = m.streamTop
+		from = m.streamTopRow()
 	}
 	if from < 0 {
 		m.wrapPrompt = 'p'
@@ -246,7 +246,7 @@ func (m *model) jumpToHit(idx int) {
 			if top > len(fil)-1 {
 				top = len(fil) - 1
 			}
-			m.streamTop = fil[top]
+			m.setStreamTopRow(fil[top])
 		}
 	} else {
 		top := idx - rows/2
@@ -256,7 +256,7 @@ func (m *model) jumpToHit(idx int) {
 		if top > len(m.lines)-1 {
 			top = len(m.lines) - 1
 		}
-		m.streamTop = top
+		m.setStreamTopRow(top)
 	}
 	m.adjustHorizToHit(idx)
 }
