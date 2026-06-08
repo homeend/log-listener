@@ -25,7 +25,6 @@ import (
 	"github.com/homeend/log-listener/internal/discover"
 	"github.com/homeend/log-listener/internal/keymap"
 	"github.com/homeend/log-listener/internal/linebuf"
-	"github.com/homeend/log-listener/internal/mcp"
 	"github.com/homeend/log-listener/internal/preload"
 	"github.com/homeend/log-listener/internal/render"
 	"github.com/homeend/log-listener/internal/sink"
@@ -168,15 +167,13 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return 0
 	}
 
-	var mcpServer *mcp.Server
-	if cfg.MCPAddr != "" {
-		mcpServer = mcp.New(cfg.MCPAddr, buf)
-		if err := mcpServer.Start(); err != nil {
-			fmt.Fprintln(stderr, "log-listener: mcp:", err)
-			return 1
-		}
-		defer mcpServer.Close()
-		fmt.Fprintf(stderr, "log-listener: mcp on http://%s\n", mcpServer.Addr())
+	mcpCloser, err := startMCP(cfg, buf, stderr)
+	if err != nil {
+		fmt.Fprintln(stderr, "log-listener:", err)
+		return 1
+	}
+	if mcpCloser != nil {
+		defer mcpCloser.Close()
 	}
 
 	// TUI mode requires a TTY and --no-tui not set; --once already returned.
