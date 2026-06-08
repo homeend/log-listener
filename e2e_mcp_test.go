@@ -1,3 +1,5 @@
+//go:build !nomcp
+
 package main
 
 import (
