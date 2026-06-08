@@ -54,3 +54,69 @@ func TestPublishViewportEmptyBufferStillPublishes(t *testing.T) {
 		t.Fatalf("empty buffer must publish empty/attached: called=%v from=%q to=%q", called, gotFrom, gotTo)
 	}
 }
+
+// scrollModel seeds n single-row events, sizes the window, and returns a model
+// in browse mode (tail off) at streamTop=0.
+func scrollModel(t *testing.T, n int) *model {
+	t.Helper()
+	vals := make([]string, n)
+	for i := range vals {
+		vals[i] = string(rune('a' + i))
+	}
+	m := seedSearch(t, vals...)
+	m.reconcile()
+	m.tailMode = false
+	m.streamTop = 0
+	return m
+}
+
+func TestScrollByUpClampsAtZero(t *testing.T) {
+	m := scrollModel(t, 5)
+	m.streamTop = 1
+	m.scrollBy(-3) // would go to -2
+	if m.streamTop != 0 {
+		t.Fatalf("streamTop = %d, want 0 (clamped)", m.streamTop)
+	}
+}
+
+func TestScrollByUpLeavesTailMode(t *testing.T) {
+	m := scrollModel(t, 5)
+	m.tailMode = true
+	m.streamTop = 4
+	m.scrollBy(-1)
+	if m.tailMode {
+		t.Fatal("scrollBy(up) must leave tail mode (unstickFromTail)")
+	}
+}
+
+func TestScrollByDownIsNoOpInTailMode(t *testing.T) {
+	m := scrollModel(t, 5)
+	m.tailMode = true
+	before := m.streamTop
+	m.scrollBy(2)
+	if m.streamTop != before {
+		t.Fatalf("scrollBy(down) in tail mode moved streamTop %d->%d, want no-op", before, m.streamTop)
+	}
+	if !m.tailMode {
+		t.Fatal("scrollBy(down) in tail mode must stay in tail mode")
+	}
+}
+
+func TestScrollByDownMovesWhenBrowsing(t *testing.T) {
+	m := scrollModel(t, 20)
+	m.tailMode = false
+	m.streamTop = 0
+	m.scrollBy(3)
+	if m.streamTop != 3 {
+		t.Fatalf("streamTop = %d, want 3", m.streamTop)
+	}
+}
+
+func TestScrollByZeroIsNoOp(t *testing.T) {
+	m := scrollModel(t, 5)
+	m.streamTop = 2
+	m.scrollBy(0)
+	if m.streamTop != 2 {
+		t.Fatalf("streamTop = %d, want 2 (zero delta no-op)", m.streamTop)
+	}
+}
