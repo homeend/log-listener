@@ -678,19 +678,13 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.tailMode = true // re-stick to the latest, even when new events arrive
 			}
 		case keymap.ActionScrollLeft:
-			m.horizScroll -= horizStep
-			if m.horizScroll < 0 {
-				m.horizScroll = 0
-			}
+			m.panBy(-horizStep)
 		case keymap.ActionScrollRight:
-			m.horizScroll += horizStep
+			m.panBy(horizStep)
 		case keymap.ActionFastLeft:
-			m.horizScroll -= horizFastStep
-			if m.horizScroll < 0 {
-				m.horizScroll = 0
-			}
+			m.panBy(-horizFastStep)
 		case keymap.ActionFastRight:
-			m.horizScroll += horizFastStep
+			m.panBy(horizFastStep)
 		case keymap.ActionResetHoriz:
 			m.horizScroll = 0
 		case keymap.ActionCopyReference:

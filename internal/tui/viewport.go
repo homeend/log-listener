@@ -41,3 +41,14 @@ func (m *model) scrollFiles(delta int) {
 		m.filesScroll = 0
 	}
 }
+
+// panBy pans the horizontal view by delta columns, clamped at the left edge
+// (horizScroll ≥ 0). There is no right-edge clamp: the renderer clips overlong
+// lines, so over-panning right shows blank — matching the old inline
+// ScrollRight/FastRight behavior. Centralizes the four pan handlers.
+func (m *model) panBy(delta int) {
+	m.horizScroll += delta
+	if m.horizScroll < 0 {
+		m.horizScroll = 0
+	}
+}
