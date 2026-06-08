@@ -7,6 +7,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/homeend/log-listener/internal/render"
+	"github.com/homeend/log-listener/internal/searchmatch"
 )
 
 func seedIDs(m *model, vals ...string) {
@@ -38,7 +39,7 @@ func TestBuildReferenceSearchHitLine(t *testing.T) {
 	m.groupOrder = []string{"g"}
 	m.groupEnabled["g"] = true
 	seedIDs(m, "apple", "banana", "cherry")
-	m.searchTerm = "banana"
+	m.matcher, _ = searchmatch.Compile("banana", false)
 	m.searchHit = 1
 	ref := buildReference(m)
 	if ref != "line:L1" {

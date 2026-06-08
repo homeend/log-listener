@@ -8,6 +8,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/homeend/log-listener/internal/render"
+	"github.com/homeend/log-listener/internal/searchmatch"
 )
 
 // seedSearchModel pushes n events labelled "line-i". Indices where
@@ -59,8 +60,8 @@ func TestModelSearchBasic(t *testing.T) {
 	m := seedSearchModel(t, 20, hits)
 	m = typeQuery(t, m, "needle")
 
-	if m.searchTerm != "needle" {
-		t.Fatalf("searchTerm = %q want %q", m.searchTerm, "needle")
+	if m.matcher == nil || m.searchQuery != "needle" {
+		t.Fatalf("matcher not set or searchQuery = %q want %q", m.searchQuery, "needle")
 	}
 	// In tail mode commit walks backward — last hit (15) should win.
 	if m.searchHit != 15 {
@@ -86,8 +87,8 @@ func TestModelSearchInputEscCancels(t *testing.T) {
 	if m.searchInput {
 		t.Fatal("Esc should exit input mode")
 	}
-	if m.searchTerm != "" {
-		t.Fatalf("Esc must NOT commit a search term, got %q", m.searchTerm)
+	if m.matcher != nil {
+		t.Fatal("Esc must NOT commit a search term")
 	}
 	if m.searchQuery != "" {
 		t.Fatalf("Esc must clear the typed query, got %q", m.searchQuery)
@@ -211,13 +212,13 @@ func TestModelSearchSkipsDisabledGroup(t *testing.T) {
 func TestModelSearchEscClearsActive(t *testing.T) {
 	m := seedSearchModel(t, 10, map[int]bool{3: true})
 	m = typeQuery(t, m, "needle")
-	if m.searchTerm == "" {
+	if m.matcher == nil {
 		t.Fatal("setup: term should be active")
 	}
 	m2, _ := m.Update(tea.KeyMsg{Type: tea.KeyEsc})
 	m = m2.(*model)
-	if m.searchTerm != "" {
-		t.Fatalf("Esc must clear active term, got %q", m.searchTerm)
+	if m.matcher != nil {
+		t.Fatal("Esc must clear active term")
 	}
 	if m.searchHit != -1 {
 		t.Fatalf("Esc must reset searchHit to -1, got %d", m.searchHit)
@@ -244,7 +245,7 @@ func TestModelSearchNoMatch(t *testing.T) {
 	if m.searchHit != -1 {
 		t.Fatalf("no-match commit should leave searchHit=-1, got %d", m.searchHit)
 	}
-	if m.searchTerm == "" {
+	if m.matcher == nil {
 		t.Fatal("term should stay set so n/p can wrap-prompt")
 	}
 	// n with no matches anywhere still prompts (could be useful if events arrive later).
@@ -295,19 +296,19 @@ func TestModelSearchHighlightInView(t *testing.T) {
 func TestSearchRepeatLastTerm(t *testing.T) {
 	m := seedSearchModel(t, 5, map[int]bool{2: true, 4: true})
 	m = typeQuery(t, m, "needle")
-	if m.searchTerm != "needle" {
-		t.Fatalf("term = %q", m.searchTerm)
+	if m.matcher == nil || m.searchQuery != "needle" {
+		t.Fatalf("term = %q (matcher nil: %v)", m.searchQuery, m.matcher == nil)
 	}
 	m.clearSearch()
-	if m.searchTerm != "" {
+	if m.matcher != nil {
 		t.Fatal("clear should drop the active term")
 	}
 	m2, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'/'}})
 	m = m2.(*model)
 	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	m = m2.(*model)
-	if m.searchTerm != "needle" {
-		t.Fatalf("empty-Enter should repeat last term, got %q", m.searchTerm)
+	if m.matcher == nil || m.searchQuery != "needle" {
+		t.Fatalf("empty-Enter should repeat last term, got %q", m.searchQuery)
 	}
 	if m.searchQuery != "needle" {
 		t.Fatalf("footer query should reflect the repeated term, got %q", m.searchQuery)
@@ -320,8 +321,8 @@ func TestSearchEmptyEnterNoPriorTermClears(t *testing.T) {
 	m = m2.(*model)
 	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	m = m2.(*model)
-	if m.searchTerm != "" {
-		t.Fatalf("empty Enter with no prior term should set no term, got %q", m.searchTerm)
+	if m.matcher != nil {
+		t.Fatal("empty Enter with no prior term should set no term")
 	}
 }
 
@@ -417,7 +418,7 @@ func TestHitColumnAccountsForPrefix(t *testing.T) {
 		Rendered: []render.Part{{Type: "text", Value: "NEEDLE"}}})
 	m2, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 10})
 	m = m2.(*model)
-	m.searchTerm = "needle"
+	m.matcher, _ = searchmatch.Compile("needle", false)
 	if got := m.hitColumn(0); got != 4 {
 		t.Fatalf("hitColumn with [g] prefix = %d, want 4", got)
 	}
@@ -573,7 +574,7 @@ func TestHitColumnWithFilePrefix(t *testing.T) {
 		Rendered: []render.Part{{Type: "text", Value: "NEEDLE"}}})
 	m2, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 10})
 	m = m2.(*model)
-	m.searchTerm = "needle"
+	m.matcher, _ = searchmatch.Compile("needle", false)
 	if got := m.hitColumn(0); got != 7 {
 		t.Fatalf("hitColumn with file prefix = %d, want 7", got)
 	}
@@ -589,7 +590,7 @@ func TestHitColumnWithGroupAndFilePrefix(t *testing.T) {
 		Rendered: []render.Part{{Type: "text", Value: "NEEDLE"}}})
 	m2, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 10})
 	m = m2.(*model)
-	m.searchTerm = "needle"
+	m.matcher, _ = searchmatch.Compile("needle", false)
 	if got := m.hitColumn(0); got != 11 {
 		t.Fatalf("hitColumn group+file = %d, want 11", got)
 	}

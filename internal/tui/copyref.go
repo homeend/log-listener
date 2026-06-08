@@ -30,7 +30,7 @@ func (m *model) entryIDForLine(idx int) string {
 //     block copies as line:<id>; a multi-entry block as range:<head>..<end>.
 //  3. else → range:<first visible entry>..<last visible entry>
 func buildReference(m *model) string {
-	if m.searchTerm != "" && m.searchHit >= 0 {
+	if m.matcher != nil && m.searchHit >= 0 {
 		if id := m.entryIDForLine(m.searchHit); id != "" {
 			return "line:" + id
 		}

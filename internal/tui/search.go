@@ -4,13 +4,15 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/homeend/log-listener/internal/searchmatch"
 )
 
 // clearSearch wipes the active search state — term, hit pointer, pending
 // wrap prompt, and the filter toggle — so highlights vanish on the next
 // render. lastQuery is intentionally preserved so "/"+Enter can repeat it.
 func (m *model) clearSearch() {
-	m.searchTerm = ""
+	m.matcher = nil
 	m.searchQuery = ""
 	m.searchHit = -1
 	m.wrapPrompt = 0
@@ -34,7 +36,12 @@ func (m *model) commitSearch() {
 	}
 	m.lastQuery = q
 	m.searchQuery = q
-	m.searchTerm = strings.ToLower(q)
+	mm, err := searchmatch.Compile(q, false)
+	if err != nil {
+		m.flash = "invalid search: " + err.Error()
+		return
+	}
+	m.matcher = mm
 	start := m.streamTop
 	if m.tailMode {
 		start = len(m.lines) - 1
@@ -69,7 +76,7 @@ func (m *model) commitSearch() {
 // searchNext advances to the next hit after the current one. If no
 // hit exists between cursor+1 and end, sets wrapPrompt='n'.
 func (m *model) searchNext() {
-	if m.searchTerm == "" || len(m.lines) == 0 {
+	if m.matcher == nil || len(m.lines) == 0 {
 		return
 	}
 	from := m.searchHit + 1
@@ -87,7 +94,7 @@ func (m *model) searchNext() {
 // searchPrev steps to the previous hit before the current one. If no
 // hit exists between cursor-1 and start, sets wrapPrompt='p'.
 func (m *model) searchPrev() {
-	if m.searchTerm == "" || len(m.lines) == 0 {
+	if m.matcher == nil || len(m.lines) == 0 {
 		return
 	}
 	from := m.searchHit - 1
@@ -171,7 +178,7 @@ func matchHaystack(dl displayLine) string {
 }
 
 // findHit returns the absolute index of the next event matching
-// m.searchTerm, walking from `start` in direction `dir` (+1 forward,
+// m.matcher, walking from `start` in direction `dir` (+1 forward,
 // -1 backward). Returns -1 if no match exists in that range.
 //
 // Only enabled groups are considered: a hit hidden behind a disabled
@@ -181,7 +188,7 @@ func matchHaystack(dl displayLine) string {
 // Both heads and block (JSON/XML) lines are searched — the user sees
 // them both in the stream so they should both be reachable.
 func (m *model) findHit(start, dir int) int {
-	if m.searchTerm == "" || len(m.lines) == 0 {
+	if m.matcher == nil || len(m.lines) == 0 {
 		return -1
 	}
 	if dir == 0 {
@@ -198,7 +205,7 @@ func (m *model) findHit(start, dir int) int {
 		if !m.lineEnabled(ev) {
 			continue
 		}
-		if strings.Contains(strings.ToLower(matchHaystack(ev)), m.searchTerm) {
+		if m.matcher.Match(matchHaystack(ev)) {
 			return i
 		}
 	}
@@ -252,13 +259,13 @@ func (m *model) jumpToHit(idx int) {
 // "[group] file:" prefix on head lines (blocks have no prefix). Returns -1
 // if the term is not present on that line.
 func (m *model) hitColumn(idx int) int {
-	if idx < 0 || idx >= len(m.lines) || m.searchTerm == "" {
+	if idx < 0 || idx >= len(m.lines) || m.matcher == nil {
 		return -1
 	}
 	dl := m.lines[idx]
 	body := matchHaystack(dl)
-	bi := strings.Index(strings.ToLower(body), m.searchTerm)
-	if bi < 0 {
+	bi, _, ok := m.matcher.Find(body)
+	if !ok {
 		return -1
 	}
 	col := dispWidth(body[:bi])
@@ -285,7 +292,12 @@ func (m *model) adjustHorizToHit(idx int) {
 	if start < 0 {
 		return
 	}
-	end := start + dispWidth(m.searchTerm)
+	body := matchHaystack(m.lines[idx])
+	bs, be, ok := m.matcher.Find(body)
+	if !ok {
+		return
+	}
+	end := start + dispWidth(body[bs:be])
 	if start < m.horizScroll || end > m.horizScroll+m.width {
 		ns := start - hitMargin
 		if ns < 0 {
@@ -295,29 +307,29 @@ func (m *model) adjustHorizToHit(idx int) {
 	}
 }
 
-// highlightMatches wraps every case-insensitive occurrence of term in
-// body with the supplied style. Returns the styled string and the
-// total visual width (unstyled display width, identical to the original
-// body's width since ANSI is zero-width). Callers handle the
-// edge cases of empty term / no match by skipping the call.
-func highlightMatches(body, term string, style func(strs ...string) string) (string, int) {
-	if term == "" || body == "" {
+// highlightMatches wraps every occurrence of mt's pattern in body with the
+// supplied style. Returns the styled string and the total visual width
+// (unstyled display width, identical to the original body's width since ANSI
+// is zero-width). A nil matcher or empty body is returned as-is.
+func highlightMatches(body string, mt *searchmatch.Matcher, style func(strs ...string) string) (string, int) {
+	if mt == nil || body == "" {
 		return body, dispWidth(body)
 	}
-	lower := strings.ToLower(body)
-	tl := strings.ToLower(term)
-	var sb strings.Builder
-	for {
-		i := strings.Index(lower, tl)
-		if i < 0 {
-			sb.WriteString(body)
-			break
-		}
-		sb.WriteString(body[:i])
-		sb.WriteString(style(body[i : i+len(tl)]))
-		body = body[i+len(tl):]
-		lower = lower[i+len(tl):]
+	spans := mt.FindAll(body)
+	if len(spans) == 0 {
+		return body, dispWidth(body)
 	}
+	var sb strings.Builder
+	prev := 0
+	for _, sp := range spans {
+		if sp[0] < prev { // overlapping/contained — keep slicing valid
+			continue
+		}
+		sb.WriteString(body[prev:sp[0]])
+		sb.WriteString(style(body[sp[0]:sp[1]]))
+		prev = sp[1]
+	}
+	sb.WriteString(body[prev:])
 	out := sb.String()
 	return out, dispWidth(out)
 }

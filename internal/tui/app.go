@@ -19,6 +19,7 @@ import (
 	"github.com/homeend/log-listener/internal/keymap"
 	"github.com/homeend/log-listener/internal/linebuf"
 	"github.com/homeend/log-listener/internal/render"
+	"github.com/homeend/log-listener/internal/searchmatch"
 )
 
 // ansiRE matches CSI / OSC escape sequences emitted by lipgloss. Used both
@@ -320,7 +321,7 @@ type model struct {
 	// Search state.
 	//   searchInput == true : user is typing the query after "/"
 	//   searchQuery         : characters typed so far (display + commit source)
-	//   searchTerm          : committed lowercase substring; empty = inactive
+	//   matcher             : compiled smart-case predicate; nil = inactive
 	//   searchHit           : absolute index into m.lines of the current hit
 	//                         (-1 when no hit is current)
 	//   wrapPrompt          : 'n' or 'p' when "wrap around?" is pending;
@@ -328,7 +329,7 @@ type model struct {
 	//                         the opposite end of the buffer.
 	searchInput bool
 	searchQuery string
-	searchTerm  string
+	matcher     *searchmatch.Matcher
 	searchHit   int
 	wrapPrompt  rune
 
@@ -567,7 +568,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			// Esc with no overlay open clears any active search results
 			// — term goes away, highlights vanish, hit pointer resets.
-			if !m.showFiles && !m.showGroupsPanel && !m.showRenderersPanel && m.searchTerm != "" {
+			if !m.showFiles && !m.showGroupsPanel && !m.showRenderersPanel && m.matcher != nil {
 				m.clearSearch()
 			}
 		case keymap.ActionSearch:
@@ -578,7 +579,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case keymap.ActionPrevMatch:
 			m.searchPrev()
 		case keymap.ActionFilter:
-			if m.searchTerm != "" {
+			if m.matcher != nil {
 				m.filterMode = !m.filterMode
 				if m.filterMode {
 					m.tailMode = false
@@ -614,7 +615,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.filesScroll > 0 {
 					m.filesScroll--
 				}
-			} else if m.searchTerm != "" {
+			} else if m.matcher != nil {
 				m.searchPrev()
 			} else {
 				m.unstickFromTail()
@@ -629,7 +630,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.filesScroll < len(m.files)-1 {
 					m.filesScroll++
 				}
-			} else if m.searchTerm != "" {
+			} else if m.matcher != nil {
 				m.searchNext()
 			} else if !m.tailMode {
 				m.streamTop++
@@ -1057,7 +1058,7 @@ func (m *model) renderDisplayLine(dl displayLine) (string, int) {
 // Falls through to the plain core otherwise.
 func (m *model) renderDisplayLineAt(idx int) (string, int) {
 	dl := m.lines[idx]
-	isCurrent := m.searchTerm != "" && idx == m.searchHit
+	isCurrent := m.matcher != nil && idx == m.searchHit
 	if m.collapseMultiline && idx+1 < len(m.lines) && isContinuation(m.lines[idx+1]) {
 		// Mutate the local copy so the marker shows on this row only.
 		// dimStyle wraps the marker in ANSI; runeLen on the unstyled
@@ -1075,7 +1076,7 @@ func (m *model) renderDisplayLineCore(dl displayLine, isCurrent bool) (string, i
 	// When a search term is active, swap out the body for one with
 	// highlighted matches. Block lines carry pre-styled ANSI so we
 	// strip first; head lines are plain text already.
-	if m.searchTerm != "" {
+	if m.matcher != nil {
 		plain := body
 		if dl.isBlock {
 			plain = stripANSI(body)
@@ -1084,7 +1085,7 @@ func (m *model) renderDisplayLineCore(dl displayLine, isCurrent bool) (string, i
 		if isCurrent {
 			style = currentMatchStyle.Render
 		}
-		newBody, newW := highlightMatches(plain, m.searchTerm, style)
+		newBody, newW := highlightMatches(plain, m.matcher, style)
 		if newW != bodyWidth || newBody != plain {
 			body = newBody
 			bodyWidth = newW
@@ -1141,7 +1142,7 @@ func (m *model) lineEnabled(dl displayLine) bool {
 // JSON/XML block appears in full alongside its head line. Returns nil when no
 // term is set. Collapse-multiline is intentionally ignored here.
 func (m *model) filteredIndices() []int {
-	if m.searchTerm == "" {
+	if m.matcher == nil {
 		return nil
 	}
 	var out []int
@@ -1151,7 +1152,7 @@ func (m *model) filteredIndices() []int {
 		n := len(dls)
 		matched := false
 		for _, dl := range dls {
-			if strings.Contains(strings.ToLower(matchHaystack(dl)), m.searchTerm) {
+			if m.matcher.Match(matchHaystack(dl)) {
 				matched = true
 				break
 			}
@@ -1304,7 +1305,7 @@ func (m *model) renderFooter() string {
 		}
 	}
 	search := ""
-	if m.searchTerm != "" {
+	if m.matcher != nil {
 		search = fmt.Sprintf(" · /%s", m.searchQuery)
 		if m.filterMode {
 			search += " filter"
