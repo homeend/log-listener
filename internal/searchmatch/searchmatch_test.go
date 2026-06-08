@@ -38,6 +38,33 @@ func TestFindMultibyteOffsets(t *testing.T) {
 	}
 }
 
+func TestFoldMatchesNonASCIIUppercase(t *testing.T) {
+	// Exercises the (?i) fold on a non-ASCII letter: lowercase query, uppercase
+	// text. A plain strings.Contains fold would miss this.
+	m, _ := Compile("café", false)
+	text := "a CAFÉ x"
+	if !m.Match(text) {
+		t.Fatal("smart-case fold should match CAFÉ for query café")
+	}
+	if s, e, ok := m.Find(text); !ok || text[s:e] != "CAFÉ" {
+		t.Fatalf("Find = %q (s=%d e=%d ok=%v), want CAFÉ", text[s:e], s, e, ok)
+	}
+}
+
+func TestZeroValueAndNilMatchNothing(t *testing.T) {
+	var byVal Matcher
+	if byVal.Match("anything") || len(byVal.FindAll("anything")) != 0 {
+		t.Fatal("zero-value Matcher must match nothing (no Contains(text,\"\")==true trap)")
+	}
+	if _, _, ok := byVal.Find("anything"); ok {
+		t.Fatal("zero-value Find must report no match")
+	}
+	var nilM *Matcher
+	if nilM.Match("x") || nilM.FindAll("x") != nil {
+		t.Fatal("nil *Matcher must match nothing, not panic")
+	}
+}
+
 func TestRegexMatchAndFindAll(t *testing.T) {
 	m, err := Compile("a.c", true)
 	if err != nil {
@@ -69,6 +96,9 @@ func TestEmptyQueryMatchesNothing(t *testing.T) {
 }
 
 func TestFindAllZeroWidthRegexTerminates(t *testing.T) {
-	m, _ := Compile("x*", true) // can match empty
-	_ = m.FindAll("axbx")       // must not infinite-loop
+	m, _ := Compile("x*", true)   // can match empty
+	all := m.FindAll("axbx")      // must terminate (stdlib advances past zero-width)
+	if len(all) != 3 {            // [0,0], [1,2], [3,4]
+		t.Fatalf("FindAll(x* over axbx) = %v, want 3 matches", all)
+	}
 }

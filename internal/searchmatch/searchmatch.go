@@ -10,11 +10,18 @@ import (
 	"unicode"
 )
 
-// Matcher is a compiled search predicate. The zero value matches nothing.
+// Matcher is a compiled search predicate. A nil *Matcher, the zero value, and a
+// Matcher from Compile("") all match nothing (neither literal nor re is set).
 type Matcher struct {
-	empty   bool
 	literal string         // case-sensitive substring path (non-empty when used)
 	re      *regexp.Regexp // regex path, or the (?i)-wrapped fold path
+}
+
+// inactive reports whether the matcher matches nothing (nil / zero / empty
+// query). Centralizes the guard so Match/Find/FindAll can never fall into a
+// strings.Contains(text, "") == true / zero-width infinite-loop trap.
+func (m *Matcher) inactive() bool {
+	return m == nil || (m.re == nil && m.literal == "")
 }
 
 // Compile builds a Matcher. regex=true compiles query as a regexp (error on
@@ -23,7 +30,7 @@ type Matcher struct {
 // regexp so Find offsets index the original text). Empty query matches nothing.
 func Compile(query string, regex bool) (*Matcher, error) {
 	if query == "" {
-		return &Matcher{empty: true}, nil
+		return &Matcher{}, nil
 	}
 	if regex {
 		re, err := regexp.Compile(query)
@@ -53,7 +60,7 @@ func hasUpper(s string) bool {
 
 // Match reports whether text matches.
 func (m *Matcher) Match(text string) bool {
-	if m.empty {
+	if m.inactive() {
 		return false
 	}
 	if m.re != nil {
@@ -64,7 +71,7 @@ func (m *Matcher) Match(text string) bool {
 
 // Find returns byte offsets [start,end) of the first match in text.
 func (m *Matcher) Find(text string) (start, end int, ok bool) {
-	if m.empty {
+	if m.inactive() {
 		return 0, 0, false
 	}
 	if m.re != nil {
@@ -84,7 +91,7 @@ func (m *Matcher) Find(text string) (start, end int, ok bool) {
 // FindAll returns byte-offset [start,end) pairs for every (non-overlapping)
 // match, advancing past zero-width matches so it always terminates.
 func (m *Matcher) FindAll(text string) [][2]int {
-	if m.empty {
+	if m.inactive() {
 		return nil
 	}
 	if m.re != nil {
