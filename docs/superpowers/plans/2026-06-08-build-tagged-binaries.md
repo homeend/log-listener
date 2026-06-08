@@ -447,6 +447,12 @@ In the `case "$target" in` block, after the `build-static)` case, add:
     go build -tags "nomcp nosse" -o "$BINARY" "$CMD"
     echo "built ./$BINARY (no MCP, no SSE)"
     ;;
+  test-nomcp)
+    go test -tags nomcp "$PKG"
+    ;;
+  test-nosse)
+    go test -tags nosse "$PKG"
+    ;;
   test-minimal)
     go test -tags "nomcp nosse" "$PKG"
     ;;
@@ -458,6 +464,8 @@ Then update the usage comment block (the `# Usage:` lines near the top, currentl
 #   build-nomcp    binary without the MCP server (drops the go-sdk dependency)
 #   build-nosse    binary without the SSE server
 #   build-minimal  binary without MCP and SSE
+#   test-nomcp     go test -tags nomcp ./...
+#   test-nosse     go test -tags nosse ./...
 #   test-minimal   go test -tags "nomcp nosse" ./...
 ```
 
