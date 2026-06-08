@@ -7,6 +7,16 @@ and this project adheres to phased delivery per `PLAN.md`.
 
 ## [Unreleased]
 
+### Internal: split `internal/tui/app.go` into focused files
+- The 1678-line `internal/tui/app.go` is split (same `package tui`, **zero
+  behavior change**) into responsibility-focused files: `app.go` keeps the `App`
+  facade + bubbletea messages + the `model` struct/lifecycle; `update.go` holds
+  the `Update` key-dispatch; `reconcile.go` the buffer→view reconcile/append
+  path; `render.go` display-line rendering; `view.go` `View`/footer/panels/stream
+  rendering; `width.go` the shared ANSI/width helpers; and `viewport.go` gains
+  the viewport-position helpers + scroll-step consts. Declaration set is
+  identical before/after (pure relocation); the test suite is unchanged.
+
 ### Internal: TUI viewport/selection operations layer
 - Scattered view-state index arithmetic in `internal/tui` is collapsed into
   five intent-level methods, so call sites compose verbs instead of repeating
