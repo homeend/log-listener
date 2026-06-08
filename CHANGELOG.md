@@ -9,12 +9,18 @@ and this project adheres to phased delivery per `PLAN.md`.
 
 ### Internal: TUI viewport/selection operations layer
 - Scattered view-state index arithmetic in `internal/tui` is collapsed into
-  three intent-level methods, so call sites compose verbs instead of repeating
+  five intent-level methods, so call sites compose verbs instead of repeating
   low-level clamp math. **Behavior-preserving refactor — no user-facing change.**
 - **`scrollBy(delta)`** (`viewport.go`) owns the up/down scroll asymmetry that
   was duplicated across the six scroll actions (line/page/fast, each direction):
   up unsticks tail and clamps at the top; down is a no-op while tailing, else
   moves and re-sticks on catch-up.
+- **`scrollFiles(delta)`** (`viewport.go`) centralizes the file-overlay cursor
+  move (clamp to `[0, len(files)-1]`), collapsing the six `showFiles` branches of
+  the scroll actions.
+- **`panBy(delta)`** (`viewport.go`) centralizes horizontal panning (clamp at the
+  left edge; no right clamp — the renderer clips), collapsing the four pan
+  handlers.
 - **`selectionBounds()`** (`visual.go`) centralizes the "order the
   (anchor, cursor) pair, fall back to the caret row" idiom that was copied
   verbatim three times (`visualBar`, `buildVisualText`, `buildVisualRef`).
