@@ -123,6 +123,7 @@ func (m *model) handleSearchInputKey(msg tea.KeyMsg) tea.Model {
 	case tea.KeyEsc, tea.KeyCtrlC:
 		m.searchInput = false
 		m.searchQuery = ""
+		m.searchRegex = false // don't leak regex mode into the next search
 		return m
 	case tea.KeyEnter:
 		if m.commitSearch() {

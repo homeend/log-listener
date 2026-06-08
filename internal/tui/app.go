@@ -575,6 +575,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case keymap.ActionSearch:
 			m.searchInput = true
 			m.searchQuery = ""
+			m.searchRegex = false // every fresh search starts in substring mode
 		case keymap.ActionNextMatch:
 			m.searchNext()
 		case keymap.ActionPrevMatch:

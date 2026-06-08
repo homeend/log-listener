@@ -9,6 +9,19 @@ import (
 	"github.com/homeend/log-listener/internal/render"
 )
 
+func TestSearchEscDoesNotLeakRegexMode(t *testing.T) {
+	m := seedSearch(t, "x")
+	m.searchInput = true
+	m = key(m, tea.KeyMsg{Type: tea.KeyCtrlR}) // enable regex
+	if !m.searchRegex {
+		t.Fatal("Ctrl+R should enable regex")
+	}
+	m = key(m, tea.KeyMsg{Type: tea.KeyEsc}) // cancel
+	if m.searchRegex {
+		t.Fatal("Esc-cancel must reset searchRegex so the next search starts in substring mode")
+	}
+}
+
 func seedSearch(t *testing.T, vals ...string) *model {
 	t.Helper()
 	m := newModel(100)
