@@ -26,7 +26,7 @@ fragments:
   junie-acp:
     sources:
       - id: junie-acp
-        filter: 'acp*\.log$'
+        filter: 'acp.*\.log$'
         locations:
           - dir:
               linux:   '~/.cache/JetBrains/{product}*/log/acp'
