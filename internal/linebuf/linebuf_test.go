@@ -198,3 +198,67 @@ func TestRerenderKeepsIDsChangesContent(t *testing.T) {
 		t.Errorf("seq must be preserved: %d", e.Seq)
 	}
 }
+
+func TestGenBumpsOnAppendAndRerender(t *testing.T) {
+	b := New(10, func(ev render.Event) []Line { return []Line{{Text: ev.Raw}} })
+	g0 := b.Gen()
+	b.Append(render.Event{Raw: "a"})
+	g1 := b.Gen()
+	if g1 == g0 {
+		t.Fatal("gen did not bump on Append")
+	}
+	b.Rerender(func(g, f, raw string) (render.Event, bool) {
+		return render.Event{Raw: raw + "!"}, true
+	})
+	if b.Gen() == g1 {
+		t.Fatal("gen did not bump on Rerender")
+	}
+}
+
+func TestSnapshotReturnsLastLimitAndGen(t *testing.T) {
+	b := New(100, func(ev render.Event) []Line { return []Line{{Text: ev.Raw}} })
+	for _, s := range []string{"a", "b", "c", "d"} {
+		b.Append(render.Event{Raw: s})
+	}
+	snap, gen := b.Snapshot(2)
+	if gen != b.Gen() {
+		t.Fatalf("snapshot gen %d != Gen() %d", gen, b.Gen())
+	}
+	if len(snap) != 2 || snap[0].Raw != "c" || snap[1].Raw != "d" {
+		t.Fatalf("Snapshot(2) = %v, want [c d]", snapRaws(snap))
+	}
+	all, _ := b.Snapshot(0)
+	if len(all) != 4 {
+		t.Fatalf("Snapshot(0) len = %d, want 4 (all)", len(all))
+	}
+}
+
+func snapRaws(es []*Entry) []string {
+	out := make([]string, len(es))
+	for i, e := range es {
+		out[i] = e.Raw
+	}
+	return out
+}
+
+func TestSnapshotIsStableAcrossConcurrentAppend(t *testing.T) {
+	b := New(1000, func(ev render.Event) []Line { return []Line{{Text: ev.Raw}} })
+	for i := 0; i < 50; i++ {
+		b.Append(render.Event{Raw: "x"})
+	}
+	done := make(chan struct{})
+	go func() {
+		for i := 0; i < 500; i++ {
+			b.Append(render.Event{Raw: "y"})
+		}
+		close(done)
+	}()
+	for i := 0; i < 500; i++ {
+		snap, _ := b.Snapshot(100)
+		for _, e := range snap {
+			_ = e.Raw
+			_ = e.Lines
+		}
+	}
+	<-done
+}

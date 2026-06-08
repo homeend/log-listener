@@ -48,6 +48,7 @@ type Buffer struct {
 	mu        sync.RWMutex
 	cap       int
 	seq       uint64
+	gen       uint64
 	entries   []*Entry
 	byID      map[string]*Entry
 	blocks    []Block
@@ -94,6 +95,7 @@ func (b *Buffer) Append(ev render.Event) string {
 		delete(b.byID, drop.ID)
 	}
 	b.dirty = true
+	b.gen++
 	return id
 }
 
@@ -246,6 +248,30 @@ func (b *Buffer) Recent(limit, offset int) []*Entry {
 	return out
 }
 
+// Gen returns a counter that increments on every change to the entry set or
+// contents (Append, eviction, Rerender). Cheap to poll for change-detection.
+func (b *Buffer) Gen() uint64 {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	return b.gen
+}
+
+// Snapshot returns a copy of the last `limit` entry pointers (limit <= 0 = all)
+// and the current gen, taken atomically under the read lock. Entries are
+// immutable (Rerender replaces, never mutates), so the returned pointers are
+// safe to read after the lock is released.
+func (b *Buffer) Snapshot(limit int) ([]*Entry, uint64) {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	start := 0
+	if limit > 0 && limit < len(b.entries) {
+		start = len(b.entries) - limit
+	}
+	out := make([]*Entry, len(b.entries)-start)
+	copy(out, b.entries[start:])
+	return out, b.gen
+}
+
 // ensureBlocks recomputes block segmentation when dirty. Caller must hold the
 // write lock.
 func (b *Buffer) ensureBlocks() {
@@ -351,5 +377,6 @@ func (b *Buffer) Rerender(renderFn func(group, file, raw string) (render.Event, 
 		b.entries[i] = &ne
 		b.byID[ne.ID] = &ne
 	}
+	b.gen++
 	b.dirty = true
 }
