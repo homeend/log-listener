@@ -787,3 +787,27 @@ func TestGroupsOverlayHeaderUsesKeymapGlyphs(t *testing.T) {
 		t.Errorf("darwin overlay header should not show literal Esc")
 	}
 }
+
+func TestScrollDownPastEndReSticks(t *testing.T) {
+	m := newModel(1000)
+	m2, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 10})
+	m = m2.(*model)
+	for i := 0; i < 50; i++ {
+		m.appendEvent(render.Event{
+			Group: "g", File: "/x.log",
+			Rendered: []render.Part{{Type: "text", Value: fmt.Sprintf("line %d", i)}},
+		})
+	}
+	// Leave tail mode and jump to the very top.
+	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyHome})
+	m = m2.(*model)
+	if m.tailMode {
+		t.Fatal("setup: Home should leave tail mode")
+	}
+	// Scroll DOWN far past the end. This must re-stick to tail via maybeReStick,
+	// NOT jump to the top.
+	m.scrollBy(1000)
+	if !m.tailMode {
+		t.Fatal("scrolling down past the end must re-stick to tailMode")
+	}
+}
