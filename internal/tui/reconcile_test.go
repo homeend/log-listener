@@ -78,6 +78,27 @@ func TestReconcileEvictsCacheForDroppedIDs(t *testing.T) {
 	}
 }
 
+// Regression: readers must index against the window the last reconcile captured,
+// NOT a fresh buffer snapshot. The pump can append/evict between reconciles, so
+// re-snapshotting in a reader drifts the m.lines index→entry mapping (wrong
+// copy-reference IDs and wrong published viewport for MCP get_viewport).
+func TestReadersUseLastReconcileWindowNotFreshSnapshot(t *testing.T) {
+	m := newReconcileModel(t, 3) // 3-row window; owned buffer cap 3
+	for _, s := range []string{"a", "b", "c"} {
+		m.buf.Append(textEv(s))
+	}
+	m.reconcile() // window = L0,L1,L2; m.lines shows all three
+	// Pump appends a 4th entry → buffer evicts L0 → buffer is now L1,L2,L3.
+	// No reconcile yet, so m.lines still displays L0,L1,L2.
+	m.buf.Append(textEv("d"))
+	if id := m.entryIDForLine(0); id != "L0" {
+		t.Fatalf("entryIDForLine(0) = %q, want L0 (owner of displayed row 0); reader drifted to a fresh snapshot", id)
+	}
+	if s, e, ok := m.entryRowSpan(0); !ok || s != 0 || e != 0 {
+		t.Fatalf("entryRowSpan(0) = (%d,%d,%v), want (0,0,true)", s, e, ok)
+	}
+}
+
 func TestReconcileEvictionDragsViewState(t *testing.T) {
 	m := newReconcileModel(t, 3) // 3-row window
 	m.tailMode = false

@@ -279,6 +279,11 @@ type model struct {
 	lastGen      uint64
 	prevIDLines  map[string]int
 	clearedSeq   uint64
+	// window is the ordered set of entries currently in m.lines, captured by
+	// the same reconcile that built m.lines/displayCache — so readers index
+	// against a consistent snapshot and never re-snapshot the (concurrently
+	// mutated) buffer themselves.
+	window []*linebuf.Entry
 	scrollback  int
 	width       int
 	height      int
@@ -875,7 +880,7 @@ func (m *model) reconcile() {
 	}
 	snap, gen := m.buf.Snapshot(m.scrollback)
 	type built struct {
-		id    string
+		e     *linebuf.Entry
 		lines []displayLine
 	}
 	rebuilt := make([]built, 0, len(snap))
@@ -889,7 +894,7 @@ func (m *model) reconcile() {
 			dls = displayLinesFromEntry(e)
 			m.displayCache[e.ID] = dls
 		}
-		rebuilt = append(rebuilt, built{id: e.ID, lines: dls})
+		rebuilt = append(rebuilt, built{e: e, lines: dls})
 		total += len(dls)
 	}
 	startEntry := 0
@@ -899,7 +904,7 @@ func (m *model) reconcile() {
 	}
 	present := make(map[string]struct{}, len(rebuilt)-startEntry)
 	for _, b := range rebuilt[startEntry:] {
-		present[b.id] = struct{}{}
+		present[b.e.ID] = struct{}{}
 	}
 	dropped := 0
 	for id, n := range m.prevIDLines {
@@ -907,11 +912,16 @@ func (m *model) reconcile() {
 			dropped += n
 		}
 	}
+	// Build m.lines, the window, and prevIDLines together from the SAME
+	// snapshot, so every reader can index against m.window/displayCache without
+	// re-snapshotting the concurrently-mutated buffer (which would drift).
 	flat := make([]displayLine, 0, total)
+	window := make([]*linebuf.Entry, 0, len(rebuilt)-startEntry)
 	newPrev := make(map[string]int, len(rebuilt)-startEntry)
 	for _, b := range rebuilt[startEntry:] {
 		flat = append(flat, b.lines...)
-		newPrev[b.id] = len(b.lines)
+		window = append(window, b.e)
+		newPrev[b.e.ID] = len(b.lines)
 	}
 	for id := range m.displayCache {
 		if _, keep := newPrev[id]; !keep {
@@ -919,6 +929,7 @@ func (m *model) reconcile() {
 		}
 	}
 	m.lines = flat
+	m.window = window
 	m.prevIDLines = newPrev
 	m.lastGen = gen
 	m.blocksDirty = true
@@ -959,21 +970,13 @@ func (m *model) dragViewStateDown(dropped int) {
 	m.blockFocused = false
 }
 
-// visibleEntries returns the shared-buffer entries currently in the display
-// window (those whose rows are in m.lines), in order. Used by the snapshot-
-// sourced readers (filter, copy).
+// visibleEntries returns the entries currently in the display window, in order,
+// exactly as captured by the last reconcile — so m.lines, m.window, and
+// displayCache are one consistent set. Readers MUST use this (not a fresh
+// buf.Snapshot), or their m.lines index mapping can drift when the pump appends/
+// evicts between reconciles.
 func (m *model) visibleEntries() []*linebuf.Entry {
-	if m.buf == nil {
-		return nil
-	}
-	snap, _ := m.buf.Snapshot(m.scrollback)
-	out := make([]*linebuf.Entry, 0, len(snap))
-	for _, e := range snap {
-		if _, ok := m.prevIDLines[e.ID]; ok {
-			out = append(out, e)
-		}
-	}
-	return out
+	return m.window
 }
 
 // reRenderAll walks every stored entry through renderFn and rebuilds
