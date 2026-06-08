@@ -143,13 +143,10 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 	stdoutSink := sink.NewStdout(stdout, useColor)
 
-	var sseHub *sink.SSEHub
-	if cfg.SSEAddr != "" {
-		sseHub = sink.NewSSEHub(cfg.SSEAddr)
-		if err := sseHub.Start(); err != nil {
-			fmt.Fprintln(stderr, "log-listener: sse:", err)
-			return 1
-		}
+	sseSink, err := buildSSE(cfg)
+	if err != nil {
+		fmt.Fprintln(stderr, "log-listener:", err)
+		return 1
 	}
 
 	var fileSink *sink.FileSink
@@ -162,7 +159,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 
 	if cfg.Once {
-		fanout := sink.NewFanout(stdoutSink, sseHub, fileSink)
+		fanout := sink.NewFanout(stdoutSink, sseSink, fileSink)
 		defer fanout.Close()
 		if err := runOnce(preloadEvents, assignments, pipeline, fanout); err != nil {
 			fmt.Fprintln(stderr, "log-listener:", err)
@@ -192,7 +189,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 
 	if useTUI {
-		fanout := sink.NewFanout(sseHub, fileSink)
+		fanout := sink.NewFanout(sseSink, fileSink)
 		defer fanout.Close()
 		if err := runWatchTUI(cfg, args, cfg.DropUnmatched, assignments, &pipePtr, buf, fanout, km, preloadEvents, stderr); err != nil {
 			fmt.Fprintln(stderr, "log-listener:", err)
@@ -201,7 +198,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return 0
 	}
 
-	fanout := sink.NewFanout(stdoutSink, sseHub, fileSink)
+	fanout := sink.NewFanout(stdoutSink, sseSink, fileSink)
 	defer fanout.Close()
 	if err := runWatch(cfg, args, cfg.DropUnmatched, assignments, &pipePtr, buf, fanout, preloadEvents, stderr); err != nil {
 		fmt.Fprintln(stderr, "log-listener:", err)
