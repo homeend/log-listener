@@ -30,10 +30,7 @@ func (m *model) visualBar(idx int) (string, bool) {
 		return visualCaretStyle.Render("▶") + " ", true
 	}
 	if m.visualAnchor >= 0 {
-		lo, hi := m.visualAnchor, m.visualCursor
-		if lo > hi {
-			lo, hi = hi, lo
-		}
+		lo, hi := m.selectionBounds()
 		if idx >= lo && idx <= hi {
 			return visualSelStyle.Render("┃") + " ", true
 		}
@@ -70,6 +67,22 @@ func (m *model) exitVisual() {
 	m.visualAnchor = -1
 }
 
+// selectionBounds returns the inclusive [lo, hi] row span of the current visual
+// selection. With an anchor set it is the ordered (anchor, cursor) pair; with
+// no anchor (visualAnchor < 0) it is the caret row alone (lo == hi ==
+// visualCursor). Centralizes the order-the-pair idiom previously copied in
+// visualBar, buildVisualText, and buildVisualRef.
+func (m *model) selectionBounds() (lo, hi int) {
+	lo, hi = m.visualCursor, m.visualCursor
+	if m.visualAnchor >= 0 {
+		lo, hi = m.visualAnchor, m.visualCursor
+		if lo > hi {
+			lo, hi = hi, lo
+		}
+	}
+	return lo, hi
+}
+
 // ensureVisualVisible scrolls streamTop so visualCursor stays on screen.
 func (m *model) ensureVisualVisible() {
 	h := m.contentHeight()
@@ -90,13 +103,7 @@ func (m *model) ensureVisualVisible() {
 // plain displayed text. With no anchor (visualAnchor < 0) it is just the caret
 // row. "" if the span resolves to nothing.
 func buildVisualText(m *model) string {
-	lo, hi := m.visualCursor, m.visualCursor
-	if m.visualAnchor >= 0 {
-		lo, hi = m.visualAnchor, m.visualCursor
-		if lo > hi {
-			lo, hi = hi, lo
-		}
-	}
+	lo, hi := m.selectionBounds()
 	return m.textForRows(rangeSlice(lo, hi))
 }
 
@@ -113,13 +120,7 @@ func (m *model) copyVisualText() {
 // buildVisualRef is the reference seam: the visual span as line:<id> (single
 // owning entry) or range:<a>..<b>. With no anchor it is the caret row.
 func buildVisualRef(m *model) string {
-	lo, hi := m.visualCursor, m.visualCursor
-	if m.visualAnchor >= 0 {
-		lo, hi = m.visualAnchor, m.visualCursor
-		if lo > hi {
-			lo, hi = hi, lo
-		}
-	}
+	lo, hi := m.selectionBounds()
 	a, b := m.entryIDForLine(lo), m.entryIDForLine(hi)
 	if a == "" || b == "" {
 		return ""
