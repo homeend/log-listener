@@ -2,7 +2,8 @@
 
 **Date:** 2026-06-08
 **Status:** Approved (design)
-**Scope:** `internal/sink`, `main.go`. Pure refactor — zero behavior change.
+**Scope:** `internal/sink`, `main.go`. Refactor — behavior-preserving except one
+documented micro-change (see "Intentional behavior change").
 
 ## Context
 
@@ -101,6 +102,20 @@ Concrete changes in `main.go`:
 - `Emit` has no error return (matching today's sinks); per-sink emit failures
   are handled internally by each sink as they are today.
 
+## Intentional behavior change
+
+There is one deliberate, reviewed exception to "behavior-preserving":
+
+- **TUI-mode preload now also reaches SSE.** Today, preload events in TUI mode
+  go only to the TUI app and the output file, skipping the SSE hub — even though
+  *live* events in TUI mode do reach SSE. Routing TUI preload through the unified
+  `{sse, file}` fanout removes this latent inconsistency, so TUI preload now
+  mirrors non-TUI preload. Impact is negligible (no SSE client is connected at
+  startup before preload flushes) and no existing test exercises the
+  TUI+SSE+preload combination.
+
+All other output is byte-identical.
+
 ## Non-goals
 
 - No build tags, no separate binaries (next cycle).
@@ -115,7 +130,8 @@ Concrete changes in `main.go`:
   calls and order.
 - All existing sink and integration tests must pass **unchanged** — stdout
   output, `-o` output-file passthrough, and SSE broadcast. These are the proof
-  of zero behavior change.
+  of behavior preservation (the one TUI-preload→SSE exception above has no test
+  and is intentional).
 - `go test ./...`, `go vet ./...`, and `go test -race ./...` stay green.
 
 ## Success criteria
