@@ -6,7 +6,6 @@
 package linebuf
 
 import (
-	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -14,6 +13,7 @@ import (
 
 	"github.com/homeend/log-listener/internal/blocks"
 	"github.com/homeend/log-listener/internal/render"
+	"github.com/homeend/log-listener/internal/searchmatch"
 )
 
 // Line is one decomposed plain display row of an entry.
@@ -192,16 +192,15 @@ type SearchHit struct {
 
 // Search returns entries whose any line matches query (substring, or regexp
 // when regex=true), newest-first, capped at limit (limit<=0 → 50).
+// Substring queries are smart-case: case-insensitive unless the query
+// contains an uppercase letter.
 func (b *Buffer) Search(query string, regex bool, limit int) ([]SearchHit, error) {
 	if limit <= 0 {
 		limit = 50
 	}
-	var re *regexp.Regexp
-	if regex {
-		var err error
-		if re, err = regexp.Compile(query); err != nil {
-			return nil, err
-		}
+	matcher, err := searchmatch.Compile(query, regex)
+	if err != nil {
+		return nil, err
 	}
 	b.mu.RLock()
 	defer b.mu.RUnlock()
@@ -209,13 +208,7 @@ func (b *Buffer) Search(query string, regex bool, limit int) ([]SearchHit, error
 	for i := len(b.entries) - 1; i >= 0 && len(out) < limit; i-- {
 		e := b.entries[i]
 		for li, ln := range e.Lines {
-			match := false
-			if re != nil {
-				match = re.MatchString(ln.Text)
-			} else {
-				match = strings.Contains(ln.Text, query)
-			}
-			if match {
+			if matcher.Match(ln.Text) {
 				out = append(out, SearchHit{ID: e.ID, Group: e.Group,
 					File: e.File, Snippet: ln.Text, MatchedLine: li})
 				break

@@ -94,6 +94,20 @@ func TestSearchSubstringAndRegexAndLimit(t *testing.T) {
 	}
 }
 
+func TestSearchSubstringIsSmartCase(t *testing.T) {
+	b := New(100, func(ev render.Event) []Line { return []Line{{Text: ev.Raw}} })
+	b.Append(render.Event{Raw: "an ERROR line"})
+	b.Append(render.Event{Raw: "a warning line"})
+	hits, err := b.Search("error", false, 10) // lowercase folds → matches ERROR
+	if err != nil || len(hits) != 1 {
+		t.Fatalf("smart-case fold: hits=%d err=%v, want 1", len(hits), err)
+	}
+	hits, _ = b.Search("Error", false, 10) // uppercase → case-sensitive, no exact 'Error'
+	if len(hits) != 0 {
+		t.Fatalf("smart-case sensitive: hits=%d, want 0", len(hits))
+	}
+}
+
 func TestRecentPagination(t *testing.T) {
 	b := New(100, decomp)
 	for _, s := range []string{"a", "b", "c", "d"} {
