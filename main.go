@@ -473,6 +473,7 @@ func runWatchTUI(cfg *config.Config, args []string, dropUnmatched bool, assignme
 		Groups:        groups,
 		Renderers:     renderers,
 		Keymap:        km,
+		Buffer:        buf,
 		InitialEvents: preloadEvents,
 		SetRendererOn: func(i int, on bool) { pipePtr.Load().SetRendererEnabled(i, on) },
 		RenderFn: func(group, file, raw string) (render.Event, bool) {

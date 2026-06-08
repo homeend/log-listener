@@ -17,6 +17,7 @@ import (
 
 	"github.com/homeend/log-listener/internal/blocks"
 	"github.com/homeend/log-listener/internal/keymap"
+	"github.com/homeend/log-listener/internal/linebuf"
 	"github.com/homeend/log-listener/internal/render"
 )
 
@@ -127,6 +128,7 @@ type Options struct {
 	RenderFn          RenderFunc             // called per scrollback entry when toggling triggers re-render
 	InitialEvents     []render.Event         // seeded into scrollback before Run (preload)
 	SetViewport       func(from, to string)  // publishes the on-screen entry range (TUI mode only)
+	Buffer            *linebuf.Buffer        // shared record store; nil → an owned buffer (tests/standalone)
 }
 
 // New creates an App from Options. Files and groups must be passed
@@ -155,6 +157,18 @@ func New(opts Options) *App {
 	m.setRendererEnabled = opts.SetRendererOn
 	m.renderFn = opts.RenderFn
 	m.setViewport = opts.SetViewport
+	if opts.Buffer != nil {
+		m.buf = opts.Buffer
+	} else {
+		m.buf = linebuf.New(scrollback, func(ev render.Event) []linebuf.Line {
+			rows := render.DecomposeLines(ev)
+			out := make([]linebuf.Line, len(rows))
+			for i, r := range rows {
+				out[i] = linebuf.Line{Text: r.Text, IsCont: r.IsCont}
+			}
+			return out
+		})
+	}
 	for _, ev := range opts.InitialEvents {
 		m.appendEvent(ev)
 	}
@@ -262,6 +276,18 @@ type model struct {
 	// per-render walk of m.entries.
 	entries     []scrollbackEvent
 	lines       []displayLine
+
+	// Shared-buffer sourcing (slice 5-1). buf is the authoritative record
+	// store (shared with MCP in TUI mode; an owned buffer in tests).
+	// displayCache memoizes each entry's display rows by ID; prevIDLines
+	// records the row count per visible ID at the last reconcile (for the
+	// eviction index-drag); clearedSeq is the Clear floor (entries with
+	// Seq <= clearedSeq are hidden).
+	buf          *linebuf.Buffer
+	displayCache map[string][]displayLine
+	lastGen      uint64
+	prevIDLines  map[string]int
+	clearedSeq   uint64
 	scrollback  int
 	width       int
 	height      int
@@ -390,6 +416,9 @@ func newModel(scrollback int) *model {
 		groupEnabled: map[string]bool{},
 		searchHit:    -1,
 		visualAnchor: -1,
+
+		displayCache: map[string][]displayLine{},
+		prevIDLines:  map[string]int{},
 
 		showExceptionMarks: true,
 	}
@@ -845,6 +874,142 @@ func (m *model) trimToCap() {
 	}
 	m.blockFocused = false
 	m.blocksDirty = true
+}
+
+// displayLinesFromEntry builds the TUI display rows for a linebuf entry as a
+// pure transform — no re-render. The entry already holds the basename File and
+// the decomposed Lines (Text/IsCont); this mirrors decomposeEvent's row build.
+func displayLinesFromEntry(e *linebuf.Entry) []displayLine {
+	out := make([]displayLine, 0, len(e.Lines))
+	for _, ln := range e.Lines {
+		body := ln.Text
+		if ln.IsCont {
+			body = dimStyle.Render(ln.Text)
+		}
+		out = append(out, displayLine{
+			group:     e.Group,
+			file:      e.File,
+			body:      body,
+			bodyWidth: dispWidth(ln.Text),
+			isBlock:   ln.IsCont,
+		})
+	}
+	return out
+}
+
+// reconcile pulls a bounded snapshot from the shared buffer and rebuilds
+// m.lines + the ID-keyed display cache, keeping only the tail that fits the
+// scrollback display-line window. View-state indices are dragged down by the
+// number of head rows evicted since the last reconcile (matching trimToCap).
+// Coalesces: a no-op when the buffer generation is unchanged.
+func (m *model) reconcile() {
+	if m.buf == nil {
+		return
+	}
+	if g := m.buf.Gen(); g == m.lastGen && m.lines != nil {
+		return
+	}
+	snap, gen := m.buf.Snapshot(m.scrollback)
+	type built struct {
+		id    string
+		lines []displayLine
+	}
+	rebuilt := make([]built, 0, len(snap))
+	total := 0
+	for _, e := range snap {
+		if m.clearedSeq > 0 && e.Seq <= m.clearedSeq {
+			continue // Clear floor: hide entries from before the last Clear
+		}
+		dls, ok := m.displayCache[e.ID]
+		if !ok {
+			dls = displayLinesFromEntry(e)
+			m.displayCache[e.ID] = dls
+		}
+		rebuilt = append(rebuilt, built{id: e.ID, lines: dls})
+		total += len(dls)
+	}
+	startEntry := 0
+	for m.scrollback > 0 && total > m.scrollback && startEntry < len(rebuilt) {
+		total -= len(rebuilt[startEntry].lines)
+		startEntry++
+	}
+	present := make(map[string]struct{}, len(rebuilt)-startEntry)
+	for _, b := range rebuilt[startEntry:] {
+		present[b.id] = struct{}{}
+	}
+	dropped := 0
+	for id, n := range m.prevIDLines {
+		if _, keep := present[id]; !keep {
+			dropped += n
+		}
+	}
+	flat := make([]displayLine, 0, total)
+	newPrev := make(map[string]int, len(rebuilt)-startEntry)
+	for _, b := range rebuilt[startEntry:] {
+		flat = append(flat, b.lines...)
+		newPrev[b.id] = len(b.lines)
+	}
+	for id := range m.displayCache {
+		if _, keep := newPrev[id]; !keep {
+			delete(m.displayCache, id)
+		}
+	}
+	m.lines = flat
+	m.prevIDLines = newPrev
+	m.lastGen = gen
+	m.blocksDirty = true
+	if dropped > 0 {
+		m.dragViewStateDown(dropped)
+	}
+}
+
+// dragViewStateDown shifts absolute m.lines indices down by `dropped` rows when
+// head entries were evicted, preserving trimToCap's exact semantics: streamTop
+// only when browsing; searchHit/visual anchors always; clamp at 0; unset on
+// scroll-off; clear the focused-block indicator.
+func (m *model) dragViewStateDown(dropped int) {
+	if !m.tailMode {
+		m.streamTop -= dropped
+		if m.streamTop < 0 {
+			m.streamTop = 0
+		}
+	}
+	if m.searchHit >= 0 {
+		m.searchHit -= dropped
+		if m.searchHit < 0 {
+			m.searchHit = -1
+		}
+	}
+	if m.visualMode {
+		m.visualCursor -= dropped
+		if m.visualCursor < 0 {
+			m.visualCursor = 0
+		}
+		if m.visualAnchor >= 0 {
+			m.visualAnchor -= dropped
+			if m.visualAnchor < 0 {
+				m.visualAnchor = -1
+			}
+		}
+	}
+	m.blockFocused = false
+}
+
+// visibleEntries returns the shared-buffer entries currently in the display
+// window (those whose rows are in m.lines), in order. Used by the snapshot-
+// sourced readers (filter, copy).
+func (m *model) visibleEntries() []*linebuf.Entry {
+	if m.buf == nil {
+		return nil
+	}
+	snap, _ := m.buf.Snapshot(m.scrollback)
+	out := make([]*linebuf.Entry, 0, len(snap))
+	for _, e := range snap {
+		if _, ok := m.prevIDLines[e.ID]; ok {
+			out = append(out, e)
+		}
+	}
+	return out
 }
 
 // reRenderAll walks every stored entry through renderFn and rebuilds
