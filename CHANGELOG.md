@@ -7,6 +7,18 @@ and this project adheres to phased delivery per `PLAN.md`.
 
 ## [Unreleased]
 
+### Internal: sink fan-out via `sink.Fanout` registry
+- **`sink.Sink` interface + `sink.Fanout` registry**: the stdout, SSE, and
+  output-file sinks now implement a common `Sink` interface and are dispatched
+  through a single ordered `Fanout` instead of a hardcoded, per-call nil-guarded
+  fan-out in `main.go`. `Fanout` skips nil sinks (including typed-nil pointers),
+  the seam a future build-tagged constructor uses to compile a sink in or out.
+  Behavior-preserving refactor — output is byte-identical.
+- **TUI-mode preload now also broadcasts to SSE**: previously, preloaded lines
+  (`--preload`) in TUI mode reached only the TUI and the output file, not SSE
+  clients, even though live lines did. They now reach SSE too, matching non-TUI
+  mode. (Live behavior and stdout/file output are unchanged.)
+
 ### TUI: focused-block indicator + visual selection mode + copy-text key
 - **Focused-block `│` indicator**: a cyan `│` in the TUI left margin marks the
   multi-line block the cursor is currently on — the live preview of what `y` will
