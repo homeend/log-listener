@@ -150,7 +150,6 @@ func run(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintln(stderr, "log-listener: sse:", err)
 			return 1
 		}
-		defer sseHub.Close()
 	}
 
 	var fileSink *sink.FileSink
@@ -160,11 +159,12 @@ func run(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintln(stderr, "log-listener: output:", err)
 			return 1
 		}
-		defer fileSink.Close()
 	}
 
 	if cfg.Once {
-		if err := runOnce(preloadEvents, assignments, pipeline, stdoutSink, sseHub, fileSink); err != nil {
+		fanout := sink.NewFanout(stdoutSink, sseHub, fileSink)
+		defer fanout.Close()
+		if err := runOnce(preloadEvents, assignments, pipeline, fanout); err != nil {
 			fmt.Fprintln(stderr, "log-listener:", err)
 			return 1
 		}
@@ -192,14 +192,18 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 
 	if useTUI {
-		if err := runWatchTUI(cfg, args, cfg.DropUnmatched, assignments, &pipePtr, buf, sseHub, fileSink, km, preloadEvents, stderr); err != nil {
+		fanout := sink.NewFanout(sseHub, fileSink)
+		defer fanout.Close()
+		if err := runWatchTUI(cfg, args, cfg.DropUnmatched, assignments, &pipePtr, buf, fanout, km, preloadEvents, stderr); err != nil {
 			fmt.Fprintln(stderr, "log-listener:", err)
 			return 1
 		}
 		return 0
 	}
 
-	if err := runWatch(cfg, args, cfg.DropUnmatched, assignments, &pipePtr, buf, stdoutSink, sseHub, fileSink, preloadEvents, stderr); err != nil {
+	fanout := sink.NewFanout(stdoutSink, sseHub, fileSink)
+	defer fanout.Close()
+	if err := runWatch(cfg, args, cfg.DropUnmatched, assignments, &pipePtr, buf, fanout, preloadEvents, stderr); err != nil {
 		fmt.Fprintln(stderr, "log-listener:", err)
 		return 1
 	}
@@ -315,15 +319,9 @@ func mergePreloadPanels(groups []tui.GroupInfo, files []tui.FileEntry, evs []ren
 // runOnce uses the concrete pipeline directly — --once exits before the
 // watcher or reload machinery starts, so no swap can occur. That's why it
 // can't share emit(), which loads through the atomic pointer.
-func runOnce(preloadEvents []render.Event, assignments []discover.Assignment, pipeline *render.Pipeline, stdoutSink *sink.Stdout, sseHub *sink.SSEHub, fileSink *sink.FileSink) error {
+func runOnce(preloadEvents []render.Event, assignments []discover.Assignment, pipeline *render.Pipeline, fanout *sink.Fanout) error {
 	for _, ev := range preloadEvents {
-		stdoutSink.Emit(ev)
-		if sseHub != nil {
-			sseHub.Emit(ev)
-		}
-		if fileSink != nil {
-			fileSink.Emit(ev)
-		}
+		fanout.Emit(ev)
 	}
 	for _, a := range assignments {
 		f, err := os.Open(a.Path)
@@ -335,13 +333,7 @@ func runOnce(preloadEvents []render.Event, assignments []discover.Assignment, pi
 		for s.Scan() {
 			ev, ok := pipeline.Render(time.Now(), a.GroupID, a.Path, s.Text())
 			if ok {
-				stdoutSink.Emit(ev)
-				if sseHub != nil {
-					sseHub.Emit(ev)
-				}
-				if fileSink != nil {
-					fileSink.Emit(ev)
-				}
+				fanout.Emit(ev)
 			}
 		}
 		if err := s.Err(); err != nil {
@@ -353,7 +345,7 @@ func runOnce(preloadEvents []render.Event, assignments []discover.Assignment, pi
 	return nil
 }
 
-func runWatch(cfg *config.Config, args []string, dropUnmatched bool, assignments []discover.Assignment, pipePtr *atomic.Pointer[render.Pipeline], buf *linebuf.Buffer, stdoutSink *sink.Stdout, sseHub *sink.SSEHub, fileSink *sink.FileSink, preloadEvents []render.Event, stderr io.Writer) error {
+func runWatch(cfg *config.Config, args []string, dropUnmatched bool, assignments []discover.Assignment, pipePtr *atomic.Pointer[render.Pipeline], buf *linebuf.Buffer, fanout *sink.Fanout, preloadEvents []render.Event, stderr io.Writer) error {
 	w, err := buildWatcher(cfg, assignments, stderr)
 	if err != nil {
 		return err
@@ -365,13 +357,7 @@ func runWatch(cfg *config.Config, args []string, dropUnmatched bool, assignments
 	defer func() { w.Close() }()
 
 	for _, ev := range preloadEvents {
-		stdoutSink.Emit(ev)
-		if sseHub != nil {
-			sseHub.Emit(ev)
-		}
-		if fileSink != nil {
-			fileSink.Emit(ev)
-		}
+		fanout.Emit(ev)
 	}
 
 	var cfgChanges <-chan struct{}
@@ -404,7 +390,7 @@ func runWatch(cfg *config.Config, args []string, dropUnmatched bool, assignments
 	for {
 		select {
 		case ev := <-w.Events():
-			emit(pipePtr, buf, stdoutSink, sseHub, fileSink, ev.Group, ev.Path, ev.Line)
+			emit(pipePtr, buf, fanout, ev.Group, ev.Path, ev.Line)
 		case e := <-w.Errors():
 			fmt.Fprintf(stderr, "log-listener: %v\n", e)
 		case <-cfgChanges:
@@ -434,7 +420,7 @@ func runWatch(cfg *config.Config, args []string, dropUnmatched bool, assignments
 			for {
 				select {
 				case ev := <-w.Events():
-					emit(pipePtr, buf, stdoutSink, sseHub, fileSink, ev.Group, ev.Path, ev.Line)
+					emit(pipePtr, buf, fanout, ev.Group, ev.Path, ev.Line)
 				case e := <-w.Errors():
 					fmt.Fprintf(stderr, "log-listener: %v\n", e)
 				case <-drainDeadline:
@@ -449,26 +435,20 @@ func runWatch(cfg *config.Config, args []string, dropUnmatched bool, assignments
 // stdout sink and (if running) the SSE broadcast hub and the output-file sink.
 // The buffer is the ID authority: Append assigns the ID, which is threaded into
 // ev before emission.
-func emit(pipePtr *atomic.Pointer[render.Pipeline], buf *linebuf.Buffer, stdoutSink *sink.Stdout, sseHub *sink.SSEHub, fileSink *sink.FileSink, group, path, line string) {
+func emit(pipePtr *atomic.Pointer[render.Pipeline], buf *linebuf.Buffer, fanout *sink.Fanout, group, path, line string) {
 	ev, ok := pipePtr.Load().Render(time.Now(), group, path, line)
 	if !ok {
 		return
 	}
 	ev.ID = buf.Append(ev)
-	stdoutSink.Emit(ev)
-	if sseHub != nil {
-		sseHub.Emit(ev)
-	}
-	if fileSink != nil {
-		fileSink.Emit(ev)
-	}
+	fanout.Emit(ev)
 }
 
 // runWatchTUI is the TUI variant of runWatch. The bubbletea program owns the
 // terminal on the main goroutine, while a background goroutine pumps watcher
 // events through the renderer pipeline into app.Push() and (if configured)
 // the SSE hub.
-func runWatchTUI(cfg *config.Config, args []string, dropUnmatched bool, assignments []discover.Assignment, pipePtr *atomic.Pointer[render.Pipeline], buf *linebuf.Buffer, sseHub *sink.SSEHub, fileSink *sink.FileSink, km *keymap.Keymap, preloadEvents []render.Event, stderr io.Writer) error {
+func runWatchTUI(cfg *config.Config, args []string, dropUnmatched bool, assignments []discover.Assignment, pipePtr *atomic.Pointer[render.Pipeline], buf *linebuf.Buffer, fanout *sink.Fanout, km *keymap.Keymap, preloadEvents []render.Event, stderr io.Writer) error {
 	w, err := buildWatcher(cfg, assignments, stderr)
 	if err != nil {
 		return err
@@ -491,10 +471,8 @@ func runWatchTUI(cfg *config.Config, args []string, dropUnmatched bool, assignme
 	// and Run hasn't started reading from it yet.
 	groups, renderers, initial := tuiPanelState(cfg, pipePtr.Load(), assignments)
 	groups, initial = mergePreloadPanels(groups, initial, preloadEvents)
-	if fileSink != nil {
-		for _, ev := range preloadEvents {
-			fileSink.Emit(ev)
-		}
+	for _, ev := range preloadEvents {
+		fanout.Emit(ev)
 	}
 	app := tui.New(tui.Options{
 		Scrollback:    cfg.TUIScrollback,
@@ -539,12 +517,7 @@ func runWatchTUI(cfg *config.Config, args []string, dropUnmatched bool, assignme
 				}
 				rev.ID = buf.Append(rev)
 				app.Push(rev)
-				if sseHub != nil {
-					sseHub.Emit(rev)
-				}
-				if fileSink != nil {
-					fileSink.Emit(rev)
-				}
+				fanout.Emit(rev)
 			case <-w.Errors():
 				// Errors go to /dev/null in TUI mode for now — a future
 				// phase could surface them in a status bar.
