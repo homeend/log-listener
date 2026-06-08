@@ -614,9 +614,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case keymap.ActionScrollUp:
 			m.blockFocused = false
 			if m.showFiles {
-				if m.filesScroll > 0 {
-					m.filesScroll--
-				}
+				m.scrollFiles(-1)
 			} else if m.matcher != nil {
 				m.searchPrev()
 			} else {
@@ -625,9 +623,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case keymap.ActionScrollDown:
 			m.blockFocused = false
 			if m.showFiles {
-				if m.filesScroll < len(m.files)-1 {
-					m.filesScroll++
-				}
+				m.scrollFiles(1)
 			} else if m.matcher != nil {
 				m.searchNext()
 			} else {
@@ -637,10 +633,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.blockFocused = false
 			page := m.contentHeight()
 			if m.showFiles {
-				m.filesScroll -= page
-				if m.filesScroll < 0 {
-					m.filesScroll = 0
-				}
+				m.scrollFiles(-page)
 			} else {
 				m.scrollBy(-page)
 			}
@@ -648,36 +641,21 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.blockFocused = false
 			page := m.contentHeight()
 			if m.showFiles {
-				m.filesScroll += page
-				if m.filesScroll > len(m.files)-1 {
-					m.filesScroll = len(m.files) - 1
-				}
-				if m.filesScroll < 0 {
-					m.filesScroll = 0
-				}
+				m.scrollFiles(page)
 			} else {
 				m.scrollBy(page)
 			}
 		case keymap.ActionFastUp:
 			m.blockFocused = false
 			if m.showFiles {
-				m.filesScroll -= vertFastStep
-				if m.filesScroll < 0 {
-					m.filesScroll = 0
-				}
+				m.scrollFiles(-vertFastStep)
 			} else {
 				m.scrollBy(-vertFastStep)
 			}
 		case keymap.ActionFastDown:
 			m.blockFocused = false
 			if m.showFiles {
-				m.filesScroll += vertFastStep
-				if m.filesScroll > len(m.files)-1 {
-					m.filesScroll = len(m.files) - 1
-				}
-				if m.filesScroll < 0 {
-					m.filesScroll = 0
-				}
+				m.scrollFiles(vertFastStep)
 			} else {
 				m.scrollBy(vertFastStep)
 			}
