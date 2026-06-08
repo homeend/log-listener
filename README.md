@@ -87,6 +87,9 @@ everything. To produce leaner binaries, use build tags:
 
 A stripped binary still recognizes the corresponding flag, but asking for the
 removed feature (`--mcp`, `--sse`, or an `output.sse` YAML block) is a hard error.
+(Exception: `--mcp` is ignored in `--once` mode on *every* build — MCP never runs
+for a one-shot pass — so a `nomcp` binary likewise ignores it there rather than
+erroring.)
 
 ---
 
