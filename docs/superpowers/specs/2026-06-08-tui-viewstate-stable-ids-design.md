@@ -1,7 +1,16 @@
 # TUI View-State as Stable IDs (slice 5-3) — Design
 
 **Date:** 2026-06-08
-**Status:** Draft — design agreed in brainstorming; pending user review of this written spec.
+**Status:** SUPERSEDED / DEFERRED (2026-06-08). On reviewing the real call-site
+surface (~121 prod + ~127 test ≈ 248) the user judged that the accessor-seam +
+stable-ID flip *relocates* complexity (low-level index reads become low-level
+accessor calls) rather than *reducing* it, and the motivating TOCTOU bug is
+already fixed. We pivoted to a viewport/selection **operations layer** that
+genuinely collapses scattered arithmetic into intent-level methods — see
+`2026-06-08-tui-viewport-operations-design.md`. The `rowAnchor` resolver design
+below (`rowForAnchor`/`anchorForRow`) is kept on record because the operations
+layer concentrates the index math, making a future stable-ID flip far cheaper
+should it ever be justified. Do not implement this spec as written.
 **Scope:** `internal/tui` (view-state representation + ~108 call sites across ~7 files).
 
 ## Context

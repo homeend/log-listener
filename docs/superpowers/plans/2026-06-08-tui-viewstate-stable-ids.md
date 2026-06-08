@@ -1,5 +1,13 @@
 # TUI View-State as Stable IDs (slice 5-3) Implementation Plan
 
+> **STATUS: SUPERSEDED / DEFERRED (2026-06-08).** This plan implements the
+> stable-ID flip, which the user set aside after the call-site inventory showed
+> it relocates rather than reduces complexity. The work pivoted to a
+> viewport/selection operations layer — see
+> `docs/superpowers/plans/2026-06-08-tui-viewport-operations.md` (and its spec).
+> Do not execute this plan. Kept for reference; the `viewanchor.go` resolver
+> design here may be reused if a stable-ID flip is ever justified later.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Re-express the TUI's four view-state values (`streamTop`, `searchHit`, `visualCursor`, `visualAnchor`) as stable `(entryID, rowOffset)` anchors instead of absolute `m.lines` indices, so they survive eviction without the `dragViewStateDown` index-drag, which is then deleted.
