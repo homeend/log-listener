@@ -18,9 +18,12 @@ Each task is mechanical and identical in shape:
 
 1. **Create the new file** (or open the existing target) with `package tui` as the first line.
 2. **Move the named declarations** — cut each listed declaration *together with its doc comment* from `app.go` and paste it into the target file. Move whole declarations only; never split one.
-3. **Fix imports.** From the repo root run `goimports -w internal/tui/` (adds imports the new file now needs and removes ones `app.go` no longer uses). If `goimports` is not installed (`command -v goimports`), install it with `go install golang.org/x/tools/cmd/goimports@latest`, or fix imports by hand by iterating on `go build ./internal/tui/` errors until clean. Then `gofmt -w internal/tui/`.
+3. **Fix imports — TOUCHED FILES ONLY.** `goimports` is installed at `/home/homeend/go/bin/goimports` (not on `$PATH` — use the full path, or `"$(go env GOPATH)/bin/goimports"`). Run it on ONLY the two files this task touches (the new file + `app.go`), e.g.:
+   `"$(go env GOPATH)/bin/goimports" -w internal/tui/<newfile>.go internal/tui/app.go`
+   This adds imports the new file needs and removes ones `app.go` no longer uses. Its import grouping matches the repo (verified — no reordering churn). Then `gofmt -w internal/tui/<newfile>.go internal/tui/app.go`.
+   **Do NOT run goimports/gofmt on the whole `internal/tui/` directory** — two unrelated files (`multiline_test.go`, `visual_test.go`) carry *pre-existing* gofmt deviations on `main`; leave them alone (out of scope).
 4. **Verify green:**
-   - `gofmt -l internal/tui/` → no output
+   - `gofmt -l internal/tui/<newfile>.go internal/tui/app.go` → no output (the files you touched are clean)
    - `go build ./...` → exit 0
    - `go test ./internal/tui/` → PASS
 5. **Commit** that file's move.
@@ -51,7 +54,7 @@ Each task is mechanical and identical in shape:
 
 - [ ] **Step 2: Fix imports + format**
 
-`goimports -w internal/tui/ && gofmt -l internal/tui/`
+Run on the TWO touched files only (new file + `app.go`): `"$(go env GOPATH)/bin/goimports" -w <touched files> && gofmt -l <touched files>` (whole-dir would churn the two pre-existing-dirty test files — see preamble).
 `width.go` needs `regexp`, `unicode/utf8`, and `github.com/mattn/go-runewidth`. `app.go` should drop any of those it no longer uses. Expected: `gofmt -l` empty.
 
 - [ ] **Step 3: Build + test green**
@@ -86,7 +89,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 
 - [ ] **Step 2: Fix imports + format**
 
-`goimports -w internal/tui/ && gofmt -l internal/tui/`
+Run on the TWO touched files only (new file + `app.go`): `"$(go env GOPATH)/bin/goimports" -w <touched files> && gofmt -l <touched files>` (whole-dir would churn the two pre-existing-dirty test files — see preamble).
 `viewport.go` likely needs no new imports (these use only model fields / arithmetic). `app.go` drops nothing import-wise unless a now-unused import remains. Expected: `gofmt -l` empty.
 
 - [ ] **Step 3: Build + test green**
@@ -123,7 +126,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 
 - [ ] **Step 2: Fix imports + format**
 
-`goimports -w internal/tui/ && gofmt -l internal/tui/`
+Run on the TWO touched files only (new file + `app.go`): `"$(go env GOPATH)/bin/goimports" -w <touched files> && gofmt -l <touched files>` (whole-dir would churn the two pre-existing-dirty test files — see preamble).
 `reconcile.go` likely needs `github.com/homeend/log-listener/internal/render` and `internal/linebuf` (and whatever `reconcile`/`reRenderAll` reference). Let `goimports` resolve it. Expected: `gofmt -l` empty.
 
 - [ ] **Step 3: Build + test green**
@@ -162,7 +165,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 
 - [ ] **Step 2: Fix imports + format**
 
-`goimports -w internal/tui/ && gofmt -l internal/tui/`
+Run on the TWO touched files only (new file + `app.go`): `"$(go env GOPATH)/bin/goimports" -w <touched files> && gofmt -l <touched files>` (whole-dir would churn the two pre-existing-dirty test files — see preamble).
 Expected: `gofmt -l` empty.
 
 - [ ] **Step 3: Build + test green**
@@ -193,7 +196,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 
 - [ ] **Step 2: Fix imports + format**
 
-`goimports -w internal/tui/ && gofmt -l internal/tui/`
+Run on the TWO touched files only (new file + `app.go`): `"$(go env GOPATH)/bin/goimports" -w <touched files> && gofmt -l <touched files>` (whole-dir would churn the two pre-existing-dirty test files — see preamble).
 `update.go` likely needs `github.com/charmbracelet/bubbletea` (`tea`), `internal/keymap`, and possibly `internal/render`. Let `goimports` resolve it; `app.go` will shed now-unused imports (e.g. it may lose `tea`/`keymap` if no longer referenced there). Expected: `gofmt -l` empty.
 
 - [ ] **Step 3: Build + test green**
@@ -244,7 +247,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 
 - [ ] **Step 2: Fix imports + format**
 
-`goimports -w internal/tui/ && gofmt -l internal/tui/`
+Run on the TWO touched files only (new file + `app.go`): `"$(go env GOPATH)/bin/goimports" -w <touched files> && gofmt -l <touched files>` (whole-dir would churn the two pre-existing-dirty test files — see preamble).
 `view.go` likely needs `fmt`, `strings`, `github.com/charmbracelet/lipgloss`, `github.com/mattn/go-runewidth`, `internal/keymap`. Let `goimports` resolve it; `app.go` sheds the now-unused ones. Expected: `gofmt -l` empty.
 
 - [ ] **Step 3: Build + test green (this is the big move — watch for any leftover decl in app.go)**
@@ -279,8 +282,11 @@ Expected: exactly one definition of each (in reconcile.go, update.go, view.go, w
 
 - [ ] **Step 2: Formatting + full gates**
 
-Run: `gofmt -l internal/tui/ && go build ./... && go test ./... && go vet ./... && go test -race ./internal/tui/`
-Expected: `gofmt -l` empty; everything PASS.
+Run: `gofmt -l internal/tui/app.go internal/tui/update.go internal/tui/reconcile.go internal/tui/render.go internal/tui/view.go internal/tui/width.go internal/tui/viewport.go`
+Expected: empty (all split files clean). Note: a whole-dir `gofmt -l internal/tui/` will still list the two pre-existing-dirty files `multiline_test.go` and `visual_test.go` — that is expected and out of scope; do NOT "fix" them.
+
+Then: `go build ./... && go test ./... && go vet ./... && go test -race ./internal/tui/`
+Expected: everything PASS.
 
 - [ ] **Step 3: Tagged builds (CGO-free invariant)**
 
