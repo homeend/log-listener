@@ -1,17 +1,24 @@
 # TUI View-State as Stable IDs (slice 5-3) — Design
 
-**Date:** 2026-06-08
-**Status:** SUPERSEDED / DEFERRED (2026-06-08). On reviewing the real call-site
-surface (~121 prod + ~127 test ≈ 248) the user judged that the accessor-seam +
-stable-ID flip *relocates* complexity (low-level index reads become low-level
-accessor calls) rather than *reducing* it, and the motivating TOCTOU bug is
-already fixed. We pivoted to a viewport/selection **operations layer** that
-genuinely collapses scattered arithmetic into intent-level methods — see
-`2026-06-08-tui-viewport-operations-design.md`. The `rowAnchor` resolver design
-below (`rowForAnchor`/`anchorForRow`) is kept on record because the operations
-layer concentrates the index math, making a future stable-ID flip far cheaper
-should it ever be justified. Do not implement this spec as written.
-**Scope:** `internal/tui` (view-state representation + ~108 call sites across ~7 files).
+**Date:** 2026-06-08 (un-deferred / refreshed 2026-06-09)
+**Status:** ACTIVE. Originally deferred 2026-06-08 in favor of the viewport
+operations layer (now merged). Re-opened 2026-06-09 with the user accepting,
+eyes open, that this flip *adds* net lines (it deletes the ~27-line
+`dragViewStateDown` but adds resolver + accessor machinery across the call
+surface) — the payoff is eviction-proof view-state and removal of the
+index-drag machinery, i.e. structural robustness, **not** a line-count win and
+**not** a live bug fix (the motivating 5-1 TOCTOU was already fixed). This runs
+as the first half of a two-part effort; the second part (#4, unify the
+renderers) is where actual code deletion is targeted.
+**Scope:** `internal/tui` (view-state representation). Refreshed call-site
+surface measured 2026-06-09: **101 production + 160 test ≈ 261** direct field
+references (`streamTop` 48/92, `searchHit` 24/33, `visualCursor` 25/18,
+`visualAnchor` 15/17). The earlier "~108/~248" numbers predate the 5-1/5-2
+test additions and the app.go split. Most edits are mechanical getter/setter
+swaps; the genuine risk is concentrated in the resolver + the four storage
+flips. The viewport operations layer (`scrollBy`/`moveVisualCursor`) did **not**
+shrink this surface — it concentrated a handful of *writes*; the dominant read
+sites and the `searchHit`/`visualAnchor` writes are untouched by it.
 
 ## Context
 
@@ -83,16 +90,36 @@ clamped/unset results for evicted anchors).
 
 Two helpers over the current window (computed once per reconcile, cached):
 
-- `rowForAnchor(id string, off int) (idx int, ok bool)` — absolute `m.lines`
-  index for `(entryID, rowOffset)` in the current window; `ok=false` if the entry
-  is no longer visible (evicted or scrolled out of the window). `off` is clamped
-  to the entry's current row count (a re-render can change an entry's row count).
-- `anchorForRow(idx int) (id string, off int, ok bool)` — inverse: the
-  `(entryID, rowOffset)` owning absolute row `idx`.
+- `rowForAnchor(a rowAnchor) (idx int, ok bool)` — absolute `m.lines`
+  index for the anchor in the current window; `ok=false` if the anchor is the
+  sentinel or its entry is no longer visible (evicted or scrolled out of the
+  window). `off` is clamped to the entry's current row count (a re-render can
+  change an entry's row count).
+- `anchorForRow(idx int) rowAnchor` — inverse: the `(entryID, rowOffset)`
+  owning absolute row `idx`. **Index-domain rule (refined 2026-06-09):**
+  - `idx < 0` → **sentinel** (`rowAnchor{}`). Preserves the unset semantics of
+    `searchHit`/`visualAnchor` (−1).
+  - empty window (no visible entries) → **sentinel**.
+  - `idx` in `[0, total)` → the exact owning anchor.
+  - `idx >= total` in a **non-empty** window → clamp to the **last row** (a
+    resolvable anchor on the last entry's last offset), **not** the sentinel.
+
+The past-end clamp is load-bearing: `scrollBy(delta>0)` intentionally lets the
+target row run past the end and relies on `maybeReStick()` to re-pin to tail.
+If a past-end write collapsed to the sentinel, `streamTopRow()` would resolve to
+**0** and `maybeReStick` would count every row from the top → stay browsing at
+the top instead of re-sticking. Clamping past-end to the last row reproduces the
+old `streamTop`-runs-past-end-then-re-sticks behavior. The asymmetry
+(`idx<0`/empty → sentinel; past-end-nonempty → last row) is safe for all four
+values: only `streamTop` ever receives a past-end index (via `scrollBy` down);
+`searchHit`/`visualCursor`/`visualAnchor` are only ever set to in-range indices
+or `-1`.
 
 Both walk `m.window` accumulating `len(displayCache[id])` — the same accumulation
 `visibleEntries`/`entryIDForLine` already do (5-1), so this is a known-correct
-pattern. The accessors (`streamTopRow`/`setStreamTopRow`, etc.) call these.
+pattern. The accessors (`streamTopRow`/`setStreamTopRow`, etc.) call these, and
+the viewport ops (`scrollBy`/`moveVisualCursor`) compose *on top of* the
+accessors (they become ordinary call sites: `setStreamTopRow(streamTopRow()+delta)`).
 
 **Evicted-anchor semantics (must match `dragViewStateDown` exactly):**
 - `streamTop`: evicted anchor → clamp to row 0 (top of the now-shorter window).
@@ -100,14 +127,30 @@ pattern. The accessors (`streamTopRow`/`setStreamTopRow`, etc.) call these.
 - `visualCursor`: evicted → clamp to 0. `visualAnchor`: evicted → unset (-1).
 
 **Unresolvable-write rule (one rule per value, same as eviction).** A setter
-called with a row index that `anchorForRow` cannot resolve (empty window, or
-index out of range — e.g. `setStreamTopRow(0)` before the first reconcile)
+called with a row index that `anchorForRow` maps to the sentinel — `idx < 0`,
+or an empty window (e.g. `setStreamTopRow(0)` before the first reconcile) —
 stores a sentinel anchor (`entryID == ""`) that the getter resolves to that
 value's clamp result: `streamTopRow()→0`, `searchHitRow()→-1`,
 `visualCursorRow()→0`, `visualAnchorRow()→-1`. This is the *same* outcome as an
-evicted anchor, so there is one rule per value, not two. The conditional drag
-(streamTop only when `!tailMode`; visual only when `visualMode`) is preserved
-by the getters reading the same conditions, not by the setters.
+evicted anchor, so there is one rule per value, not two. A **past-end** index in
+a non-empty window is *not* unresolvable — it clamps to the last row (see the
+index-domain rule above), so an intentional over-scroll re-sticks rather than
+jumping to the top. The conditional drag (streamTop only when `!tailMode`; visual
+only when `visualMode`) is preserved by the getters reading the same conditions,
+not by the setters.
+
+**`reRenderAll`'s post-reconcile clamp block is deleted (not migrated).**
+`reRenderAll` currently re-clamps `streamTop`/`searchHit` against the new line
+count after a toggle-driven re-render (`if m.streamTop > len(m.lines) { … }`,
+`if m.searchHit >= len(m.lines) { … = -1 }`). That block exists *only* because
+the values are stale-able ints; under anchors the resolver clamps the offset into
+the (re-rendered) entry automatically, so the block becomes dead code and is
+removed in the flip (the streamTop lines with Task 4, the searchHit lines with
+Task 5) — exactly as `dragViewStateDown` is removed. This also eliminates the
+second production past-end writer (`m.streamTop = len(m.lines)`), so it never
+reaches a setter. The micro-improvement (a re-render while scrolled past a
+collapsing block now resolves to a valid row instead of a past-end index) is
+intended, not a regression.
 
 ## Regression net (behavior preservation is the contract)
 
@@ -128,17 +171,31 @@ After the swap these tests get **stronger**: they now prove the anchor
 round-trips (write row 2 → evict a row → resolve back to 1), not just that an
 int was decremented.
 
+**New regression test (coverage gap found 2026-06-09):** the suite does **not**
+currently assert that scrolling *down past the end* re-sticks to tail — the
+existing re-stick test (`app_test.go`) uses `End` (a direct tail jump), which
+never exercises `maybeReStick` via over-scroll. Because the past-end resolver
+rule is exactly what preserves this path, add a test **first, against the current
+`int` code** (so it passes as a baseline and is committed as part of the safety
+net before any flip): drive the real scroll-down key (or `scrollBy(+big)`) from a
+browsing state and assert `tailMode == true` afterward. Written this way it would
+*fail* under a naive sentinel→0 translation, which is the proof the past-end
+clamp is needed.
+
 Plus the full TUI suite (scroll/page/visual/search/copy), `go vet`, `go test
 -race`. Each stage commit must be green.
 
-### Test surface (corrected from the design's "~108 call sites")
+### Test surface (refreshed 2026-06-09)
 
-The "~108" undercount was production-only. Direct field references are
-**~121 production + ~127 test ≈ 248** total (`streamTop` 55/74, `searchHit`
-24/33, `visualCursor` 25/6, `visualAnchor` 17/14). The risk surface is still
-the 4 resolver flips; the extra ~127 are mostly mechanical getter swaps in
-tests, edited within each value's flip commit. Same low risk, ~2x the
-mechanical edits.
+Direct field references measured on the current tree (post app.go split,
+post 5-1/5-2): **101 production + 160 test ≈ 261** total (`streamTop` 48/92,
+`searchHit` 24/33, `visualCursor` 25/18, `visualAnchor` 15/17). The risk
+surface is still the resolver + the 4 storage flips; the test references are
+mostly mechanical getter/setter swaps, edited within each value's flip commit.
+Production writes now span `blocks.go`, `reconcile.go`, `search.go`, `update.go`,
+`viewport.go`, `visual.go` — so the migration is driven by `grep`, not by file,
+and the ops methods (`scrollBy`, `moveVisualCursor`, `unstickFromTail`,
+`maybeReStick`) are migrated as ordinary call sites.
 
 ## Non-goals
 
@@ -151,8 +208,12 @@ mechanical edits.
 
 - `streamTop`/`searchHit`/`visualCursor`/`visualAnchor` are stored as stable
   `(entryID, rowOffset)` anchors; no absolute-index view-state fields remain.
-- `dragViewStateDown` is deleted; eviction behavior is preserved (resolvers
-  return clamped/unset results for evicted anchors).
+- `dragViewStateDown` is deleted and `reRenderAll`'s post-reconcile clamp block
+  is deleted; eviction and re-render behavior are preserved (resolvers return
+  clamped/unset results for evicted anchors and clamp offsets into re-rendered
+  entries).
+- The new scroll-down-past-end → re-stick regression test is added first
+  (green against the int baseline) and stays green across every flip.
 - The full TUI suite + the two eviction regression tests stay green; the two
   eviction tests keep their assertions and semantics, with field access
   swapped to accessors (within each value's flip commit). `go test ./...`,
