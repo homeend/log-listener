@@ -69,7 +69,9 @@ i.e. 5-2, into this slice; highest risk).
   change-detection (burst coalescing).
 
 These are additive; existing `linebuf` behavior and the MCP read path are
-unchanged.
+unchanged. **No `Entry` field changes** — `Entry` already holds `Group`, the
+basename `File`, and `Lines []Line{Text, IsCont}`, which is everything the TUI
+needs to rebuild its display rows (see §3).
 
 ### 2. TUI holds the shared buffer; `Push` becomes a notification
 
@@ -98,8 +100,15 @@ On `BufChangedMsg` (bubbletea goroutine):
    `BufChangedMsg` collapse to one reconcile).
 2. `snap, gen := buf.Snapshot(scrollback)` (the last `scrollback` entries).
 3. For each entry in `snap` in order: reuse `displayCache[id]` if present, else
-   `decomposeEvent(entry.Event)` and store it. (The cache key is the entry ID;
-   on append, only new IDs are decomposed — O(new lines), not O(buffer).)
+   **build its `[]displayLine` as a pure transform from the entry** and store it.
+   No re-render is needed: `linebuf.Entry` already holds `Group`, the basename
+   `File` (the TUI displays the basename), and `Lines []linebuf.Line{Text,
+   IsCont}` — exactly the rows `decomposeEvent` produces. The transform mirrors
+   `decomposeEvent`: per `Line`, `body = Text` (or `dimStyle.Render(Text)` when
+   `IsCont`), `bodyWidth = dispWidth(Text)`, `isBlock = IsCont`, `group`/`file`
+   from the entry. (Cache key is the entry ID; on append only new IDs are built
+   — O(new rows), not O(buffer). No `render.Event`, no full path, no new
+   `linebuf` field required.)
 4. Delete `displayCache` keys for IDs not in `snap` (evicted).
 5. Rebuild `m.lines` by concatenating `displayCache[id]` across `snap` order,
    keeping only the **tail** whose cumulative display rows ≤ `scrollback` (the
@@ -126,17 +135,27 @@ independent.
 
 ### 4. The four readers re-sourced
 
-- `reRenderAll` (renderer toggle): clears `displayCache`, re-decomposes from the
-  snapshot (entries' `Event` reflect the toggle via the model's `RenderFn`, or
-  via `buf.Rerender` on reload), rebuilds `m.lines`.
+- **Renderer toggle** (the `r` overlay): today the TUI sets the renderer enabled
+  on the pipeline and then re-renders its *own* `m.entries`, leaving `linebuf`
+  (and therefore MCP) stale. After this slice the toggle handler calls
+  `buf.Rerender(renderFn)` so `linebuf.Entry.Lines` reflect the new rendering
+  (this bumps `gen`), **clears `displayCache`** (existing IDs now have new
+  `Lines`), and reconciles. Consequence/bonus: MCP now sees the same rendering
+  the TUI shows — a one-source-of-truth consistency fix that falls out for free.
 - Filter ("show only matching"): iterates the snapshot instead of `m.entries`.
 - `copyref.go` / `copytext.go`: their entry walks iterate the snapshot instead
   of `m.entries`.
 
-Reload path (`Reload` / config reload): `buf.Rerender` already re-renders
-`linebuf`; the TUI clears `displayCache` and reconciles, so the displayed text
-follows the new renderers. (Today the TUI and `linebuf` re-render independently;
-after this slice the TUI follows `linebuf`'s re-render — one source of truth.)
+**Cache invalidation rule:** the only events that change an *existing* entry's
+`Lines` are a renderer toggle and a config reload — both go through
+`buf.Rerender`. Their handlers clear `displayCache` before reconciling. Plain
+appends never change existing entries, so their reconcile reuses the cache. So
+"clear on rerender, reuse on append" is exact.
+
+Reload path (config reload): the pump already calls `buf.Rerender` on reload;
+its `ReloadMsg` handler clears `displayCache` and reconciles, so displayed text
+follows the new renderers. After this slice the TUI *follows* `linebuf`'s
+re-render rather than re-rendering a parallel copy — one source of truth.
 
 ### 5. View-state parity (behavior-identical; IDs deferred to 5-3)
 
