@@ -99,6 +99,20 @@ func (m *model) ensureVisualVisible() {
 	}
 }
 
+// moveVisualCursor moves the visual caret by delta rows, clamped to the line
+// range [0, len(m.lines)-1], then scrolls to keep it on screen. Centralizes the
+// up/down cursor-move cases in handleVisualKey.
+func (m *model) moveVisualCursor(delta int) {
+	m.visualCursor += delta
+	if m.visualCursor < 0 {
+		m.visualCursor = 0
+	}
+	if m.visualCursor > len(m.lines)-1 {
+		m.visualCursor = len(m.lines) - 1
+	}
+	m.ensureVisualVisible()
+}
+
 // buildVisualText renders the inclusive visual span [min(anchor,cursor),max] to
 // plain displayed text. With no anchor (visualAnchor < 0) it is just the caret
 // row. "" if the span resolves to nothing.
@@ -167,15 +181,9 @@ func (m *model) handleVisualKey(msg tea.KeyMsg) *model {
 	}
 	switch msg.String() {
 	case "up", "k":
-		if m.visualCursor > 0 {
-			m.visualCursor--
-		}
-		m.ensureVisualVisible()
+		m.moveVisualCursor(-1)
 	case "down", "j":
-		if m.visualCursor < len(m.lines)-1 {
-			m.visualCursor++
-		}
-		m.ensureVisualVisible()
+		m.moveVisualCursor(1)
 	case " ":
 		m.visualAnchor = m.visualCursor // set/re-set the selection start
 	case "esc":
