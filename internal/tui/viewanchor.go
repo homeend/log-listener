@@ -76,3 +76,12 @@ func (m *model) anchorForRow(idx int) rowAnchor {
 	}
 	return rowAnchor{id: lastID, off: o}
 }
+
+// streamTopRow returns the absolute m.lines index of the first visible row when
+// browsing. Stage-0 seam: wraps the streamTop field verbatim (no behavior
+// change). The flip rewrites only this body to resolve an anchor.
+func (m *model) streamTopRow() int { return m.streamTop }
+
+// setStreamTopRow sets the first-visible-row position. Stage-0 seam: wraps the
+// streamTop field verbatim. The flip rewrites only this body to store an anchor.
+func (m *model) setStreamTopRow(i int) { m.streamTop = i }
