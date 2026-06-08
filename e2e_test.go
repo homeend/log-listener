@@ -821,6 +821,50 @@ func TestE2EOnceMatchesRawContent(t *testing.T) {
 	}
 }
 
+// TestE2EOutputFileMatchesStdout drives the real binary with -o through run()
+// and asserts the written file is byte-identical (line by line) to stdout. The
+// file sink reuses the plain (no-color) Stdout formatter, so the two must match.
+// This closes the gap where FileSink was only unit-tested, never exercised end
+// to end through the CLI path.
+func TestE2EOutputFileMatchesStdout(t *testing.T) {
+	dir := t.TempDir()
+	logPath := filepath.Join(dir, "app.log")
+	if err := os.WriteFile(logPath, []byte("alpha\nbeta\ngamma\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	outPath := filepath.Join(dir, "out.txt")
+
+	s := startListener(t, "-f", logPath, "--once", "--no-tui", "--no-color", "-o", outPath)
+	// Drain stdout to EOF: --once returns from run(), whose deferred
+	// fanout.Close() flushes and closes the -o file before the process exits
+	// and closes stdout. So once stdout hits EOF, the file is complete.
+	_, stdoutLines, _ := s.Await(20*time.Second, func(string) bool { return false })
+
+	data, err := os.ReadFile(outPath)
+	if err != nil {
+		t.Fatalf("reading -o output file: %v", err)
+	}
+	fileLines := strings.Split(strings.TrimRight(string(data), "\n"), "\n")
+
+	if len(fileLines) != len(stdoutLines) {
+		t.Fatalf("line count: -o file has %d, stdout has %d\nfile:\n%s\nstdout:\n%s",
+			len(fileLines), len(stdoutLines),
+			strings.Join(fileLines, "\n"), strings.Join(stdoutLines, "\n"))
+	}
+	for i := range stdoutLines {
+		if fileLines[i] != stdoutLines[i] {
+			t.Fatalf("line %d differs:\n  stdout: %q\n  -o file: %q", i, stdoutLines[i], fileLines[i])
+		}
+	}
+
+	joined := strings.Join(fileLines, "\n")
+	for _, want := range []string{"alpha", "beta", "gamma"} {
+		if !strings.Contains(joined, want) {
+			t.Errorf("-o file missing %q:\n%s", want, joined)
+		}
+	}
+}
+
 func TestE2EPreloadRawOnce(t *testing.T) {
 	dir := t.TempDir()
 	raw := filepath.Join(dir, "app.log")
