@@ -90,14 +90,46 @@ pattern. The accessors (`streamTopRow`/`setStreamTopRow`, etc.) call these.
 - `searchHit`: evicted → unset (-1).
 - `visualCursor`: evicted → clamp to 0. `visualAnchor`: evicted → unset (-1).
 
+**Unresolvable-write rule (one rule per value, same as eviction).** A setter
+called with a row index that `anchorForRow` cannot resolve (empty window, or
+index out of range — e.g. `setStreamTopRow(0)` before the first reconcile)
+stores a sentinel anchor (`entryID == ""`) that the getter resolves to that
+value's clamp result: `streamTopRow()→0`, `searchHitRow()→-1`,
+`visualCursorRow()→0`, `visualAnchorRow()→-1`. This is the *same* outcome as an
+evicted anchor, so there is one rule per value, not two. The conditional drag
+(streamTop only when `!tailMode`; visual only when `visualMode`) is preserved
+by the getters reading the same conditions, not by the setters.
+
 ## Regression net (behavior preservation is the contract)
 
 The existing eviction tests are the proof the resolvers reproduce today's
-behavior — they must stay green **unchanged**:
-- `TestVisualIndicesClampOnEviction`
-- `TestReconcileEvictionDragsViewState`
+behavior. Their **assertions and eviction semantics stay unchanged**; their
+**field access is mechanically swapped to accessors** in the same commit that
+flips that value's storage and removes the field (the field exists through the
+seam + migration stages, so the tests compile untouched until then):
+- `TestVisualIndicesClampOnEviction` — reads `m.visualCursor`/`m.visualAnchor`;
+  swap reads to `m.visualCursorRow()`/`m.visualAnchorRow()`. Cursor/anchor are
+  *set* by `keyV`/`keyJ`/`keySpace` through production handlers (which route
+  through accessors after the flip), so no write edits here.
+- `TestReconcileEvictionDragsViewState` — writes `m.streamTop = 0` (before any
+  reconcile, **empty window**) and `m.streamTop = 2`, reads `m.streamTop`; swap
+  to `m.setStreamTopRow(0)` / `m.setStreamTopRow(2)` / `m.streamTopRow()`.
+
+After the swap these tests get **stronger**: they now prove the anchor
+round-trips (write row 2 → evict a row → resolve back to 1), not just that an
+int was decremented.
+
 Plus the full TUI suite (scroll/page/visual/search/copy), `go vet`, `go test
 -race`. Each stage commit must be green.
+
+### Test surface (corrected from the design's "~108 call sites")
+
+The "~108" undercount was production-only. Direct field references are
+**~121 production + ~127 test ≈ 248** total (`streamTop` 55/74, `searchHit`
+24/33, `visualCursor` 25/6, `visualAnchor` 17/14). The risk surface is still
+the 4 resolver flips; the extra ~127 are mostly mechanical getter swaps in
+tests, edited within each value's flip commit. Same low risk, ~2x the
+mechanical edits.
 
 ## Non-goals
 
@@ -112,7 +144,9 @@ Plus the full TUI suite (scroll/page/visual/search/copy), `go vet`, `go test
   `(entryID, rowOffset)` anchors; no absolute-index view-state fields remain.
 - `dragViewStateDown` is deleted; eviction behavior is preserved (resolvers
   return clamped/unset results for evicted anchors).
-- The full TUI suite + the two eviction regression tests stay green unchanged;
-  `go test ./...`, `go vet ./...`, `go test -race ./...` green.
+- The full TUI suite + the two eviction regression tests stay green; the two
+  eviction tests keep their assertions and semantics, with field access
+  swapped to accessors (within each value's flip commit). `go test ./...`,
+  `go vet ./...`, `go test -race ./...` green.
 - Each stage landed as its own green commit (floor-then-flip), so the work can
   pause/resume at any stage boundary.
