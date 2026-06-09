@@ -69,6 +69,8 @@ func (m *model) View() string {
 
 	var body string
 	switch {
+	case m.showHelp:
+		body = m.renderHelp(contentH)
 	case m.showGroupsPanel:
 		body = m.renderGroupsPanel(contentH)
 	case m.showRenderersPanel:
