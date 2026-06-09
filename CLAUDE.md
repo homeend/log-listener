@@ -37,13 +37,36 @@ Authoritative design + per-phase history lives in `PLAN.md` and `CHANGELOG.md`.
 | `internal/config`          | CLI + YAML parser, `Config.Load`, CLI-precedence merge.       |
 | `internal/render`          | Template DSL parser, JSON/XML, Pipeline (first-match-wins).   |
 | `internal/sink`            | Colorized stdout + SSE hub.                                   |
-| `internal/tui`             | bubbletea app: streaming view + Ctrl+I file overlay.          |
+| `internal/tui`             | bubbletea app: streaming view, scroll/pan, search/filter, visual selection, copy/save, files/groups/renderers overlays. See file map below. |
 | `internal/keymap`          | Actions ↔ per-OS keys, glyph display, override resolve, doc gen. |
 | `internal/blocks`          | Segments lines into multi-line blocks; annotate-only processors (exception detection + language guess). Shared by TUI + future MCP. |
 | `internal/preload`         | Seeds the buffer from a file before tailing: raw lines → pipeline, or a saved `screen-log-listener-*` capture reconstructed faithfully. |
 | `internal/linebuf`         | Shared concurrency-safe ring of log records with stable IDs + block maps; fed at fan-out, read by the MCP server. |
 | `internal/mcp`             | Embedded MCP server (official Go SDK, Streamable HTTP) exposing read tools over linebuf. |
 | `.` (repo root)            | `package main` entry point; wires config → discover → watch → pipeline → sinks/TUI. |
+
+### `internal/tui` file map
+
+The TUI package is split by responsibility (each file has a focused role; tests
+mirror with `_test.go`):
+
+| File            | Role                                                                   |
+|-----------------|------------------------------------------------------------------------|
+| `app.go`        | `model` struct + all state fields; `App`/bubbletea `Program` wrapper.   |
+| `update.go`     | bubbletea `Update` loop: key dispatch, push, config reload.            |
+| `view.go`       | `View()` render: header, footer hints, overlays.                       |
+| `render.go`     | `decomposeEvent` → per-line `displayLine` rows + styling.              |
+| `viewanchor.go` | Stable `(entryID, rowOffset)` view-state anchors + accessor seam.      |
+| `viewport.go`   | Scroll/pan viewport operations (`scrollBy`, pan, page, top/bottom).    |
+| `reconcile.go`  | Reconcile owned display state after eviction/reload; `tuiDecompose`.   |
+| `search.go`     | Search + filter state, match navigation, wrap-around prompt.          |
+| `visual.go`     | Visual line-selection mode (caret/anchor, selection bounds).          |
+| `blocks.go`     | Adapts `m.lines` to `blocks.Line`; multi-line block focus/navigation. |
+| `focusbar.go`   | Focused-block accent gutter bar.                                       |
+| `copytext.go`   | Row→text extraction (`entryRowSpan`, `textForRows`) for copy/export.  |
+| `copyref.go`    | Entry-ID reference resolution (`line:`/`range:` refs) for copy.       |
+| `save.go`       | Export viewport/scrollback to `screen-log-listener-*.txt`.            |
+| `width.go`      | Display-width + ANSI-strip helpers (`dispWidth`, `stripANSI`).        |
 
 ### Data flow
 
