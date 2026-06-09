@@ -274,7 +274,7 @@ type model struct {
 	// When the bottom catches up to streamTop (the user scrolls down past
 	// the latest event), tailMode flips back to true automatically.
 	tailMode  bool
-	streamTop int // absolute index of the first visible row when !tailMode
+	streamTopA rowAnchor // anchor for the first visible row when !tailMode (see viewanchor.go)
 
 	// Horizontal pan offset (columns clipped off the left).
 	horizScroll int

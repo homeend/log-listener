@@ -78,10 +78,18 @@ func (m *model) anchorForRow(idx int) rowAnchor {
 }
 
 // streamTopRow returns the absolute m.lines index of the first visible row when
-// browsing. Stage-0 seam: wraps the streamTop field verbatim (no behavior
-// change). The flip rewrites only this body to resolve an anchor.
-func (m *model) streamTopRow() int { return m.streamTop }
+// browsing. Resolves the stored anchor against the current window; an evicted
+// or unresolvable anchor clamps to row 0 (top of the now-shorter window) —
+// exactly the old dragViewStateDown streamTop behavior.
+func (m *model) streamTopRow() int {
+	idx, ok := m.rowForAnchor(m.streamTopA)
+	if !ok {
+		return 0
+	}
+	return idx
+}
 
-// setStreamTopRow sets the first-visible-row position. Stage-0 seam: wraps the
-// streamTop field verbatim. The flip rewrites only this body to store an anchor.
-func (m *model) setStreamTopRow(i int) { m.streamTop = i }
+// setStreamTopRow stores the first-visible-row position as a stable anchor. A
+// past-end index clamps to the last row (so over-scroll re-sticks); a negative
+// index or empty window stores the sentinel, which streamTopRow resolves to 0.
+func (m *model) setStreamTopRow(i int) { m.streamTopA = m.anchorForRow(i) }
