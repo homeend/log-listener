@@ -65,3 +65,138 @@ func keymapDefaultLinux() *keymap.Keymap { return keymap.Default("linux") }
 func keymapResolveFilterF() (*keymap.Keymap, error) {
 	return keymap.Resolve("linux", map[string][]string{"filter": {"F"}}, nil)
 }
+
+func TestContextHintsDefaultTail(t *testing.T) {
+	m := newFooterModel(t)
+	m.km = keymapDefaultLinux()
+	m.tailMode = true
+	label, hints := m.contextHints()
+	if label != "" {
+		t.Fatalf("default label = %q, want empty", label)
+	}
+	joined := strings.Join(hints, " | ")
+	for _, want := range []string{"search", "select", "blocks", "collapse", "help"} {
+		if !strings.Contains(joined, want) {
+			t.Fatalf("default hints %q missing %q", joined, want)
+		}
+	}
+}
+
+func TestContextHintsBrowse(t *testing.T) {
+	m := newFooterModel(t)
+	m.km = keymapDefaultLinux()
+	m.tailMode = false
+	label, hints := m.contextHints()
+	if label != "BROWSE" {
+		t.Fatalf("label = %q, want BROWSE", label)
+	}
+	joined := strings.Join(hints, " | ")
+	for _, want := range []string{"tail", "top", "scroll", "page", "select"} {
+		if !strings.Contains(joined, want) {
+			t.Fatalf("browse hints %q missing %q", joined, want)
+		}
+	}
+}
+
+func TestContextHintsSearch(t *testing.T) {
+	m := newFooterModel(t)
+	m.km = keymapDefaultLinux()
+	m.tailMode = false
+	m.matcher, _ = compileTestMatcher(t, "x")
+	label, hints := m.contextHints()
+	if label != "SEARCH" {
+		t.Fatalf("label = %q, want SEARCH", label)
+	}
+	joined := strings.Join(hints, " | ")
+	for _, want := range []string{"next·prev", "filter", "blocks", "clear"} {
+		if !strings.Contains(joined, want) {
+			t.Fatalf("search hints %q missing %q", joined, want)
+		}
+	}
+	if strings.Contains(joined, "unfilter") {
+		t.Fatalf("search (not filter) should say filter, not unfilter: %q", joined)
+	}
+}
+
+func TestContextHintsFilterVariant(t *testing.T) {
+	m := newFooterModel(t)
+	m.km = keymapDefaultLinux()
+	m.matcher, _ = compileTestMatcher(t, "x")
+	m.filterMode = true
+	label, hints := m.contextHints()
+	if label != "FILTER" {
+		t.Fatalf("label = %q, want FILTER", label)
+	}
+	if !strings.Contains(strings.Join(hints, " | "), "unfilter") {
+		t.Fatalf("filter variant should say unfilter: %v", hints)
+	}
+}
+
+func TestContextHintsBlock(t *testing.T) {
+	m := newFooterModel(t)
+	m.km = keymapDefaultLinux()
+	m.blockFocused = true
+	label, hints := m.contextHints()
+	if label != "BLOCK" {
+		t.Fatalf("label = %q, want BLOCK", label)
+	}
+	for _, want := range []string{"next·prev", "marked", "marks", "copy"} {
+		if !strings.Contains(strings.Join(hints, " | "), want) {
+			t.Fatalf("block hints %v missing %q", hints, want)
+		}
+	}
+}
+
+func TestContextHintsVisual(t *testing.T) {
+	m := newFooterModel(t)
+	m.km = keymapDefaultLinux()
+	m.visualMode = true
+	label, hints := m.contextHints()
+	if label != "VISUAL" {
+		t.Fatalf("label = %q, want VISUAL", label)
+	}
+	for _, want := range []string{"space anchor", "ref", "text", "save", "cancel"} {
+		if !strings.Contains(strings.Join(hints, " | "), want) {
+			t.Fatalf("visual hints %v missing %q", hints, want)
+		}
+	}
+}
+
+func TestContextHintsPrecedence(t *testing.T) {
+	m := newFooterModel(t)
+	m.km = keymapDefaultLinux()
+	m.visualMode = true
+	m.blockFocused = true
+	m.matcher, _ = compileTestMatcher(t, "x")
+	m.tailMode = false
+	if label, _ := m.contextHints(); label != "VISUAL" {
+		t.Fatalf("visual should win, got %q", label)
+	}
+	m.visualMode = false
+	if label, _ := m.contextHints(); label != "BLOCK" {
+		t.Fatalf("block should win, got %q", label)
+	}
+	m.blockFocused = false
+	if label, _ := m.contextHints(); label != "SEARCH" {
+		t.Fatalf("search should win, got %q", label)
+	}
+	m.matcher = nil
+	if label, _ := m.contextHints(); label != "BROWSE" {
+		t.Fatalf("browse should win, got %q", label)
+	}
+}
+
+func TestContextHintsOverrideReflected(t *testing.T) {
+	km, err := keymapResolveFilterF()
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := newFooterModel(t)
+	m.km = km
+	m.matcher, _ = compileTestMatcher(t, "x")
+	_, hints := m.contextHints()
+	joined := strings.Join(hints, " | ")
+	if !strings.Contains(joined, "F filter") {
+		t.Fatalf("override not reflected, hints = %q", joined)
+	}
+}
