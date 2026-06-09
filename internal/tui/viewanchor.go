@@ -108,3 +108,17 @@ func (m *model) searchHitRow() int {
 // setSearchHitRow stores the hit position as a stable anchor. A negative or
 // unresolvable index stores the sentinel, which searchHitRow resolves to -1.
 func (m *model) setSearchHitRow(i int) { m.searchHitA = m.anchorForRow(i) }
+
+// visualCursorRow returns the moving line of the visual selection as an absolute
+// m.lines index. Stage-0 seam wraps the field; the flip rewrites only this body.
+func (m *model) visualCursorRow() int { return m.visualCursor }
+
+// setVisualCursorRow sets the visual cursor line. Stage-0 seam.
+func (m *model) setVisualCursorRow(i int) { m.visualCursor = i }
+
+// visualAnchorRow returns the visual selection start as an absolute m.lines
+// index, or -1 before the first space sets it. Stage-0 seam.
+func (m *model) visualAnchorRow() int { return m.visualAnchor }
+
+// setVisualAnchorRow sets the visual selection start (-1 = unset). Stage-0 seam.
+func (m *model) setVisualAnchorRow(i int) { m.visualAnchor = i }
