@@ -104,6 +104,8 @@ type Options struct {
 	InitialEvents []render.Event         // seeded into scrollback before Run (preload)
 	SetViewport   func(from, to string)  // publishes the on-screen entry range (TUI mode only)
 	Buffer        *linebuf.Buffer        // shared record store; nil → an owned buffer (tests/standalone)
+	TruncateFiles bool                   // tui.truncate_filenames default
+	FilenameWidth int                    // tui.filename_width (0 => default)
 }
 
 // New creates an App from Options. Files and groups must be passed
@@ -132,6 +134,8 @@ func New(opts Options) *App {
 	m.setRendererEnabled = opts.SetRendererOn
 	m.renderFn = opts.RenderFn
 	m.setViewport = opts.SetViewport
+	m.truncateFiles = opts.TruncateFiles
+	m.filenameWidth = opts.FilenameWidth
 	if opts.Buffer != nil {
 		m.buf = opts.Buffer // shared store; replaces newModel's owned buffer
 	}

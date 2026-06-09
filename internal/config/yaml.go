@@ -112,8 +112,8 @@ type MatcherSpec struct {
 // an optional identity used in diagnostic messages; it is named `id` (not
 // `name`) to avoid colliding with the matcher's inline `name` field.
 type MuteSpec struct {
-	ID          string         `yaml:"id,omitempty"`
-	Matcher     string         `yaml:"matcher,omitempty"`
+	ID          string `yaml:"id,omitempty"`
+	Matcher     string `yaml:"matcher,omitempty"`
 	MatcherSpec `yaml:",inline"`
 	AppliesTo   *AppliesToSpec `yaml:"applies_to,omitempty"`
 }
@@ -130,8 +130,10 @@ type SSE struct {
 }
 
 type TUI struct {
-	Enabled    *bool `yaml:"enabled,omitempty"`
-	Scrollback *int  `yaml:"scrollback,omitempty"`
+	Enabled           *bool `yaml:"enabled,omitempty"`
+	Scrollback        *int  `yaml:"scrollback,omitempty"`
+	TruncateFilenames *bool `yaml:"truncate_filenames,omitempty"`
+	FilenameWidth     *int  `yaml:"filename_width,omitempty"`
 }
 
 // Keybindings is the raw YAML override layers for TUI keys. Action names and
@@ -376,6 +378,12 @@ func mergeYAMLInto(cfg *Config, yc *File, now time.Time) error {
 		}
 		if t.Scrollback != nil && !cfg.cliExplicit["tui_scrollback"] {
 			cfg.TUIScrollback = *t.Scrollback
+		}
+		if t.TruncateFilenames != nil {
+			cfg.TUITruncateFilenames = *t.TruncateFilenames
+		}
+		if t.FilenameWidth != nil {
+			cfg.TUIFilenameWidth = *t.FilenameWidth
 		}
 	}
 

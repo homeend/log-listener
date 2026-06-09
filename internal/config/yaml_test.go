@@ -493,3 +493,48 @@ keybindings:
 		t.Errorf("darwin.fast_down = %v, want [shift+down]", got)
 	}
 }
+
+func TestLoadTUITruncation(t *testing.T) {
+	dir := t.TempDir()
+	yml := writeYAML(t, dir, "log.yml", `
+files:
+  - id: default
+    paths: ['/tmp/output-*.log']
+tui:
+  truncate_filenames: true
+  filename_width: 20
+`)
+	homeStub := func() (string, error) { return dir, nil }
+	cfg, err := loadWithFS([]string{"--config", yml}, refNow, homeStub)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.TUITruncateFilenames {
+		t.Fatal("truncate_filenames not loaded")
+	}
+	if cfg.TUIFilenameWidth != 20 {
+		t.Fatalf("filename_width: %d", cfg.TUIFilenameWidth)
+	}
+}
+
+func TestLoadTUITruncationDefaults(t *testing.T) {
+	dir := t.TempDir()
+	yml := writeYAML(t, dir, "log.yml", `
+files:
+  - id: default
+    paths: ['/tmp/output-*.log']
+tui:
+  scrollback: 5000
+`)
+	homeStub := func() (string, error) { return dir, nil }
+	cfg, err := loadWithFS([]string{"--config", yml}, refNow, homeStub)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.TUITruncateFilenames {
+		t.Fatal("truncate_filenames should default false")
+	}
+	if cfg.TUIFilenameWidth != 0 {
+		t.Fatalf("filename_width should default 0 (=> 16 at consumption), got %d", cfg.TUIFilenameWidth)
+	}
+}

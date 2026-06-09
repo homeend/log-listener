@@ -468,19 +468,21 @@ func runWatchTUI(cfg *config.Config, args []string, dropUnmatched bool, assignme
 		fanout.Emit(ev)
 	}
 	app := tui.New(tui.Options{
-		Scrollback:    cfg.TUIScrollback,
-		InitialFiles:  initial,
-		Groups:        groups,
-		Renderers:     renderers,
-		Keymap:        km,
-		Buffer:        buf,
+		Scrollback:   cfg.TUIScrollback,
+		InitialFiles: initial,
+		Groups:       groups,
+		Renderers:    renderers,
+		Keymap:       km,
+		Buffer:       buf,
 		// Preload is already in buf (appended at startup); the model's first
 		// reconcile renders it. Passing InitialEvents too would double it.
 		SetRendererOn: func(i int, on bool) { pipePtr.Load().SetRendererEnabled(i, on) },
 		RenderFn: func(group, file, raw string) (render.Event, bool) {
 			return pipePtr.Load().Render(time.Now(), group, file, raw)
 		},
-		SetViewport: buf.SetViewport,
+		SetViewport:   buf.SetViewport,
+		TruncateFiles: cfg.TUITruncateFilenames,
+		FilenameWidth: cfg.TUIFilenameWidth,
 	})
 
 	ctx, cancel := context.WithCancel(context.Background())
