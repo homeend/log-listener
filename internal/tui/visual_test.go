@@ -165,7 +165,7 @@ func TestVisualFooterDescribesUnifiedFlow(t *testing.T) {
 	m.setStreamTopRow(0)
 	m = key(m, keyV)
 	foot := m.renderFooter()
-	for _, want := range []string{"space anchor", "y ref", "Y text"} {
+	for _, want := range []string{"space anchor", "y ref", "Y text", "s save"} {
 		if !strings.Contains(foot, want) {
 			t.Fatalf("visual footer missing %q: %q", want, foot)
 		}

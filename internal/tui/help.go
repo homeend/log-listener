@@ -79,8 +79,13 @@ func (m *model) renderHelp(rows int) string {
 	}
 	for i := start; i < end; i++ {
 		r := all[i]
-		out = append(out, m.padRow(fmt.Sprintf("  %-22s  %-28s  %s",
-			r.keys, r.title, dimStyle.Render(r.desc))))
+		row := fmt.Sprintf("  %-22s  %-28s  %s", r.keys, r.title, dimStyle.Render(r.desc))
+		if m.width > 0 && dispWidth(row) > m.width {
+			row = clipANSIWindow(row, 0, m.width) // clip (drops the desc tail), don't wrap
+		} else {
+			row = m.padRow(row)
+		}
+		out = append(out, row)
 	}
 	for i := end - start; i < avail; i++ {
 		out = append(out, m.blankRow())

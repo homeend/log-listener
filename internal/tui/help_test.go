@@ -89,3 +89,16 @@ func TestRenderHelpShowsFilteredTitles(t *testing.T) {
 		t.Fatalf("render should be filtered to 'quit', leaked: %q", out)
 	}
 }
+
+func TestRenderHelpRowsFitWidth(t *testing.T) {
+	m := newModel(100)
+	m.width = 80
+	m.height = 24
+	m.showHelp = true
+	// Unfiltered: the long descriptions are present and must be clipped, not wrapped.
+	for i, ln := range strings.Split(m.renderHelp(20), "\n") {
+		if dispWidth(ln) > 80 {
+			t.Fatalf("help line %d exceeds width 80 (%d cols): %q", i, dispWidth(ln), stripANSI(ln))
+		}
+	}
+}

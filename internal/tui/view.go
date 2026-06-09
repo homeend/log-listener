@@ -96,7 +96,7 @@ func (m *model) View() string {
 //     plus a "/term" suffix when a committed search term is active.
 func (m *model) renderFooter() string {
 	if m.visualMode {
-		return headerBg.Width(m.width).MaxHeight(1).Render(" VISUAL  ↑↓ move · space anchor · y ref · Y text · esc cancel ")
+		return headerBg.Width(m.width).MaxHeight(1).Render(" VISUAL  ↑↓ move · space anchor · y ref · Y text · s save · esc cancel ")
 	}
 	if m.searchInput {
 		prefix := " /"
