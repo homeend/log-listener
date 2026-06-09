@@ -147,6 +147,29 @@ func TestSaveResultErrorFlashes(t *testing.T) {
 	}
 }
 
+func TestSnapshotSelection(t *testing.T) {
+	m := seedSearch(t, "line one", "line two", "line three")
+	m.reconcile()
+	// Select rows 0..1 (anchor 0, cursor 1).
+	m.visualMode = true
+	m.setVisualAnchorRow(0)
+	m.setVisualCursorRow(1)
+
+	got := m.snapshotSelection()
+	want := []string{
+		"[g] a.log: line one",
+		"[g] a.log: line two",
+	}
+	if len(got) != len(want) {
+		t.Fatalf("want %d lines, got %d: %#v", len(want), len(got), got)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("line %d: want %q, got %q", i, want[i], got[i])
+		}
+	}
+}
+
 func TestSaveViewportKeyWritesFile(t *testing.T) {
 	m := newModel(100)
 	m.saveDir = t.TempDir()

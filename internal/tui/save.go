@@ -45,6 +45,19 @@ func (m *model) snapshotScrollback() []string {
 	return out
 }
 
+// snapshotSelection returns the visual selection's rows as plain export text
+// (full prefixes, styling stripped) via plainExportLine, in display order.
+// Visual mode guarantees len(m.lines) > 0 and a valid [lo, hi] from
+// selectionBounds.
+func (m *model) snapshotSelection() []string {
+	lo, hi := m.selectionBounds()
+	out := make([]string, 0, hi-lo+1)
+	for i := lo; i <= hi; i++ {
+		out = append(out, plainExportLine(m.lines[i]))
+	}
+	return out
+}
+
 // saveResultMsg reports the outcome of a background export write.
 type saveResultMsg struct {
 	path string
