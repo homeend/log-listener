@@ -385,6 +385,7 @@ tui:
   scrollback: 10000                 # bounded ring buffer of display lines
   truncate_filenames: false         # middle-ellipsis long filenames in the file column (toggle live with f)
   filename_width: 16                # max visible chars for filenames when truncation is on
+  word_wrap: false                  # wrap long lines to multiple terminal rows instead of horizontal pan (toggle live with w)
 ```
 
 YAML is strict — unknown keys (e.g. `directorys:` typo) are an error.
@@ -782,6 +783,7 @@ below. The authoritative per-OS reference is generated from the code into
 | **`y`**             | **Copy reference to clipboard (OSC 52) — `line:<id>`, block `range`, or viewport `range` depending on context (see MCP server section).** |
 | **`Y`**             | **Copy selected text as displayed (no ANSI color, with prefixes, OSC 52) — same contexts as `y`; large selections may hit the OSC 52 size limit, use `s`/`S` to save instead.** |
 | **`f`**             | **Toggle middle-ellipsis filename truncation in the file column (configurable via `tui.truncate_filenames` / `tui.filename_width`).** |
+| **`w`**             | **Toggle word wrap: long lines wrap to multiple terminal rows instead of being clipped behind horizontal pan. Vertical scroll moves a whole wrapped line at a time; horizontal pan is disabled while wrapping (footer shows `wrap`). Configurable via `tui.word_wrap`.** |
 | **`?`**             | **Open the searchable help overlay listing every keybinding for the current OS; type to filter, `j`/`k` scroll, `esc`/`?` close.** |
 | **`v`**             | **Enter visual line-selection mode: `space` sets the selection start; move with ↑/↓ or `j`/`k`; press `y` to copy the reference, `Y` to copy the text, or `s` to save the selection to a file, all exit; `esc` cancels.** |
 

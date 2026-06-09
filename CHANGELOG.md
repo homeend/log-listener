@@ -8,6 +8,10 @@ and this project adheres to phased delivery per `PLAN.md`.
 ## [Unreleased]
 
 ### Added
+- **TUI word wrap (`w`).** Long lines wrap to multiple terminal rows instead of
+  being clipped behind horizontal pan. Render-time only — viewstate anchors and
+  the shared buffer are unaffected. Vertical scroll moves a whole wrapped line at
+  a time; pan is disabled while wrapping. Startup default via `tui.word_wrap`.
 - **TUI: middle-ellipsis filename truncation** — long filenames in the file column are
   truncated at the middle with `…`, toggled live with `f`. Defaults configurable via
   `tui.truncate_filenames` (default `false`) and `tui.filename_width` (default `16`).
