@@ -163,13 +163,15 @@ func (m *model) copyVisualSelection() {
 
 // handleVisualKey processes keys while in visual mode. Movement (up/down/j/k),
 // space (set the selection start), and esc (cancel) are handled directly; the
-// copy actions y/Y are resolved through the keymap so they stay remappable,
-// then exit visual mode. Any other key is ignored (stays in visual mode).
-func (m *model) handleVisualKey(msg tea.KeyMsg) *model {
-	// Copy keys resolve through the keymap so y/Y stay remappable even though
-	// visual mode otherwise bypasses the main keymap dispatch. Only the copy
-	// actions return here; every other key (incl. j/k/space/esc, which may also
-	// be keymap-bound) falls through to the hardcoded movement switch below.
+// copy actions y/Y and save action s are resolved through the keymap so they
+// stay remappable, then exit visual mode. Any other key is ignored (stays in
+// visual mode).
+func (m *model) handleVisualKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// Copy/save keys resolve through the keymap so y/Y/s stay remappable even
+	// though visual mode otherwise bypasses the main keymap dispatch. Only the
+	// copy/save actions return here; every other key (incl. j/k/space/esc,
+	// which may also be keymap-bound) falls through to the hardcoded movement
+	// switch below.
 	// NOTE: add returning cases here with care — movement/esc intentionally
 	// fall through to the switch below and must not be swallowed.
 	if act, ok := m.resolvedKM().Lookup(msg.String()); ok {
@@ -177,11 +179,15 @@ func (m *model) handleVisualKey(msg tea.KeyMsg) *model {
 		case keymap.ActionCopyReference:
 			m.copyVisualSelection()
 			m.exitVisual()
-			return m
+			return m, nil
 		case keymap.ActionCopyText:
 			m.copyVisualText()
 			m.exitVisual()
-			return m
+			return m, nil
+		case keymap.ActionSaveViewport:
+			lines := m.snapshotSelection()
+			m.exitVisual()
+			return m, m.saveCmd(lines)
 		}
 	}
 	switch msg.String() {
@@ -194,5 +200,5 @@ func (m *model) handleVisualKey(msg tea.KeyMsg) *model {
 	case "esc":
 		m.exitVisual()
 	}
-	return m
+	return m, nil
 }

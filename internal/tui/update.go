@@ -21,7 +21,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// everything, and a pending wrap prompt swallows y/n/Esc before
 		// the normal dispatcher sees them.
 		if m.visualMode {
-			return m.handleVisualKey(msg), nil
+			return m.handleVisualKey(msg)
 		}
 		if m.searchInput {
 			return m.handleSearchInputKey(msg), nil

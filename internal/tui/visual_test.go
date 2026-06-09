@@ -223,9 +223,9 @@ func TestVisualYCopiesRangeAndExits(t *testing.T) {
 	m := newVisualModel(t, "a", "b", "c", "d")
 	m.tailMode = false
 	m.setStreamTopRow(0)
-	m = key(m, keyV)      // cursor at row 0
-	m = key(m, keyJ)      // cursor → 1
-	m = key(m, keySpace)  // anchor = 1
+	m = key(m, keyV)     // cursor at row 0
+	m = key(m, keyJ)     // cursor → 1
+	m = key(m, keySpace) // anchor = 1
 	if m.visualAnchorRow() != 1 {
 		t.Fatalf("anchor should be 1, got %d", m.visualAnchorRow())
 	}
@@ -268,6 +268,22 @@ func TestVisualNoAnchorYCopiesCaretLine(t *testing.T) {
 	}
 	if m.flash != "copied line:L1" {
 		t.Fatalf("flash = %q, want copied line:L1", m.flash)
+	}
+}
+
+func TestVisualSaveKeyReturnsCmdAndExits(t *testing.T) {
+	m := seedSearch(t, "one", "two")
+	m.reconcile()
+	m.visualMode = true
+	m.setVisualAnchorRow(0)
+	m.setVisualCursorRow(1)
+
+	_, cmd := m.handleVisualKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}})
+	if cmd == nil {
+		t.Fatal("s in visual mode must return a save Cmd")
+	}
+	if m.visualMode {
+		t.Fatal("s should exit visual mode after saving")
 	}
 }
 
