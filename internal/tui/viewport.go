@@ -14,7 +14,7 @@ func (m *model) scrollBy(delta int) {
 	switch {
 	case delta < 0:
 		m.unstickFromTail()
-		m.setStreamTopRow(m.streamTopRow() + delta)
+		m.setStreamTopRow(m.stepEnabled(m.streamTopRow(), delta))
 		if m.streamTopRow() < 0 {
 			m.setStreamTopRow(0)
 		}
@@ -22,9 +22,37 @@ func (m *model) scrollBy(delta int) {
 		if m.tailMode {
 			return
 		}
-		m.setStreamTopRow(m.streamTopRow() + delta)
+		m.setStreamTopRow(m.stepEnabled(m.streamTopRow(), delta))
 		m.maybeReStick()
 	}
+}
+
+// stepEnabled returns the m.lines index reached by moving |n| ENABLED display
+// lines from idx — up when n<0, down when n>0 — skipping disabled lines
+// (group-toggled-off or collapsed continuation rows), clamped to the valid
+// range. Browse scrolling must count what the renderer actually shows:
+// collectVisible skips disabled lines, so a raw index step stalls the viewport
+// on a disabled run (the counter moves but the screen is frozen until the run
+// is crossed). Mirrors unstickFromTail's enabled-aware walk.
+func (m *model) stepEnabled(idx, n int) int {
+	switch {
+	case n < 0:
+		for steps := -n; idx > 0 && steps > 0; {
+			idx--
+			if m.lineEnabled(m.lines[idx]) {
+				steps--
+			}
+		}
+	case n > 0:
+		last := len(m.lines) - 1
+		for steps := n; idx < last && steps > 0; {
+			idx++
+			if m.lineEnabled(m.lines[idx]) {
+				steps--
+			}
+		}
+	}
+	return idx
 }
 
 // scrollFiles moves the file-overlay cursor by delta entries, clamped to the

@@ -18,8 +18,11 @@ import (
 func (m *model) debugDumpText(now time.Time) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "log-listener debug dump — %s\n", now.Format(time.RFC3339))
-	fmt.Fprintf(&b, "view: lines=%d window=%d tail=%v streamTop=%d lastGen=%d scrollback=%d wrap=%v filter=%v\n",
-		len(m.lines), len(m.window), m.tailMode, m.streamTopRow(), m.lastGen, m.scrollback, m.wordWrap, m.filterMode)
+	fmt.Fprintf(&b, "view: lines=%d window=%d tail=%v streamTop=%d lastGen=%d scrollback=%d wrap=%v filter=%v collapse=%v\n",
+		len(m.lines), len(m.window), m.tailMode, m.streamTopRow(), m.lastGen, m.scrollback, m.wordWrap, m.filterMode, m.collapseMultiline)
+
+	b.WriteString("\n== view modes & enable-state ==\n")
+	b.WriteString(m.enableStateReport())
 
 	b.WriteString("\n== shared buffer (duplicate scan) ==\n")
 	if m.buf != nil {
@@ -42,6 +45,58 @@ func (m *model) debugDumpText(now time.Time) string {
 		b.WriteString("(diagnostics not wired)\n")
 	}
 	return b.String()
+}
+
+// enableStateReport lists which groups/renderers are toggled off and how the
+// disabled display lines are distributed — specifically the largest contiguous
+// disabled run, the signature of the frozen-scroll bug (browse up-scroll stalls
+// while crossing a run of hidden lines). collapseMultiline hiding continuation
+// rows is the other disabled-line source.
+func (m *model) enableStateReport() string {
+	var sb strings.Builder
+
+	offGroups := make([]string, 0)
+	for _, gid := range m.groupOrder {
+		if !m.groupEnabled[gid] {
+			offGroups = append(offGroups, gid)
+		}
+	}
+	fmt.Fprintf(&sb, "groups: %d total, %d off%s\n", len(m.groupOrder), len(offGroups), joinOff(offGroups))
+
+	offRend := make([]string, 0)
+	for i, name := range m.rendererOrder {
+		if i < len(m.rendererEnabled) && !m.rendererEnabled[i] {
+			offRend = append(offRend, name)
+		}
+	}
+	fmt.Fprintf(&sb, "renderers: %d total, %d off%s\n", len(m.rendererOrder), len(offRend), joinOff(offRend))
+
+	disabled, longest, runStart := 0, 0, -1
+	cur, curStart := 0, 0
+	for i, dl := range m.lines {
+		if !m.lineEnabled(dl) {
+			disabled++
+			if cur == 0 {
+				curStart = i
+			}
+			cur++
+			if cur > longest {
+				longest, runStart = cur, curStart
+			}
+		} else {
+			cur = 0
+		}
+	}
+	fmt.Fprintf(&sb, "display lines: %d total, %d disabled; longest contiguous disabled run = %d (starts at index %d)\n",
+		len(m.lines), disabled, longest, runStart)
+	return sb.String()
+}
+
+func joinOff(off []string) string {
+	if len(off) == 0 {
+		return ""
+	}
+	return " [" + strings.Join(off, ", ") + "]"
 }
 
 // viewDuplicateReport scans the rendered display lines for runs/repeats of the

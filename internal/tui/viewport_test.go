@@ -1,12 +1,59 @@
 package tui
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/homeend/log-listener/internal/render"
 )
+
+// seedEnabledDisabledRuns seeds 10 enabled (group a) + 20 disabled (group b) +
+// 10 enabled (group a) display lines: indices 0-9 enabled, 10-29 disabled,
+// 30-39 enabled. Browse-mode up-scroll must step over the disabled run in one
+// move, not crawl raw indices through it (which renders identically = the
+// "counter moves, screen frozen, then jumps" bug the user reported).
+func seedEnabledDisabledRuns(t *testing.T) *model {
+	t.Helper()
+	m := newModel(1000)
+	m.groupOrder = []string{"a", "b"}
+	m.groupEnabled["a"] = true
+	m.groupEnabled["b"] = false
+	add := func(g, tag string, n int) {
+		for i := 0; i < n; i++ {
+			m.appendEvent(render.Event{Group: g, File: "/x.log",
+				Rendered: []render.Part{{Type: "text", Value: fmt.Sprintf("%s-%s-%d", g, tag, i)}}})
+		}
+	}
+	add("a", "top", 10)
+	add("b", "mid", 20)
+	add("a", "bot", 10)
+	m2, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 6})
+	m = m2.(*model)
+	m.reconcile()
+	return m
+}
+
+func TestScrollUpStepsOverDisabledRun(t *testing.T) {
+	m := seedEnabledDisabledRuns(t)
+	m.tailMode = false
+	m.setStreamTopRow(30) // first enabled line below the disabled run
+	if got := m.streamTopRow(); got != 30 {
+		t.Fatalf("seed streamTop=30 resolved to %d", got)
+	}
+	// One up-press must land on the next ENABLED line above (index 9), skipping
+	// the 20-line disabled run in a single step — not stall on disabled index 29.
+	m.scrollBy(-1)
+	if got := m.streamTopRow(); got != 9 {
+		t.Fatalf("scrollBy(-1) should step to next enabled line (9), got %d (frozen-scroll bug)", got)
+	}
+	// And the view must actually move: the top region's line becomes visible.
+	if view := m.View(); !strings.Contains(view, "a-top-9") {
+		t.Fatalf("after up-scroll, line 9 should be visible:\n%s", view)
+	}
+}
 
 func TestPublishViewportReportsVisibleRange(t *testing.T) {
 	var gotFrom, gotTo string
