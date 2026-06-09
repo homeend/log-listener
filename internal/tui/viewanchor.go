@@ -110,15 +110,31 @@ func (m *model) searchHitRow() int {
 func (m *model) setSearchHitRow(i int) { m.searchHitA = m.anchorForRow(i) }
 
 // visualCursorRow returns the moving line of the visual selection as an absolute
-// m.lines index. Stage-0 seam wraps the field; the flip rewrites only this body.
-func (m *model) visualCursorRow() int { return m.visualCursor }
+// m.lines index. An evicted/unresolvable anchor clamps to 0 (matching the old
+// dragViewStateDown visualCursor behavior).
+func (m *model) visualCursorRow() int {
+	idx, ok := m.rowForAnchor(m.visualCursorA)
+	if !ok {
+		return 0
+	}
+	return idx
+}
 
-// setVisualCursorRow sets the visual cursor line. Stage-0 seam.
-func (m *model) setVisualCursorRow(i int) { m.visualCursor = i }
+// setVisualCursorRow stores the visual cursor as a stable anchor; an
+// unresolvable index stores the sentinel, which visualCursorRow resolves to 0.
+func (m *model) setVisualCursorRow(i int) { m.visualCursorA = m.anchorForRow(i) }
 
 // visualAnchorRow returns the visual selection start as an absolute m.lines
-// index, or -1 before the first space sets it. Stage-0 seam.
-func (m *model) visualAnchorRow() int { return m.visualAnchor }
+// index, or -1 when unset or the anchored entry scrolled off (matching the old
+// dragViewStateDown visualAnchor unset behavior).
+func (m *model) visualAnchorRow() int {
+	idx, ok := m.rowForAnchor(m.visualAnchorA)
+	if !ok {
+		return -1
+	}
+	return idx
+}
 
-// setVisualAnchorRow sets the visual selection start (-1 = unset). Stage-0 seam.
-func (m *model) setVisualAnchorRow(i int) { m.visualAnchor = i }
+// setVisualAnchorRow stores the selection start as a stable anchor; a negative
+// or unresolvable index stores the sentinel, which visualAnchorRow returns as -1.
+func (m *model) setVisualAnchorRow(i int) { m.visualAnchorA = m.anchorForRow(i) }

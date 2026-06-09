@@ -136,18 +136,6 @@ func (m *model) reconcile() {
 // only when browsing; searchHit/visual anchors always; clamp at 0; unset on
 // scroll-off; clear the focused-block indicator.
 func (m *model) dragViewStateDown(dropped int) {
-	if m.visualMode {
-		m.visualCursor -= dropped
-		if m.visualCursor < 0 {
-			m.visualCursor = 0
-		}
-		if m.visualAnchor >= 0 {
-			m.visualAnchor -= dropped
-			if m.visualAnchor < 0 {
-				m.visualAnchor = -1
-			}
-		}
-	}
 	m.blockFocused = false
 }
 

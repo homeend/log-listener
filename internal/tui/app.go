@@ -308,11 +308,13 @@ type model struct {
 	wrapPrompt  rune
 
 	// Visual selection mode (vim-style `v`): visualMode gates the modal key
-	// path; visualCursor is the moving line; visualAnchor is the selection
-	// start (-1 until the first space sets it).
-	visualMode   bool
-	visualCursor int
-	visualAnchor int
+	// path; visualCursorA is the stable anchor for the moving line (resolves
+	// to 0 when evicted, via visualCursorRow); visualAnchorA is the stable
+	// anchor for the selection start (zero/sentinel = unset; resolves to -1
+	// via visualAnchorRow).
+	visualMode    bool
+	visualCursorA rowAnchor
+	visualAnchorA rowAnchor
 	// lastQuery is the most recently committed query (original case),
 	// preserved across clears so "/"+Enter repeats it. filterMode is the
 	// `t` "show only matching entries" toggle (used by later tasks).
@@ -378,7 +380,6 @@ func newModel(scrollback int) *model {
 		showGroup:    true,
 		showFile:     true,
 		groupEnabled: map[string]bool{},
-		visualAnchor: -1,
 
 		displayCache: map[string][]displayLine{},
 		prevIDLines:  map[string]int{},
