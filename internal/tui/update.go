@@ -224,6 +224,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Collapse multiline entries (continuation rows hidden behind
 			// a "[...]" marker on the head). Toggles repeatedly.
 			m.collapseMultiline = !m.collapseMultiline
+		case keymap.ActionToggleFilenameTrunc:
+			m.truncateFiles = !m.truncateFiles
 		case keymap.ActionToggleExceptionMarks:
 			m.showExceptionMarks = !m.showExceptionMarks
 		case keymap.ActionNextBlock:

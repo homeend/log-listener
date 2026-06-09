@@ -46,6 +46,7 @@ const (
 	ActionCopyReference        Action = "copy_reference"
 	ActionCopyText             Action = "copy_text"
 	ActionVisualSelect         Action = "visual_select"
+	ActionToggleFilenameTrunc  Action = "toggle_filename_trunc"
 )
 
 // ActionDef is the documentation/metadata for one action. Context groups
@@ -95,6 +96,7 @@ var AllActions = []ActionDef{
 	{ActionCopyReference, "Copy reference", "Copy a paste-ready id reference (search line, block range, or viewport range) for an agent.", "main"},
 	{ActionCopyText, "Copy text", "Copy the selected text (search line, block, viewport, or visual selection) as displayed.", "main"},
 	{ActionVisualSelect, "Visual select", "Enter visual line-selection mode (space sets the start; y copies the range, Y the text, both exit; esc cancels).", "main"},
+	{ActionToggleFilenameTrunc, "Toggle filename truncation", "Shorten long filenames in the file column with a middle ellipsis.", "main"},
 }
 
 // IsAction reports whether name is a known action.

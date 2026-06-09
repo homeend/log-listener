@@ -40,6 +40,7 @@ func defaultFor(goos string) map[Action][]string {
 		ActionCopyReference:        {"y"},
 		ActionCopyText:             {"Y"},
 		ActionVisualSelect:         {"v"},
+		ActionToggleFilenameTrunc:  {"f"},
 		// Fast scroll defaults differ per-OS; set below.
 	}
 	if goos == "darwin" {
