@@ -155,7 +155,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.showFiles {
 				m.scrollFiles(-page)
 			} else {
-				m.scrollBy(-page)
+				m.scrollBy(-m.vstep(page))
 			}
 		case keymap.ActionPageDown:
 			m.blockFocused = false
@@ -163,21 +163,21 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.showFiles {
 				m.scrollFiles(page)
 			} else {
-				m.scrollBy(page)
+				m.scrollBy(m.vstep(page))
 			}
 		case keymap.ActionFastUp:
 			m.blockFocused = false
 			if m.showFiles {
 				m.scrollFiles(-vertFastStep)
 			} else {
-				m.scrollBy(-vertFastStep)
+				m.scrollBy(-m.vstep(vertFastStep))
 			}
 		case keymap.ActionFastDown:
 			m.blockFocused = false
 			if m.showFiles {
 				m.scrollFiles(vertFastStep)
 			} else {
-				m.scrollBy(vertFastStep)
+				m.scrollBy(m.vstep(vertFastStep))
 			}
 		case keymap.ActionTop:
 			m.blockFocused = false

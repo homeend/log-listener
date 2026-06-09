@@ -63,22 +63,37 @@ const (
 	hitMargin     = horizStep / 2 // left-margin columns when panning to a hit
 )
 
+// vstep converts a vertical jump of termRows terminal rows into a logical-line
+// scroll delta, honoring word wrap. The visible window (collectVisible) already
+// accounts for tail vs browse, so the number of lines it returns for termRows
+// rows is the matching line delta. Wrap off: termRows unchanged (1 row = 1 line).
+func (m *model) vstep(termRows int) int {
+	if !m.wordWrap {
+		return termRows
+	}
+	n := len(m.collectVisible(termRows))
+	if n < 1 {
+		n = 1
+	}
+	return n
+}
+
 // unstickFromTail flips out of tail mode while keeping the visible window
 // where it currently is — so the very next render shows exactly the same
 // lines as before, but new appends no longer scroll the view. The anchor
 // is the absolute index of the first visible event (computed by walking
-// backward through ENABLED events for one contentHeight worth).
+// backward through ENABLED events for one contentHeight worth of terminal rows).
 func (m *model) unstickFromTail() {
 	if !m.tailMode {
 		return
 	}
 	m.tailMode = false
 	rows := m.contentHeight()
-	count := 0
+	used := 0
 	idx := len(m.lines) - 1
-	for ; idx >= 0 && count < rows; idx-- {
+	for ; idx >= 0 && used < rows; idx-- {
 		if m.lineEnabled(m.lines[idx]) {
-			count++
+			used += m.visibleRowCost(idx)
 		}
 	}
 	m.setStreamTopRow(idx + 1)
@@ -90,16 +105,16 @@ func (m *model) unstickFromTail() {
 // maybeReStick re-pins to the tail if the browse window has caught up
 // with the latest enabled event. Call after any downward scroll.
 func (m *model) maybeReStick() {
-	// Count enabled events from streamTop onward; if that fits in one
-	// content-height window, we're effectively at the tail.
+	// Sum terminal-row cost of enabled events from streamTop onward; if that
+	// fits in one content-height window, we're effectively at the tail.
 	rows := m.contentHeight()
-	enabled := 0
+	used := 0
 	for i := m.streamTopRow(); i < len(m.lines); i++ {
 		if m.lineEnabled(m.lines[i]) {
-			enabled++
+			used += m.visibleRowCost(i)
 		}
 	}
-	if enabled <= rows {
+	if used <= rows {
 		m.tailMode = true
 	}
 }

@@ -129,3 +129,56 @@ func TestPanByNoopWhenWrapping(t *testing.T) {
 		t.Fatalf("pan should be a no-op while wrapping, got %d", m.horizScroll)
 	}
 }
+
+func seedWrapped(t *testing.T, n int) *model {
+	t.Helper()
+	m := newModel(100)
+	m2, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 12}) // contentHeight 10
+	m = m2.(*model)
+	m.groupOrder = []string{"g"}
+	m.groupEnabled["g"] = true
+	long := "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz" // 60 cols
+	for i := 0; i < n; i++ {
+		m.appendEvent(render.Event{Group: "g", File: "/a.log",
+			Rendered: []render.Part{{Type: "text", Value: long}}})
+	}
+	m.wordWrap = true
+	m.width = 40 // prefix(11)+body(60)=71 cols => 2 rows per line
+	return m
+}
+
+func TestVstepWrapOffIsIdentity(t *testing.T) {
+	m := newModel(100)
+	if got := m.vstep(10); got != 10 {
+		t.Fatalf("wrap off vstep(10) = %d, want 10", got)
+	}
+}
+
+func TestVstepShrinksWhenWrapping(t *testing.T) {
+	m := seedWrapped(t, 20)
+	// 6 terminal rows of wrapped lines => 3 logical lines.
+	if got := m.vstep(6); got != 3 {
+		t.Fatalf("wrapping vstep(6) = %d, want 3", got)
+	}
+}
+
+func TestUnstickFromTailNoJumpWhenWrapping(t *testing.T) {
+	m := seedWrapped(t, 20)
+	// In tail mode the top visible line is the first index collectVisible
+	// returns for one screen of terminal rows.
+	top := m.collectVisible(m.contentHeight())[0]
+	m.scrollBy(-1) // unstick + move up one logical line
+	if got := m.streamTopRow(); got != top-1 {
+		t.Fatalf("up-from-tail landed at %d, want %d (one line above the visible top)", got, top-1)
+	}
+}
+
+func TestNoPrematureReStickWhenWrapping(t *testing.T) {
+	m := seedWrapped(t, 20)
+	m.tailMode = false
+	m.setStreamTopRow(11) // lines 11..19 below = 9 logical lines = 18 terminal rows > 10
+	m.scrollBy(1)         // down one line; must NOT re-stick (still >1 screen of rows below)
+	if m.tailMode {
+		t.Fatal("scrolling down re-stuck to tail prematurely (counted lines, not rows)")
+	}
+}
