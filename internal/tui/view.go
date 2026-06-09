@@ -303,10 +303,25 @@ func pluralS(n int) string {
 	return "s"
 }
 
-// collectVisible returns up to rows absolute event indices in display
-// order. In tail mode we walk backward from the latest event; in
-// browse mode we walk forward from streamTop. Disabled-group lines
-// are skipped, so a run of hidden events doesn't leave a gap.
+// visibleRowCost is how many terminal rows line idx occupies when painted: 1
+// unless word wrap is on and the rendered row is wider than the viewport.
+func (m *model) visibleRowCost(idx int) int {
+	if !m.wordWrap {
+		return 1
+	}
+	_, visW := m.renderVisibleRow(idx)
+	if m.width <= 0 || visW <= m.width {
+		return 1
+	}
+	return (visW + m.width - 1) / m.width
+}
+
+// collectVisible returns up to rows terminal rows' worth of absolute event
+// indices in display order. In tail mode we walk backward from the latest
+// event; in browse mode we walk forward from streamTop. Disabled-group lines
+// are skipped, so a run of hidden events doesn't leave a gap. When word wrap
+// is on, each entry may occupy more than one terminal row (visibleRowCost);
+// the loop stops once the accumulated row cost reaches rows.
 func (m *model) collectVisible(rows int) []int {
 	if rows <= 0 || len(m.lines) == 0 {
 		return nil
@@ -323,19 +338,23 @@ func (m *model) collectVisible(rows int) []int {
 		if start >= len(fil) {
 			start = len(fil) - 1
 		}
-		end := start + rows
-		if end > len(fil) {
-			end = len(fil)
+		out := make([]int, 0, rows)
+		used := 0
+		for k := start; k < len(fil) && used < rows; k++ {
+			out = append(out, fil[k])
+			used += m.visibleRowCost(fil[k])
 		}
-		return append([]int(nil), fil[start:end]...)
+		return out
 	}
 	out := make([]int, 0, rows)
+	used := 0
 	if m.tailMode {
-		for i := len(m.lines) - 1; i >= 0 && len(out) < rows; i-- {
+		for i := len(m.lines) - 1; i >= 0 && used < rows; i-- {
 			if !m.lineEnabled(m.lines[i]) {
 				continue
 			}
 			out = append(out, i)
+			used += m.visibleRowCost(i)
 		}
 		// reverse (we collected newest→oldest)
 		for i, j := 0, len(out)-1; i < j; i, j = i+1, j-1 {
@@ -343,11 +362,12 @@ func (m *model) collectVisible(rows int) []int {
 		}
 		return out
 	}
-	for i := m.streamTopRow(); i < len(m.lines) && len(out) < rows; i++ {
+	for i := m.streamTopRow(); i < len(m.lines) && used < rows; i++ {
 		if !m.lineEnabled(m.lines[i]) {
 			continue
 		}
 		out = append(out, i)
+		used += m.visibleRowCost(i)
 	}
 	return out
 }
