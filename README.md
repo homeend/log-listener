@@ -622,11 +622,15 @@ Auto-selected when stdout is a TTY and `--no-tui` was not passed.
 
 ### Per-group toggling and prefix columns
 
-The TUI footer shows the current state: `events: 1234 · tail · col: 0 ·
-groups: 3 (1 off) · files: 14`. Disabled-group event count goes up but
-those events are hidden from the stream view (the watcher is still
-tailing them, and stdout / SSE consumers still see them — filtering is
-TUI-only).
+The bottom bar adapts to what you're doing — it surfaces the most relevant
+keys for the current mode (visual selection, block focus, active search,
+browsing, or live tail) on the left, and shows a compact `ev N · @pos · /term`
+status (event count, scroll position, active search term) on the right.
+Keys shown reflect the current OS and any keybinding overrides.
+
+Disabled-group event count goes up but those events are hidden from the
+stream view (the watcher is still tailing them, and stdout / SSE consumers
+still see them — filtering is TUI-only).
 
 Open the **Ctrl+G** "groups" panel to see all defined groups, their
 enable state (`ON` / `OFF`), the digit key that toggles each, and a
@@ -653,7 +657,7 @@ events only — they don't have a scrollback to re-render.
 
 `Ctrl+E` opens the **Renderers** overlay, mirroring the Groups panel:
 each renderer is listed with its toggle key, `ON`/`OFF` state, and
-name. The footer status line shows `rend: N (M off)`.
+name.
 
 Only the first 9 renderers are keyboard-addressable; beyond that they
 stay always-on (use `disabled:` or `off:` in YAML to start one disabled).

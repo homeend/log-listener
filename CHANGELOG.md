@@ -17,6 +17,11 @@ and this project adheres to phased delivery per `PLAN.md`.
   already-seen lines), especially under high log throughput.
 
 ### Added
+- **TUI bottom bar is now context-sensitive.** The left side surfaces the keys
+  most useful at the moment — visual selection, block focus, active search/filter,
+  browsing, or live tail — so the hints change as you work. The right side shows a
+  compact `ev N · @pos · /term` status (event count, scroll position, active
+  search term). Keys shown reflect the current OS and any keybinding overrides.
 - **On-demand debug dump (`Ctrl+D` in the TUI).** Writes a diagnostic snapshot to
   `debug-log-listener-*.txt`: a duplicate-content scan of the shared buffer (the
   signature of a reload/watcher re-emission bug), the current view/buffer state,
