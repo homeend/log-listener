@@ -128,6 +128,16 @@ func TestVisualIndicesClampOnEviction(t *testing.T) {
 	m = key(m, keyV)     // cursor 0
 	m = key(m, keyJ)     // cursor 1
 	m = key(m, keySpace) // anchor 1
+	// Before any eviction the selection is anchored mid-stream on entry "b"
+	// (row 1), so the post-eviction clamp below is a real "anchored entry
+	// evicted → sentinel" transition — not a vacuous match of the getters'
+	// 0/-1 fallbacks (which would also satisfy the final asserts).
+	if got := m.visualCursorRow(); got != 1 {
+		t.Fatalf("setup: visualCursor should anchor row 1 before eviction, got %d", got)
+	}
+	if got := m.visualAnchorRow(); got != 1 {
+		t.Fatalf("setup: visualAnchor should anchor row 1 before eviction, got %d", got)
+	}
 	// Appending two more entries evicts the two oldest lines (cap 3), one at a
 	// time. Each eviction drops dropLines=1.
 	//   After "d": cursor 1→0, anchor 1→0 (not negative, no unset yet).
