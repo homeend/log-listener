@@ -26,7 +26,7 @@ apps:
         locations:
           - dir: { linux: '~/.cache/JetBrains/GoLand*/log/acp' }
 renderers:
-  json-line: { line_regex: '^\s*(\{.*\})\s*$', template: 'json($1)' }
+  json-line: { line_regex: '^\s*(\{.*\})\s*$', template: '$json($1)' }
 bundles:
   jetbrains: [goland]
 `)
@@ -47,7 +47,7 @@ bundles:
 	if app.Sources[0].ID != "acp" {
 		t.Errorf("app inline source = %+v", app.Sources)
 	}
-	if c.Renderers["json-line"].Template != "json($1)" {
+	if c.Renderers["json-line"].Template != "$json($1)" {
 		t.Errorf("renderer = %+v", c.Renderers["json-line"])
 	}
 	if got := c.Bundles["jetbrains"]; len(got) != 1 || got[0] != "goland" {

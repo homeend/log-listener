@@ -58,7 +58,7 @@ func TestFileMarshalLoadsBackThroughLoad(t *testing.T) {
 			FileFilter: &Filter{NameRegex: `idea\.log$`},
 		}},
 		Renderers: []Renderer{{
-			Name: "json-line", LineRegex: `^\s*(\{.*\})\s*$`, Template: "json($1)",
+			Name: "json-line", LineRegex: `^\s*(\{.*\})\s*$`, Template: "$json($1)",
 		}},
 	}
 	data, err := f.Marshal()

@@ -43,7 +43,7 @@ const (
 )
 
 // ParseTemplate parses the template DSL: literal text + $N (capture group)
-// + json($N) + xml($N). Backslash escapes: \n, \t, \\. Double-$ escapes a
+// + $json($N) + $xml($N). Backslash escapes: \n, \t, \\. Double-$ escapes a
 // literal $.
 func ParseTemplate(src string) (*Template, error) {
 	t := &Template{}
@@ -72,22 +72,6 @@ func ParseTemplate(src string) (*Template, error) {
 				lit.WriteByte(src[i+1])
 			}
 			i += 2
-		case startsWith(src, i, "json("):
-			flush()
-			n, end, err := parseRenderCall(src, i+len("json("))
-			if err != nil {
-				return nil, err
-			}
-			t.parts = append(t.parts, templatePart{kind: partRender, group: n, rf: renderFuncs["json"]})
-			i = end
-		case startsWith(src, i, "xml("):
-			flush()
-			n, end, err := parseRenderCall(src, i+len("xml("))
-			if err != nil {
-				return nil, err
-			}
-			t.parts = append(t.parts, templatePart{kind: partRender, group: n, rf: renderFuncs["xml"]})
-			i = end
 		case c == '$' && i+1 < len(src):
 			nx := src[i+1]
 			switch {
@@ -103,6 +87,27 @@ func ParseTemplate(src string) (*Template, error) {
 				n, _ := strconv.Atoi(src[i+1 : j])
 				t.parts = append(t.parts, templatePart{kind: partCapture, group: n})
 				i = j
+			case isLetter(nx):
+				// $name($N) render-call. name must be a registered renderFunc.
+				flush()
+				j := i + 1
+				for j < len(src) && isIdentChar(src[j]) {
+					j++
+				}
+				name := src[i+1 : j]
+				rf := renderFuncs[name]
+				if rf == nil {
+					return nil, fmt.Errorf("template: unknown render function $%s at %d", name, i)
+				}
+				if j >= len(src) || src[j] != '(' {
+					return nil, fmt.Errorf("template: expected ( after $%s at %d", name, j)
+				}
+				n, end, err := parseRenderCall(src, j+1)
+				if err != nil {
+					return nil, err
+				}
+				t.parts = append(t.parts, templatePart{kind: partRender, group: n, rf: rf})
+				i = end
 			default:
 				return nil, fmt.Errorf("template: invalid escape $%c at %d", nx, i)
 			}
@@ -115,8 +120,12 @@ func ParseTemplate(src string) (*Template, error) {
 	return t, nil
 }
 
-func startsWith(s string, i int, prefix string) bool {
-	return i+len(prefix) <= len(s) && s[i:i+len(prefix)] == prefix
+func isLetter(b byte) bool {
+	return b >= 'a' && b <= 'z' || b >= 'A' && b <= 'Z'
+}
+
+func isIdentChar(b byte) bool {
+	return isLetter(b) || b >= '0' && b <= '9'
 }
 
 func parseRenderCall(src string, i int) (group, end int, err error) {

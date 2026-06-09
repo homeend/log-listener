@@ -9,7 +9,7 @@ import (
 )
 
 func TestParseTemplateBasic(t *testing.T) {
-	tpl, err := ParseTemplate(`$1 $2\njson($3)`)
+	tpl, err := ParseTemplate(`$1 $2\n$json($3)`)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -42,7 +42,7 @@ func TestParseTemplateEscapes(t *testing.T) {
 }
 
 func TestParseTemplateXMLCall(t *testing.T) {
-	tpl, err := ParseTemplate(`xml($1)`)
+	tpl, err := ParseTemplate(`$xml($1)`)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,10 +58,10 @@ func TestParseTemplateXMLCall(t *testing.T) {
 
 func TestParseTemplateInvalidEscape(t *testing.T) {
 	cases := []string{
-		`$a`,           // $ followed by non-digit, non-$
-		`json($)`,      // empty digit
-		`json($1`,      // missing )
-		`xml($`,        // unfinished
+		`$a`,            // $ followed by non-digit, non-$: 'a' IS a letter, but "a" not registered → error
+		`$json($)`,      // empty digit
+		`$json($1`,      // missing )
+		`$xml($`,        // unfinished
 	}
 	for _, c := range cases {
 		_, err := ParseTemplate(c)
@@ -168,14 +168,14 @@ func TestPipelineUnmatchedFallsThroughAsText(t *testing.T) {
 }
 
 func TestJSONRendererInvalidReportsNotOK(t *testing.T) {
-	tpl, _ := ParseTemplate(`json($1)`)
+	tpl, _ := ParseTemplate(`$json($1)`)
 	if _, ok := tpl.Execute([]string{"_", "not-json"}); ok {
 		t.Fatal("unparseable JSON must make Execute report ok=false")
 	}
 }
 
 func TestXMLRendererInvalidReportsNotOK(t *testing.T) {
-	tpl, _ := ParseTemplate(`xml($1)`)
+	tpl, _ := ParseTemplate(`$xml($1)`)
 	if _, ok := tpl.Execute([]string{"_", "<broken"}); ok {
 		t.Fatal("unparseable XML must make Execute report ok=false")
 	}
@@ -315,7 +315,7 @@ func TestRendererViaMatcherCaptures(t *testing.T) {
 		"json-on-idea": {Name: "idea.log", LineRegex: `^\s*(\{.*\})\s*$`},
 	}
 	specs := []config.RendererSpec{
-		{Name: "idea-json", Matcher: "json-on-idea", Template: "json($1)"},
+		{Name: "idea-json", Matcher: "json-on-idea", Template: "$json($1)"},
 	}
 	p, err := NewPipeline(specs, matchers, nil, false)
 	if err != nil {
@@ -442,7 +442,7 @@ func TestMuteUnknownMatcherRef(t *testing.T) {
 
 func TestPipelineRendererFallsThroughOnUnparseableJSON(t *testing.T) {
 	specs := []config.RendererSpec{
-		{Name: "trailing-json", LineRegex: `^(.*?\s)(\{.+\})\s*$`, Template: `$1\njson($2)`},
+		{Name: "trailing-json", LineRegex: `^(.*?\s)(\{.+\})\s*$`, Template: `$1\n$json($2)`},
 	}
 	p, err := NewPipeline(specs, nil, nil, false)
 	if err != nil {
@@ -467,7 +467,7 @@ func TestPipelineRendererFallsThroughOnUnparseableJSON(t *testing.T) {
 
 func TestPipelineUnparseableJSONDroppedWhenDropUnmatched(t *testing.T) {
 	specs := []config.RendererSpec{
-		{Name: "trailing-json", LineRegex: `^(.*?\s)(\{.+\})\s*$`, Template: `$1\njson($2)`},
+		{Name: "trailing-json", LineRegex: `^(.*?\s)(\{.+\})\s*$`, Template: `$1\n$json($2)`},
 	}
 	p, _ := NewPipeline(specs, nil, nil, true)
 	if _, ok := p.Render(time.Now(), "g", "/idea.log", "msg: {DB=x}"); ok {

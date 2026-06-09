@@ -52,17 +52,17 @@ renderers:
   # (drop_unmatched is false).
   - name: json-line
     line_regex: '^\s*(\{.*\})\s*$'
-    template: 'json($1)'
+    template: '$json($1)'
     applies_to:
       groups: [goland]
       paths: ['open-telemetry-meters.*.json']
 
   # idea.log entries sometimes end with a JSON object inside braces; peel
-  # it out for readability. Conservative: the renderer's json() falls
+  # it out for readability. Conservative: the renderer's $json() falls
   # back to text on parse failure, so false positives degrade safely.
   - name: idea-trailing-json
     line_regex: '^(.*?\s)(\{.+\})\s*$'
-    template: '$1\njson($2)'
+    template: '$1\n$json($2)'
     applies_to:
       groups: [goland, acp]
       paths: ['*.log']

@@ -42,7 +42,7 @@ apps:
       - { frag: jetbrains-base, product: IntelliJIdea }
       - { frag: junie-bridge,   product: IntelliJIdea }
 renderers:
-  json-line: { line_regex: '^\s*(\{.*\})\s*$', template: 'json($1)' }
+  json-line: { line_regex: '^\s*(\{.*\})\s*$', template: '$json($1)' }
 bundles:
   jetbrains: [goland, idea]
 `))

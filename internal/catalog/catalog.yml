@@ -78,10 +78,10 @@ apps:
 renderers:
   json-line:
     line_regex: '^\s*(\{.*\})\s*$'
-    template: 'json($1)'
+    template: '$json($1)'
   idea-trailing-json:
     line_regex: '^(.*?\s)(\{.+\})\s*$'
-    template: '$1\njson($2)'
+    template: '$1\n$json($2)'
 
 bundles:
   jetbrains: [goland, idea, pycharm, webstorm]

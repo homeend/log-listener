@@ -138,7 +138,7 @@ directories:
 renderers:
   - name: app-json
     line_regex: '(\d{4}-\d{2}-\d{2}) (\w+) (\{.*\})'
-    template: '$1 $2\njson($3)'
+    template: '$1 $2\n$json($3)'
 `
 	if err := os.WriteFile(yml, []byte(cfg), 0o644); err != nil {
 		t.Fatal(err)

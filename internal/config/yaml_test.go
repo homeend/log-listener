@@ -37,7 +37,7 @@ global_file_filter:
 renderers:
   - name: app-json
     line_regex: '(\d{4}-\d{2}-\d{2}) \[(\w+)\] (\{.*\})'
-    template: '$1 $2\njson($3)'
+    template: '$1 $2\n$json($3)'
     applies_to:
       groups: [errors]
       paths: ['*.app.log']
@@ -341,7 +341,7 @@ mute:
 renderers:
   - name: idea-json
     matcher: idea-file
-    template: 'json($1)'
+    template: '$json($1)'
 `
 	if err := os.WriteFile(path, []byte(yaml), 0o644); err != nil {
 		t.Fatal(err)

@@ -648,10 +648,10 @@ func TestE2ENonJSONBracesRenderRaw(t *testing.T) {
 renderers:
   - name: json-line
     line_regex: '^\s*(\{.*\})\s*$'
-    template: 'json($1)'
+    template: '$json($1)'
   - name: idea-trailing-json
     line_regex: '^(.*?\s)(\{.+\})\s*$'
-    template: '$1\njson($2)'
+    template: '$1\n$json($2)'
 `, logPath)
 	if err := os.WriteFile(cfgPath, []byte(cfg), 0o644); err != nil {
 		t.Fatal(err)

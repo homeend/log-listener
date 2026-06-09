@@ -156,7 +156,7 @@ func TestModelMultilineCollapseLastLineNoSuffix(t *testing.T) {
 
 // TestDecomposeNeverLeavesEmbeddedNewline guards the bug where a renderer
 // emitted a text part containing a '\n' (e.g. idea-trailing-json's
-// "$1\njson($2)" template when $2 is not valid JSON and json() falls back to
+// "$1\n$json($2)" template when $2 is not valid JSON and $json() falls back to
 // text). The embedded newline ended up inside a single displayLine.body,
 // which then rendered as multiple terminal rows — breaking the one-row-per-
 // displayLine invariant (header overflow, broken horizontal scroll).
@@ -297,8 +297,8 @@ func TestClipANSIWindowWideCharStraddleLeft(t *testing.T) {
 // plugins line through the pipeline into the view and asserts no row overflows.
 func TestWideScriptLineThroughPipelineNoOverflow(t *testing.T) {
 	p, err := render.NewPipeline([]config.RendererSpec{
-		{Name: "json-line", LineRegex: `^\s*(\{.*\})\s*$`, Template: `json($1)`},
-		{Name: "idea-trailing-json", LineRegex: `^(.*?\s)(\{.+\})\s*$`, Template: `$1\njson($2)`},
+		{Name: "json-line", LineRegex: `^\s*(\{.*\})\s*$`, Template: `$json($1)`},
+		{Name: "idea-trailing-json", LineRegex: `^(.*?\s)(\{.+\})\s*$`, Template: `$1\n$json($2)`},
 	}, nil, nil, false)
 	if err != nil {
 		t.Fatal(err)
