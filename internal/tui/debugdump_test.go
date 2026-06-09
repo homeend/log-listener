@@ -37,6 +37,22 @@ func TestDebugDumpTextFlagsBufferDuplicate(t *testing.T) {
 	}
 }
 
+func TestDebugDumpReportsDisabledRun(t *testing.T) {
+	// A disabled group covering a contiguous middle run is the signature of the
+	// frozen-scroll bug; the dump must surface it (off group + longest run).
+	m := seedEnabledDisabledRuns(t) // 10 enabled, 20 disabled (group b), 10 enabled
+	dump := m.debugDumpText(time.Date(2026, 6, 9, 20, 0, 0, 0, time.UTC))
+	for _, want := range []string{
+		"view modes & enable-state",
+		"1 off [b]",                            // group b is toggled off
+		"longest contiguous disabled run = 20", // the 20-line hidden run
+	} {
+		if !strings.Contains(dump, want) {
+			t.Fatalf("dump missing %q:\n%s", want, dump)
+		}
+	}
+}
+
 func TestDumpKeyWritesFile(t *testing.T) {
 	dir := t.TempDir()
 	m := newModel(100)
