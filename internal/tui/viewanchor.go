@@ -93,3 +93,10 @@ func (m *model) streamTopRow() int {
 // past-end index clamps to the last row (so over-scroll re-sticks); a negative
 // index or empty window stores the sentinel, which streamTopRow resolves to 0.
 func (m *model) setStreamTopRow(i int) { m.streamTopA = m.anchorForRow(i) }
+
+// searchHitRow returns the absolute m.lines index of the current search hit, or
+// -1 when none. Stage-0 seam wraps the field; the flip rewrites only this body.
+func (m *model) searchHitRow() int { return m.searchHit }
+
+// setSearchHitRow sets the current hit index (-1 = no hit). Stage-0 seam.
+func (m *model) setSearchHitRow(i int) { m.searchHit = i }
