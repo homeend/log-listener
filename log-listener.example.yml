@@ -78,3 +78,4 @@ tui:
   scrollback: 10000            # bounded ring buffer of display lines
   truncate_filenames: false    # middle-ellipsis long filenames in the file column
   filename_width: 16           # max display columns before truncation (toggle live with 'f')
+  word_wrap: false             # wrap long lines instead of horizontal pan (toggle live with 'w')

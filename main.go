@@ -483,6 +483,7 @@ func runWatchTUI(cfg *config.Config, args []string, dropUnmatched bool, assignme
 		SetViewport:   buf.SetViewport,
 		TruncateFiles: cfg.TUITruncateFilenames,
 		FilenameWidth: cfg.TUIFilenameWidth,
+		WordWrap:      cfg.TUIWordWrap,
 	})
 
 	ctx, cancel := context.WithCancel(context.Background())

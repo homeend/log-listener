@@ -134,6 +134,7 @@ type TUI struct {
 	Scrollback        *int  `yaml:"scrollback,omitempty"`
 	TruncateFilenames *bool `yaml:"truncate_filenames,omitempty"`
 	FilenameWidth     *int  `yaml:"filename_width,omitempty"`
+	WordWrap          *bool `yaml:"word_wrap,omitempty"`
 }
 
 // Keybindings is the raw YAML override layers for TUI keys. Action names and
@@ -384,6 +385,9 @@ func mergeYAMLInto(cfg *Config, yc *File, now time.Time) error {
 		}
 		if t.FilenameWidth != nil {
 			cfg.TUIFilenameWidth = *t.FilenameWidth
+		}
+		if t.WordWrap != nil {
+			cfg.TUIWordWrap = *t.WordWrap
 		}
 	}
 

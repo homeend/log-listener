@@ -538,3 +538,22 @@ tui:
 		t.Fatalf("filename_width should default 0 (=> 16 at consumption), got %d", cfg.TUIFilenameWidth)
 	}
 }
+
+func TestTUIWordWrapFlattens(t *testing.T) {
+	dir := t.TempDir()
+	yml := writeYAML(t, dir, "log.yml", `
+files:
+  - id: default
+    paths: ['/tmp/output-*.log']
+tui:
+  word_wrap: true
+`)
+	homeStub := func() (string, error) { return dir, nil }
+	cfg, err := loadWithFS([]string{"--config", yml}, refNow, homeStub)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.TUIWordWrap {
+		t.Fatal("tui.word_wrap: true should set cfg.TUIWordWrap")
+	}
+}

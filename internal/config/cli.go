@@ -39,6 +39,7 @@ type Config struct {
 	TUIScrollback        int  // 0 = use the default (10000); set by tui.scrollback in YAML
 	TUITruncateFilenames bool // tui.truncate_filenames; default false
 	TUIFilenameWidth     int  // tui.filename_width; 0 => default 16 at consumption
+	TUIWordWrap          bool // tui.word_wrap; default false
 	RendererSpecs        []RendererSpec
 	Matchers             map[string]MatcherSpec
 	MuteSpecs            []MuteSpec
