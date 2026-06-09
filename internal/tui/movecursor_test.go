@@ -8,10 +8,10 @@ func TestMoveVisualCursorWithinRange(t *testing.T) {
 	m.tailMode = false
 	m.setStreamTopRow(0)
 	m.visualMode = true
-	m.visualCursor = 1
+	m.setVisualCursorRow(1)
 	m.moveVisualCursor(1)
-	if m.visualCursor != 2 {
-		t.Fatalf("visualCursor = %d, want 2", m.visualCursor)
+	if m.visualCursorRow() != 2 {
+		t.Fatalf("visualCursor = %d, want 2", m.visualCursorRow())
 	}
 }
 
@@ -21,10 +21,10 @@ func TestMoveVisualCursorClampsAtTop(t *testing.T) {
 	m.tailMode = false
 	m.setStreamTopRow(0)
 	m.visualMode = true
-	m.visualCursor = 0
+	m.setVisualCursorRow(0)
 	m.moveVisualCursor(-1)
-	if m.visualCursor != 0 {
-		t.Fatalf("visualCursor = %d, want 0 (clamped at top)", m.visualCursor)
+	if m.visualCursorRow() != 0 {
+		t.Fatalf("visualCursor = %d, want 0 (clamped at top)", m.visualCursorRow())
 	}
 }
 
@@ -34,9 +34,9 @@ func TestMoveVisualCursorClampsAtBottom(t *testing.T) {
 	m.tailMode = false
 	m.setStreamTopRow(0)
 	m.visualMode = true
-	m.visualCursor = 2 // last row (len 3 → max index 2)
+	m.setVisualCursorRow(2) // last row (len 3 → max index 2)
 	m.moveVisualCursor(1)
-	if m.visualCursor != 2 {
-		t.Fatalf("visualCursor = %d, want 2 (clamped at bottom)", m.visualCursor)
+	if m.visualCursorRow() != 2 {
+		t.Fatalf("visualCursor = %d, want 2 (clamped at bottom)", m.visualCursorRow())
 	}
 }

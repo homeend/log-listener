@@ -47,8 +47,8 @@ func TestVisualEnter(t *testing.T) {
 	m.tailMode = false
 	m.setStreamTopRow(0)
 	m = key(m, keyV)
-	if !m.visualMode || m.visualAnchor != -1 {
-		t.Fatalf("after v: visualMode=%v anchor=%d", m.visualMode, m.visualAnchor)
+	if !m.visualMode || m.visualAnchorRow() != -1 {
+		t.Fatalf("after v: visualMode=%v anchor=%d", m.visualMode, m.visualAnchorRow())
 	}
 	if m.tailMode {
 		t.Error("v should leave tail mode")
@@ -57,8 +57,8 @@ func TestVisualEnter(t *testing.T) {
 
 func TestVisualRefNormalisesOrder(t *testing.T) {
 	m := newVisualModel(t, "a", "b", "c")
-	m.visualAnchor = 2
-	m.visualCursor = 0
+	m.setVisualAnchorRow(2)
+	m.setVisualCursorRow(0)
 	if got := buildVisualRef(m); got != "range:L0..L2" {
 		t.Fatalf("buildVisualRef = %q, want range:L0..L2", got)
 	}
@@ -137,13 +137,13 @@ func TestVisualIndicesClampOnEviction(t *testing.T) {
 	seedVisual(m, "d", "e")
 	// visualCursor must have been dragged: frozen at 1 means bug; dragged to 0
 	// (clamped from -1 on the second eviction) means fix is working.
-	if m.visualCursor != 0 {
-		t.Errorf("visualCursor not dragged on eviction: got %d, want 0", m.visualCursor)
+	if m.visualCursorRow() != 0 {
+		t.Errorf("visualCursor not dragged on eviction: got %d, want 0", m.visualCursorRow())
 	}
 	// visualAnchor must have been unset: frozen at 1 means bug; dragged to -1
 	// (scrolled off on the second eviction) means fix is working.
-	if m.visualAnchor != -1 {
-		t.Errorf("visualAnchor not unset on eviction: got %d, want -1", m.visualAnchor)
+	if m.visualAnchorRow() != -1 {
+		t.Errorf("visualAnchor not unset on eviction: got %d, want -1", m.visualAnchorRow())
 	}
 }
 
@@ -167,8 +167,8 @@ func TestVisualFooterDescribesUnifiedFlow(t *testing.T) {
 
 func TestVisualTextSpan(t *testing.T) {
 	m := newVisualModel(t, "a", "b", "c", "d")
-	m.visualAnchor = 1
-	m.visualCursor = 2
+	m.setVisualAnchorRow(1)
+	m.setVisualCursorRow(2)
 	got := buildVisualText(m)
 	want := joinPlain(m.lines[1:3]) // rows 1,2
 	if got != want {
@@ -178,8 +178,8 @@ func TestVisualTextSpan(t *testing.T) {
 
 func TestVisualTextNoAnchorIsCaretRow(t *testing.T) {
 	m := newVisualModel(t, "a", "b", "c")
-	m.visualAnchor = -1
-	m.visualCursor = 1
+	m.setVisualAnchorRow(-1)
+	m.setVisualCursorRow(1)
 	got := buildVisualText(m)
 	want := plainExportLine(m.lines[1])
 	if got != want {
@@ -197,15 +197,15 @@ func TestVisualSpaceOnlyAnchors(t *testing.T) {
 	if !m.visualMode {
 		t.Error("space must NOT exit visual mode")
 	}
-	if m.visualAnchor != 1 {
-		t.Fatalf("space should set anchor to 1, got %d", m.visualAnchor)
+	if m.visualAnchorRow() != 1 {
+		t.Fatalf("space should set anchor to 1, got %d", m.visualAnchorRow())
 	}
 	if m.flash != "" {
 		t.Errorf("space must not copy/flash, got %q", m.flash)
 	}
 	m = key(m, keySpace) // re-anchor (cursor still 1) — stays in visual
-	if m.visualAnchor != 1 || !m.visualMode {
-		t.Errorf("second space should re-anchor and stay in visual (anchor=%d visual=%v)", m.visualAnchor, m.visualMode)
+	if m.visualAnchorRow() != 1 || !m.visualMode {
+		t.Errorf("second space should re-anchor and stay in visual (anchor=%d visual=%v)", m.visualAnchorRow(), m.visualMode)
 	}
 }
 
@@ -216,8 +216,8 @@ func TestVisualYCopiesRangeAndExits(t *testing.T) {
 	m = key(m, keyV)      // cursor at row 0
 	m = key(m, keyJ)      // cursor → 1
 	m = key(m, keySpace)  // anchor = 1
-	if m.visualAnchor != 1 {
-		t.Fatalf("anchor should be 1, got %d", m.visualAnchor)
+	if m.visualAnchorRow() != 1 {
+		t.Fatalf("anchor should be 1, got %d", m.visualAnchorRow())
 	}
 	m = key(m, keyJ)      // cursor → 2
 	m = key(m, keyYlower) // copy range L1..L2, exit

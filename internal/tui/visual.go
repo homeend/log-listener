@@ -26,10 +26,10 @@ func (m *model) visualBar(idx int) (string, bool) {
 	if !m.visualMode {
 		return "", false
 	}
-	if idx == m.visualCursor {
+	if idx == m.visualCursorRow() {
 		return visualCaretStyle.Render("▶") + " ", true
 	}
-	if m.visualAnchor >= 0 {
+	if m.visualAnchorRow() >= 0 {
 		lo, hi := m.selectionBounds()
 		if idx >= lo && idx <= hi {
 			return visualSelStyle.Render("┃") + " ", true
@@ -50,21 +50,21 @@ func (m *model) enterVisual() {
 	m.showGroupsPanel = false
 	m.showRenderersPanel = false
 	m.visualMode = true
-	m.visualAnchor = -1
+	m.setVisualAnchorRow(-1)
 	if vis := m.collectVisible(m.contentHeight()); len(vis) > 0 {
-		m.visualCursor = vis[0]
+		m.setVisualCursorRow(vis[0])
 	} else {
-		m.visualCursor = m.streamTopRow()
+		m.setVisualCursorRow(m.streamTopRow())
 	}
-	if m.visualCursor < 0 {
-		m.visualCursor = 0
+	if m.visualCursorRow() < 0 {
+		m.setVisualCursorRow(0)
 	}
 }
 
 // exitVisual leaves visual mode and clears the anchor.
 func (m *model) exitVisual() {
 	m.visualMode = false
-	m.visualAnchor = -1
+	m.setVisualAnchorRow(-1)
 }
 
 // selectionBounds returns the inclusive [lo, hi] row span of the current visual
@@ -73,9 +73,9 @@ func (m *model) exitVisual() {
 // visualCursor). Centralizes the order-the-pair idiom previously copied in
 // visualBar, buildVisualText, and buildVisualRef.
 func (m *model) selectionBounds() (lo, hi int) {
-	lo, hi = m.visualCursor, m.visualCursor
-	if m.visualAnchor >= 0 {
-		lo, hi = m.visualAnchor, m.visualCursor
+	lo, hi = m.visualCursorRow(), m.visualCursorRow()
+	if m.visualAnchorRow() >= 0 {
+		lo, hi = m.visualAnchorRow(), m.visualCursorRow()
 		if lo > hi {
 			lo, hi = hi, lo
 		}
@@ -89,10 +89,10 @@ func (m *model) ensureVisualVisible() {
 	if h <= 0 {
 		return
 	}
-	if m.visualCursor < m.streamTopRow() {
-		m.setStreamTopRow(m.visualCursor)
-	} else if m.visualCursor >= m.streamTopRow()+h {
-		m.setStreamTopRow(m.visualCursor - h + 1)
+	if m.visualCursorRow() < m.streamTopRow() {
+		m.setStreamTopRow(m.visualCursorRow())
+	} else if m.visualCursorRow() >= m.streamTopRow()+h {
+		m.setStreamTopRow(m.visualCursorRow() - h + 1)
 	}
 	if m.streamTopRow() < 0 {
 		m.setStreamTopRow(0)
@@ -108,12 +108,12 @@ func (m *model) ensureVisualVisible() {
 // indices but never empties m.lines. Without that invariant len(m.lines)-1
 // would be -1 and the clamp would set visualCursor = -1.
 func (m *model) moveVisualCursor(delta int) {
-	m.visualCursor += delta
-	if m.visualCursor < 0 {
-		m.visualCursor = 0
+	m.setVisualCursorRow(m.visualCursorRow() + delta)
+	if m.visualCursorRow() < 0 {
+		m.setVisualCursorRow(0)
 	}
-	if m.visualCursor > len(m.lines)-1 {
-		m.visualCursor = len(m.lines) - 1
+	if m.visualCursorRow() > len(m.lines)-1 {
+		m.setVisualCursorRow(len(m.lines) - 1)
 	}
 	m.ensureVisualVisible()
 }
@@ -190,7 +190,7 @@ func (m *model) handleVisualKey(msg tea.KeyMsg) *model {
 	case "down", "j":
 		m.moveVisualCursor(1)
 	case " ":
-		m.visualAnchor = m.visualCursor // set/re-set the selection start
+		m.setVisualAnchorRow(m.visualCursorRow()) // set/re-set the selection start
 	case "esc":
 		m.exitVisual()
 	}
