@@ -420,6 +420,9 @@ func (m *model) renderStream(rows int) string {
 	m.ensureBlocks()
 	visible := m.collectVisible(rows)
 	m.publishViewport(visible)
+	if m.wordWrap {
+		return m.renderStreamWrapped(visible, rows)
+	}
 	rendered := make([]string, 0, rows)
 	for _, idx := range visible {
 		styled, visW := m.renderVisibleRow(idx)
@@ -433,6 +436,30 @@ func (m *model) renderStream(rows int) string {
 		}
 	}
 	return strings.Join(rendered, "\n")
+}
+
+// renderStreamWrapped paints the visible lines with word wrap on: each line
+// expands to ceil(visW/width) terminal rows. When the expanded rows overflow
+// the viewport, tail mode bottom-aligns (keeps the newest rows, dropping the
+// topmost line's leading rows) and browse mode top-aligns (keeps the oldest,
+// dropping the bottom line's trailing rows). Short of a full screen, pad.
+func (m *model) renderStreamWrapped(visible []int, rows int) string {
+	segs := make([]string, 0, rows+8)
+	for _, idx := range visible {
+		styled, visW := m.renderVisibleRow(idx)
+		segs = append(segs, wrapLine(styled, visW, m.width)...)
+	}
+	if len(segs) > rows {
+		if m.tailMode {
+			segs = segs[len(segs)-rows:]
+		} else {
+			segs = segs[:rows]
+		}
+	}
+	for len(segs) < rows {
+		segs = append(segs, m.blankRow())
+	}
+	return strings.Join(segs, "\n")
 }
 
 // blankRow returns a string of spaces exactly m.width long — used to clear

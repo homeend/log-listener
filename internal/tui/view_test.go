@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"strings"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -39,6 +40,34 @@ func TestCollectVisibleHeightAwareWhenWrapping(t *testing.T) {
 	got := m.collectVisible(6)
 	if len(got) != 3 {
 		t.Fatalf("height-aware collect returned %d lines, want 3", len(got))
+	}
+}
+
+func TestRenderStreamWrappedFillsRowsWithContinuations(t *testing.T) {
+	m := newModel(100)
+	m2, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 12})
+	m = m2.(*model)
+	m.groupOrder = []string{"g"}
+	m.groupEnabled["g"] = true
+	long := "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+	for i := 0; i < 8; i++ {
+		m.appendEvent(render.Event{Group: "g", File: "/a.log",
+			Rendered: []render.Part{{Type: "text", Value: long}}})
+	}
+	m.wordWrap = true
+	m.width = 40 // ~71 visible cols per line => 2 wrapped rows each
+	out := m.renderStream(6)
+	lines := strings.Split(out, "\n")
+	if len(lines) != 6 {
+		t.Fatalf("renderStream produced %d rows, want exactly 6", len(lines))
+	}
+	for i, ln := range lines {
+		if w := dispWidth(stripANSI(ln)); w != 40 {
+			t.Fatalf("row %d width = %d, want 40", i, w)
+		}
+		if !strings.Contains(ln, "y") {
+			t.Fatalf("row %d is blank; wrap should fill it with a continuation: %q", i, ln)
+		}
 	}
 }
 
