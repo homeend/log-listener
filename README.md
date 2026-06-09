@@ -249,6 +249,7 @@ nothing to capture). All of these are validated at startup.
 | `--preload <[group=]path>`        | Seed the buffer from a file before tailing (auto-detect raw vs capture). Repeatable. |
 | `--preload-raw <[group=]path>`    | Force raw mode: run the file's lines through the pipeline under a synthetic group.    |
 | `--preload-capture <path>`        | Force capture mode: reconstruct a saved `screen-log-listener-*` export.               |
+| `--debug-log <path>`              | Write watch/reload diagnostics to a file: `RELOAD` (whether the watcher was rebuilt), `TAILER-OPEN` (start offset + inode per file), and `ROTATE`/`TRUNCATE` detections. Off by default; use it to capture intermittent reload issues. |
 
 ### Rule tokens
 
@@ -431,6 +432,11 @@ rebuilds the **groups/file discovery** and **renderers**:
   toggle state resets to the file's `disabled`/`off` defaults).
 - **Output settings are not re-applied** — SSE address, color, and scrollback
   size keep their startup values.
+- **The file watcher is only rebuilt when the watch-set actually changes** (the
+  set of tailed files + watched directories). A reload that only changes
+  renderers, groups, or output leaves every tailer in place, so no in-flight
+  lines are dropped or re-emitted. (Use `--debug-log` to see per-reload
+  `rebuilt=true/false` decisions.)
 - An invalid edit (parse/validation error) is ignored silently; the last good
   config keeps running.
 

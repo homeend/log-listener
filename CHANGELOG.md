@@ -7,7 +7,20 @@ and this project adheres to phased delivery per `PLAN.md`.
 
 ## [Unreleased]
 
+### Fixed
+- **Config reload no longer rebuilds the file watcher needlessly.** A reload that
+  only changes renderers/groups/output now keeps every tailer in place (only the
+  file/dir matchers are refreshed); the watcher is rebuilt solely when the
+  watch-set — tailed files + watched directories — actually changes. The old
+  unconditional rebuild reseeked every tailer to EOF (dropping in-flight lines)
+  and briefly ran two watchers over the same files (which could re-emit
+  already-seen lines), especially under high log throughput.
+
 ### Added
+- **`--debug-log <path>` watch/reload diagnostics.** Writes timestamped,
+  greppable trace lines — `RELOAD` (with `rebuilt=true/false`), `TAILER-OPEN`
+  (per-file start offset + inode), and `ROTATE`/`TRUNCATE` detections — to help
+  diagnose intermittent reload-under-load issues in the field. Off by default.
 - **TUI word wrap (`w`).** Long lines wrap to multiple terminal rows instead of
   being clipped behind horizontal pan. Render-time only — viewstate anchors and
   the shared buffer are unaffected. Vertical scroll moves a whole wrapped line at
