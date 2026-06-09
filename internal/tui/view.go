@@ -145,8 +145,12 @@ func (m *model) renderFooter() string {
 			search += " filter"
 		}
 	}
-	return dimStyle.Width(m.width).MaxHeight(1).Render(fmt.Sprintf(" events: %d · %s · col: %d%s · %s%s · files: %d%s ",
-		len(m.lines), pos, m.horizScroll, cols, groupStat, rendStat, len(m.files), search))
+	colStat := fmt.Sprintf("col: %d", m.horizScroll)
+	if m.wordWrap {
+		colStat = "wrap"
+	}
+	return dimStyle.Width(m.width).MaxHeight(1).Render(fmt.Sprintf(" events: %d · %s · %s%s · %s%s · files: %d%s ",
+		len(m.lines), pos, colStat, cols, groupStat, rendStat, len(m.files), search))
 }
 
 func (m *model) disabledGroupCount() int {

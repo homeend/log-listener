@@ -71,6 +71,20 @@ func TestRenderStreamWrappedFillsRowsWithContinuations(t *testing.T) {
 	}
 }
 
+func TestFooterShowsWrapWhenWrapping(t *testing.T) {
+	m := newModel(100)
+	m2, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 12})
+	m = m2.(*model)
+	m.wordWrap = true
+	foot := stripANSI(m.renderFooter())
+	if !strings.Contains(foot, "wrap") {
+		t.Fatalf("footer should show wrap indicator, got %q", foot)
+	}
+	if strings.Contains(foot, "col:") {
+		t.Fatalf("footer should not show col: while wrapping, got %q", foot)
+	}
+}
+
 func TestRenderVisibleRowIncludesPrefixWidth(t *testing.T) {
 	m := newModel(100)
 	m2, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 12})

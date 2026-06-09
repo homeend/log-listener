@@ -120,3 +120,12 @@ func TestScrollByZeroIsNoOp(t *testing.T) {
 		t.Fatalf("streamTop = %d, want 2 (zero delta no-op)", m.streamTopRow())
 	}
 }
+
+func TestPanByNoopWhenWrapping(t *testing.T) {
+	m := newModel(100)
+	m.wordWrap = true
+	m.panBy(20)
+	if m.horizScroll != 0 {
+		t.Fatalf("pan should be a no-op while wrapping, got %d", m.horizScroll)
+	}
+}

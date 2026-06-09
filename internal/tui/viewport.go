@@ -47,6 +47,9 @@ func (m *model) scrollFiles(delta int) {
 // lines, so over-panning right shows blank — matching the old inline
 // ScrollRight/FastRight behavior. Centralizes the four pan handlers.
 func (m *model) panBy(delta int) {
+	if m.wordWrap {
+		return
+	}
 	m.horizScroll += delta
 	if m.horizScroll < 0 {
 		m.horizScroll = 0
