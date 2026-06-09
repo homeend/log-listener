@@ -532,12 +532,20 @@ func TestCollectVisibleFilterModeOnlyShowsFiltered(t *testing.T) {
 func TestFooterShowsFilterTag(t *testing.T) {
 	m := seedSearchModel(t, 3, map[int]bool{1: true})
 	m = typeQuery(t, m, "needle")
-	if strings.Contains(stripANSI(m.renderFooter()), "filter") {
-		t.Fatal("filter tag should be absent when filterMode is off")
+	// Search mode (filterMode=false): contextHints shows "filter" as a hint
+	// (action to enter filter mode) and must NOT show "unfilter".
+	plain := stripANSI(m.renderFooter())
+	if strings.Contains(plain, "unfilter") {
+		t.Fatal("search mode should show 'filter' hint, not 'unfilter'")
+	}
+	if !strings.Contains(plain, "filter") {
+		t.Fatalf("search mode footer should contain filter hint, got %q", plain)
 	}
 	m.filterMode = true
-	if !strings.Contains(stripANSI(m.renderFooter()), "filter") {
-		t.Fatalf("expected filter tag in footer:\n%s", stripANSI(m.renderFooter()))
+	// Filter mode: contextHints shows "unfilter" (action to leave filter mode).
+	plain = stripANSI(m.renderFooter())
+	if !strings.Contains(plain, "unfilter") {
+		t.Fatalf("filter mode footer should contain unfilter hint:\n%s", plain)
 	}
 }
 

@@ -198,20 +198,37 @@ func TestModelRendererStartOffSeed(t *testing.T) {
 	}
 }
 
-func TestModelFooterShowsRendererStat(t *testing.T) {
+func TestRenderersPanelReflectsToggle(t *testing.T) {
+	// Renderer stats were intentionally removed from the footer in favour of
+	// the context-hint bar.  Verify that renderer info is visible when the
+	// renderers panel is open (Ctrl+E) and that toggling a renderer is
+	// reflected in the panel.
 	fp := &fakePipeline{enabled: []bool{true, true, true}}
 	m := newRendererTestApp(t,
 		[]RendererInfo{{Name: "r1"}, {Name: "r2"}, {Name: "r3"}}, fp)
+	// Open the renderers panel.
+	m2, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlE})
+	m = m2.(*model)
 	view := m.View()
-	if !strings.Contains(view, "rend: 3") {
-		t.Fatalf("footer missing renderer count:\n%s", view)
+	for _, name := range []string{"r1", "r2", "r3"} {
+		if !strings.Contains(view, name) {
+			t.Fatalf("renderers panel missing %q:\n%s", name, view)
+		}
 	}
-	// Disable one.
-	m2, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'@'}})
+	// All three should be ON initially.
+	if strings.Contains(view, "OFF") {
+		t.Fatalf("no renderer should be OFF initially:\n%s", view)
+	}
+	// Close panel, disable renderer 1 (@), reopen and check OFF.
+	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyCtrlE})
+	m = m2.(*model)
+	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'@'}})
+	m = m2.(*model)
+	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyCtrlE})
 	m = m2.(*model)
 	view = m.View()
-	if !strings.Contains(view, "rend: 3 (1 off)") {
-		t.Fatalf("footer should report 1-off after @:\n%s", view)
+	if !strings.Contains(view, "OFF") {
+		t.Fatalf("renderers panel should show OFF after toggling r1:\n%s", view)
 	}
 }
 
