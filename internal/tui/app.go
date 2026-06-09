@@ -295,8 +295,8 @@ type model struct {
 	//   searchInput == true : user is typing the query after "/"
 	//   searchQuery         : characters typed so far (display + commit source)
 	//   matcher             : compiled smart-case predicate; nil = inactive
-	//   searchHit           : absolute index into m.lines of the current hit
-	//                         (-1 when no hit is current)
+	//   searchHitA          : stable anchor for the current search hit
+	//                         (zero/sentinel = no hit; resolves to -1 via searchHitRow)
 	//   wrapPrompt          : 'n' or 'p' when "wrap around?" is pending;
 	//                         0 otherwise. The matching y answer wraps from
 	//                         the opposite end of the buffer.
@@ -304,7 +304,7 @@ type model struct {
 	searchQuery string
 	searchRegex bool
 	matcher     *searchmatch.Matcher
-	searchHit   int
+	searchHitA  rowAnchor
 	wrapPrompt  rune
 
 	// Visual selection mode (vim-style `v`): visualMode gates the modal key
@@ -378,7 +378,6 @@ func newModel(scrollback int) *model {
 		showGroup:    true,
 		showFile:     true,
 		groupEnabled: map[string]bool{},
-		searchHit:    -1,
 		visualAnchor: -1,
 
 		displayCache: map[string][]displayLine{},

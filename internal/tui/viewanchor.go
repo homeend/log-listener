@@ -95,8 +95,16 @@ func (m *model) streamTopRow() int {
 func (m *model) setStreamTopRow(i int) { m.streamTopA = m.anchorForRow(i) }
 
 // searchHitRow returns the absolute m.lines index of the current search hit, or
-// -1 when none. Stage-0 seam wraps the field; the flip rewrites only this body.
-func (m *model) searchHitRow() int { return m.searchHit }
+// -1 when there is none or the hit's entry scrolled off (matching the old
+// dragViewStateDown unset-on-eviction behavior).
+func (m *model) searchHitRow() int {
+	idx, ok := m.rowForAnchor(m.searchHitA)
+	if !ok {
+		return -1
+	}
+	return idx
+}
 
-// setSearchHitRow sets the current hit index (-1 = no hit). Stage-0 seam.
-func (m *model) setSearchHitRow(i int) { m.searchHit = i }
+// setSearchHitRow stores the hit position as a stable anchor. A negative or
+// unresolvable index stores the sentinel, which searchHitRow resolves to -1.
+func (m *model) setSearchHitRow(i int) { m.searchHitA = m.anchorForRow(i) }

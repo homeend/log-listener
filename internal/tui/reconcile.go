@@ -136,12 +136,6 @@ func (m *model) reconcile() {
 // only when browsing; searchHit/visual anchors always; clamp at 0; unset on
 // scroll-off; clear the focused-block indicator.
 func (m *model) dragViewStateDown(dropped int) {
-	if m.searchHit >= 0 {
-		m.searchHit -= dropped
-		if m.searchHit < 0 {
-			m.searchHit = -1
-		}
-	}
 	if m.visualMode {
 		m.visualCursor -= dropped
 		if m.visualCursor < 0 {
@@ -189,8 +183,4 @@ func (m *model) reRenderAll() {
 	m.displayCache = map[string][]displayLine{}
 	m.lastGen = 0 // force reconcile
 	m.reconcile()
-	// Clamp anchors to the new line count (a toggle can change row counts).
-	if m.searchHit >= len(m.lines) {
-		m.searchHit = -1
-	}
 }
