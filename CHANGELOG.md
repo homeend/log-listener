@@ -7,6 +7,20 @@ and this project adheres to phased delivery per `PLAN.md`.
 
 ## [Unreleased]
 
+### Changed (BREAKING): render-call DSL syntax is now `$`-prefixed
+- Template render-calls change from `json($N)`/`xml($N)` to `$json($N)`/`$xml($N)`.
+  Render-calls now live behind the `$` sigil (like `$N` captures), so literal
+  text can never be mistaken for a call, and an unknown `$name(...)` is a parse
+  error instead of silent literal output. Update any custom config templates by
+  prefixing `json(`/`xml(` with `$`.
+
+### Internal: pluggable `renderFunc` interface
+- `json` and `xml` are unified under one `renderFunc` interface (`Name`/`Parse`/
+  `Lines`) with a name-keyed registry; `ParseTemplate`, `Execute`, and
+  `DecomposeLines` dispatch generically. A new render type is one self-
+  registering file — no edits to the dispatch sites. Exception detection is
+  unchanged (a different abstraction, already behind its own `Processor` interface).
+
 ### Internal: TUI view-state as stable anchors
 - The TUI's four view-state values (`streamTop`, `searchHit`, `visualCursor`,
   `visualAnchor`) are now stored as stable `(entryID, rowOffset)` anchors instead

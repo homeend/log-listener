@@ -25,8 +25,8 @@ linker flag.
   configured groups (CLI or YAML), the first one in declaration order owns
   it. No duplicate lines.
 - **Renderer pipeline with a small DSL.** Regex-match a line, then template
-  the output: literal text + `$N` capture references + `json($N)` /
-  `xml($N)` calls that pretty-print embedded payloads.
+  the output: literal text + `$N` capture references + `$json($N)` /
+  `$xml($N)` calls that pretty-print embedded payloads.
 - **Multiple output destinations, in parallel.** A colorized stdout sink, an
   interactive bubbletea TUI, an HTTP/SSE broadcast, and an embedded MCP server
   — any combination. Output downgrades automatically when stdout isn't a TTY
@@ -357,16 +357,16 @@ mute:
 renderers:
   - name: app-json
     line_regex: '(\d{4}-\d{2}-\d{2}) \[(\w{4,5})\] (\{.*\})'
-    template: '$1 $2\njson($3)'
+    template: '$1 $2\n$json($3)'
     applies_to:
       groups: [1]
       paths: ['*.app.log']
   - name: idea-json                 # use a named matcher instead of line_regex
     matcher: app-json               # the matcher's line_regex feeds $1
-    template: 'json($1)'
+    template: '$json($1)'
   - name: pretty-xml                # registered but starts off
     line_regex: '.+'
-    template: 'xml($0)'
+    template: '$xml($0)'
     off: true
   - name: legacy                    # ignored entirely
     line_regex: '.+'
@@ -445,8 +445,9 @@ template DSL is small:
 |-----------------|---------------------------------------------------------------|
 | literal text    | Emitted as-is.                                                |
 | `$N`            | Replaced with regex capture group N (`$0` = full match).      |
-| `json($N)`      | Parse capture N as JSON, emit a pretty-printed JSON block.    |
-| `xml($N)`       | Parse capture N as XML, emit a pretty-printed XML block.      |
+| `$json($N)`     | Parse capture N as JSON, emit a pretty-printed JSON block.    |
+| `$xml($N)`      | Parse capture N as XML, emit a pretty-printed XML block.      |
+| `$name($N)`     | Any registered render function; an unknown `$name(` is a parse error. |
 | `\n` `\t` `\r`  | Literal newline / tab / carriage return.                      |
 | `\\`            | Literal backslash.                                            |
 | `$$`            | Literal `$`.                                                  |
@@ -473,7 +474,7 @@ Renderer:
 renderers:
   - name: app-json
     line_regex: '(\d{4}-\d{2}-\d{2}) \[(\w{4,5})\] (\{.*\})'
-    template: '$1 $2\njson($3)'
+    template: '$1 $2\n$json($3)'
 ```
 
 Stdout:
