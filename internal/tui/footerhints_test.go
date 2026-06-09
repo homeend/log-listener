@@ -235,3 +235,39 @@ func TestComposeFooterBarNarrowTruncates(t *testing.T) {
 		t.Fatalf("narrow bar should keep the top-priority hint: %q", plain)
 	}
 }
+
+func TestRenderFooterUsesContextHints(t *testing.T) {
+	m := newFooterModel(t)
+	m.km = keymapDefaultLinux()
+	m.lines = make([]displayLine, 3)
+
+	// Default tail: shows default hints + status, no mode label.
+	plain := stripANSI(m.renderFooter())
+	if !strings.Contains(plain, "search") || !strings.Contains(plain, "ev 3") {
+		t.Fatalf("tail footer = %q, want default hints + status", plain)
+	}
+
+	// Visual mode: VISUAL label + its hints.
+	m.visualMode = true
+	plain = stripANSI(m.renderFooter())
+	if !strings.Contains(plain, "VISUAL") || !strings.Contains(plain, "save") {
+		t.Fatalf("visual footer = %q, want VISUAL hints", plain)
+	}
+	m.visualMode = false
+
+	// Takeover bars still win: typing a search query.
+	m.searchInput = true
+	m.searchQuery = "abc"
+	plain = stripANSI(m.renderFooter())
+	if !strings.Contains(plain, "/abc") || strings.Contains(plain, "ev 3") {
+		t.Fatalf("search-input footer = %q, want /abc takeover (no status)", plain)
+	}
+	m.searchInput = false
+
+	// Flash still takes over.
+	m.flash = "copied 2 lines"
+	plain = stripANSI(m.renderFooter())
+	if !strings.Contains(plain, "copied 2 lines") {
+		t.Fatalf("flash footer = %q, want flash message", plain)
+	}
+}

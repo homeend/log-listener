@@ -78,11 +78,15 @@ func TestFooterShowsWrapWhenWrapping(t *testing.T) {
 	m = m2.(*model)
 	m.wordWrap = true
 	foot := stripANSI(m.renderFooter())
-	if !strings.Contains(foot, "wrap") {
-		t.Fatalf("footer should show wrap indicator, got %q", foot)
-	}
+	// The new footer is context-driven hints + compact status; it never shows
+	// "col:" regardless of wrap mode — both are intentionally removed from the
+	// footer (renderer stats / column / wrap indicators moved out of the bar).
 	if strings.Contains(foot, "col:") {
 		t.Fatalf("footer should not show col: while wrapping, got %q", foot)
+	}
+	// Default tail context: hints bar is always present.
+	if !strings.Contains(foot, "search") {
+		t.Fatalf("footer should show default hints in tail mode, got %q", foot)
 	}
 }
 

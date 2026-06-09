@@ -86,18 +86,11 @@ func (m *model) View() string {
 	return header + "\n" + body + "\n" + footer
 }
 
-// renderFooter assembles the bottom status line. Three modes, in
-// priority order:
-//
-//  1. Search input active ("/") — show "/<typed>_" so the user can see
-//     what's being typed.
-//  2. Wrap prompt pending — show "No more hits — wrap to top|bottom? (y/n)".
-//  3. Normal — events / position / column / group / file counters,
-//     plus a "/term" suffix when a committed search term is active.
+// renderFooter assembles the bottom status bar. Full-width takeover bars are
+// checked first (search input, wrap prompt, transient flash); otherwise the
+// bar is context-driven hints on the left + a compact status tail on the
+// right (see footerhints.go).
 func (m *model) renderFooter() string {
-	if m.visualMode {
-		return headerBg.Width(m.width).MaxHeight(1).Render(" VISUAL  ↑↓ move · space anchor · y ref · Y text · s save · esc cancel ")
-	}
 	if m.searchInput {
 		prefix := " /"
 		if m.searchRegex {
@@ -115,42 +108,7 @@ func (m *model) renderFooter() string {
 	if m.flash != "" {
 		return headerBg.Width(m.width).MaxHeight(1).Render(" " + m.flash + " ")
 	}
-	pos := "tail"
-	if !m.tailMode {
-		pos = fmt.Sprintf("@%d/%d", m.streamTopRow(), len(m.lines))
-	}
-	cols := ""
-	if !m.showGroup {
-		cols += " -G"
-	}
-	if !m.showFile {
-		cols += " -F"
-	}
-	disabled := m.disabledGroupCount()
-	groupStat := fmt.Sprintf("groups: %d", len(m.groupOrder))
-	if disabled > 0 {
-		groupStat += fmt.Sprintf(" (%d off)", disabled)
-	}
-	rendStat := ""
-	if len(m.rendererOrder) > 0 {
-		rendStat = fmt.Sprintf(" · rend: %d", len(m.rendererOrder))
-		if off := m.disabledRendererCount(); off > 0 {
-			rendStat += fmt.Sprintf(" (%d off)", off)
-		}
-	}
-	search := ""
-	if m.matcher != nil {
-		search = fmt.Sprintf(" · /%s", m.searchQuery)
-		if m.filterMode {
-			search += " filter"
-		}
-	}
-	colStat := fmt.Sprintf("col: %d", m.horizScroll)
-	if m.wordWrap {
-		colStat = "wrap"
-	}
-	return dimStyle.Width(m.width).MaxHeight(1).Render(fmt.Sprintf(" events: %d · %s · %s%s · %s%s · files: %d%s ",
-		len(m.lines), pos, colStat, cols, groupStat, rendStat, len(m.files), search))
+	return m.composeFooterBar(m.contextHints())
 }
 
 func (m *model) disabledGroupCount() int {
