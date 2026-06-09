@@ -29,6 +29,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.wrapPrompt != 0 {
 			return m.handleWrapPromptKey(msg), nil
 		}
+		if m.showHelp {
+			return m.handleHelpKey(msg), nil
+		}
 		key := msg.String()
 
 		// Positional toggles are not part of the action keymap (they are
@@ -224,6 +227,13 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Collapse multiline entries (continuation rows hidden behind
 			// a "[...]" marker on the head). Toggles repeatedly.
 			m.collapseMultiline = !m.collapseMultiline
+		case keymap.ActionHelp:
+			m.showHelp = true
+			m.helpQuery = ""
+			m.helpScroll = 0
+			m.showFiles = false
+			m.showGroupsPanel = false
+			m.showRenderersPanel = false
 		case keymap.ActionToggleFilenameTrunc:
 			m.truncateFiles = !m.truncateFiles
 		case keymap.ActionToggleExceptionMarks:

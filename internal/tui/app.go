@@ -372,6 +372,11 @@ type model struct {
 	// any vertical scroll, esc, or cap eviction. Gates the focusBar indicator
 	// and the block-copy rule in buildReference.
 	blockFocused bool
+
+	// Help overlay state.
+	showHelp   bool   // help overlay open (modal)
+	helpQuery  string // live filter for the help list (independent of searchQuery)
+	helpScroll int    // first visible help row
 }
 
 // RenderFunc runs a single (group, file, raw) tuple through the

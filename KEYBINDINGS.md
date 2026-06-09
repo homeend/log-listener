@@ -44,6 +44,7 @@ A terminal TUI cannot capture the macOS Cmd (⌘) key, so macOS bindings use the
 | Copy text | Y | Y | Copy the selected text (search line, block, viewport, or visual selection) as displayed. |
 | Visual select | v | v | Enter visual line-selection mode (space sets the start; y copies the range, Y the text, s saves it to a file, all exit; esc cancels). |
 | Toggle filename truncation | f | f | Shorten long filenames in the file column with a middle ellipsis. |
+| Help | ? | ? | Show the searchable keybindings panel. |
 
 ## Positional toggles (not individually overridable)
 
@@ -70,4 +71,4 @@ keybindings:
     fast_down: ["ctrl+down"]
 ```
 
-Valid action names: `quit`, `toggle_files`, `toggle_groups`, `toggle_renderers`, `close_overlay`, `search`, `next_match`, `prev_match`, `filter`, `toggle_group_col`, `toggle_file_col`, `clear`, `collapse_all`, `scroll_up`, `scroll_down`, `page_up`, `page_down`, `fast_up`, `fast_down`, `top`, `bottom`, `scroll_left`, `scroll_right`, `fast_left`, `fast_right`, `reset_horiz`, `save_viewport`, `save_scrollback`, `next_block`, `prev_block`, `next_marked_block`, `prev_marked_block`, `toggle_exception_marks`, `copy_reference`, `copy_text`, `visual_select`, `toggle_filename_trunc`.
+Valid action names: `quit`, `toggle_files`, `toggle_groups`, `toggle_renderers`, `close_overlay`, `search`, `next_match`, `prev_match`, `filter`, `toggle_group_col`, `toggle_file_col`, `clear`, `collapse_all`, `scroll_up`, `scroll_down`, `page_up`, `page_down`, `fast_up`, `fast_down`, `top`, `bottom`, `scroll_left`, `scroll_right`, `fast_left`, `fast_right`, `reset_horiz`, `save_viewport`, `save_scrollback`, `next_block`, `prev_block`, `next_marked_block`, `prev_marked_block`, `toggle_exception_marks`, `copy_reference`, `copy_text`, `visual_select`, `toggle_filename_trunc`, `help`.
