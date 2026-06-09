@@ -454,7 +454,11 @@ func (m *model) renderStreamWrapped(visible []int, rows int) string {
 		segs = append(segs, wrapLine(styled, visW, m.width)...)
 	}
 	if len(segs) > rows {
-		if m.tailMode {
+		// Bottom-align only in tail mode AND not filtering. collectVisible's
+		// filter branch is always top-anchored (forward walk from streamTop),
+		// so bottom-aligning while filtering would trim the front and drop
+		// visible[0] — the published from/to range — off the top of the screen.
+		if m.tailMode && !m.filterMode {
 			segs = segs[len(segs)-rows:]
 		} else {
 			segs = segs[:rows]

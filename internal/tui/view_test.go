@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -100,5 +101,40 @@ func TestRenderVisibleRowIncludesPrefixWidth(t *testing.T) {
 	}
 	if got := dispWidth(stripANSI(styled)); got != 16 {
 		t.Fatalf("styled width = %d, want 16", got)
+	}
+}
+
+// Regression (final-review C1): with filter + tail + wrap and an overflowing
+// window, collectVisible's filter branch is top-anchored, so renderStreamWrapped
+// must top-align — bottom-aligning would drop visible[0] (the published from
+// entry) off the top of the screen.
+func TestRenderStreamWrappedFilterTailTopAligns(t *testing.T) {
+	m := newModel(1000)
+	m.groupOrder = []string{"g"}
+	m.groupEnabled["g"] = true
+	for i := 0; i < 8; i++ {
+		body := fmt.Sprintf("needle L%02d %s", i, strings.Repeat("x", 40))
+		m.appendEvent(render.Event{Group: "g", File: "/x.log",
+			Rendered: []render.Part{{Type: "text", Value: body}}})
+	}
+	m2, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 20})
+	m = m2.(*model)
+	m = typeQuery(t, m, "needle")
+	m.filterMode = true
+	m.wordWrap = true
+	m.width = 40 // prefix+body ~62 cols => 2 rows per line
+	m.tailMode = true
+	m.setStreamTopRow(0)
+
+	visible := m.collectVisible(5)
+	if len(visible) == 0 || visible[0] != 0 {
+		t.Fatalf("setup: expected visible[0]=0, got %v", visible)
+	}
+	// 3 lines * 2 rows = 6 segs into 5 rows => overflow; top row must be the
+	// START of line 0 (contains "L00"), not a continuation of a later line.
+	out := m.renderStream(5)
+	top := strings.Split(out, "\n")[0]
+	if !strings.Contains(top, "L00") {
+		t.Fatalf("filter+tail+wrap dropped visible[0] off the top; top row = %q", stripANSI(top))
 	}
 }
