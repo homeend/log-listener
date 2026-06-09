@@ -200,3 +200,38 @@ func TestContextHintsOverrideReflected(t *testing.T) {
 		t.Fatalf("override not reflected, hints = %q", joined)
 	}
 }
+
+func TestComposeFooterBarFitsWidth(t *testing.T) {
+	m := newFooterModel(t)
+	m.km = keymapDefaultLinux()
+	m.width = 120
+	m.lines = make([]displayLine, 5)
+	bar := m.composeFooterBar(m.contextHints())
+	if dispWidth(bar) != 120 {
+		t.Fatalf("bar width = %d, want 120\n%q", dispWidth(bar), bar)
+	}
+	if !strings.Contains(stripANSI(bar), "ev 5") {
+		t.Fatalf("bar missing status tail: %q", stripANSI(bar))
+	}
+}
+
+func TestComposeFooterBarNarrowTruncates(t *testing.T) {
+	m := newFooterModel(t)
+	m.km = keymapDefaultLinux()
+	m.width = 34 // too narrow for the full default hint list + status
+	m.lines = make([]displayLine, 5)
+	bar := m.composeFooterBar(m.contextHints())
+	plain := stripANSI(bar)
+	if dispWidth(bar) != 34 {
+		t.Fatalf("narrow bar width = %d, want 34\n%q", dispWidth(bar), plain)
+	}
+	if !strings.Contains(plain, "…") {
+		t.Fatalf("narrow bar should drop low-priority hints with an ellipsis: %q", plain)
+	}
+	if !strings.Contains(plain, "ev 5") {
+		t.Fatalf("narrow bar must keep the status tail: %q", plain)
+	}
+	if !strings.Contains(plain, "search") {
+		t.Fatalf("narrow bar should keep the top-priority hint: %q", plain)
+	}
+}
