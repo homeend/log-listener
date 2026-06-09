@@ -811,3 +811,14 @@ func TestScrollDownPastEndReSticks(t *testing.T) {
 		t.Fatal("scrolling down past the end must re-stick to tailMode")
 	}
 }
+
+func TestWordWrapDefaultsOff(t *testing.T) {
+	m := newModel(100)
+	if m.wordWrap {
+		t.Fatal("word wrap should default off")
+	}
+	var o Options
+	if o.WordWrap {
+		t.Fatal("Options.WordWrap should default false")
+	}
+}

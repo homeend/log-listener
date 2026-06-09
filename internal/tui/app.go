@@ -106,6 +106,7 @@ type Options struct {
 	Buffer        *linebuf.Buffer        // shared record store; nil → an owned buffer (tests/standalone)
 	TruncateFiles bool                   // tui.truncate_filenames default
 	FilenameWidth int                    // tui.filename_width (0 => default)
+	WordWrap      bool                   // tui.word_wrap default
 }
 
 // New creates an App from Options. Files and groups must be passed
@@ -136,6 +137,7 @@ func New(opts Options) *App {
 	m.setViewport = opts.SetViewport
 	m.truncateFiles = opts.TruncateFiles
 	m.filenameWidth = opts.FilenameWidth
+	m.wordWrap = opts.WordWrap
 	if opts.Buffer != nil {
 		m.buf = opts.Buffer // shared store; replaces newModel's owned buffer
 	}
@@ -292,6 +294,11 @@ type model struct {
 	// filenameWidth <=0 falls back to defaultFilenameWidth.
 	truncateFiles bool
 	filenameWidth int
+
+	// Word wrap: when true, long lines wrap to multiple terminal rows instead
+	// of being clipped behind horizontal pan. Paint-time only; m.lines and the
+	// viewstate anchors are unaffected.
+	wordWrap bool
 
 	// Group enable/disable — toggled with digit keys 1-9 (mapped to the
 	// first 9 entries of groupOrder). A disabled group's events stay in
