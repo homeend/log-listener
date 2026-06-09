@@ -97,9 +97,13 @@ func (m *model) renderDisplayLineCore(dl displayLine, isCurrent bool) (string, i
 		visW += dispWidth(dl.group) + 3 // "[" + id + "]" + " "
 	}
 	if m.showFile {
-		sb.WriteString(fileStyle.Render(dl.file))
+		name := dl.file
+		if m.truncateFiles {
+			name = truncateMiddle(dl.file, m.effFilenameWidth())
+		}
+		sb.WriteString(fileStyle.Render(name))
 		sb.WriteString(": ")
-		visW += dispWidth(dl.file) + 2 // ": "
+		visW += dispWidth(name) + 2 // ": "
 	}
 	sb.WriteString(body)
 	return sb.String(), visW

@@ -22,6 +22,7 @@ import (
 // so any blocking termenv probe at init time would delay SSE startup too.
 
 const defaultScrollback = 10000
+const defaultFilenameWidth = 16
 
 // FileEntry is a single row in the "effectively watched files" panel.
 type FileEntry struct {
@@ -283,6 +284,11 @@ type model struct {
 	showGroup bool
 	showFile  bool
 
+	// File column truncation: middle-ellipsis long filenames when enabled.
+	// filenameWidth <=0 falls back to defaultFilenameWidth.
+	truncateFiles bool
+	filenameWidth int
+
 	// Group enable/disable — toggled with digit keys 1-9 (mapped to the
 	// first 9 entries of groupOrder). A disabled group's events stay in
 	// m.lines but are skipped during the renderStream window walk.
@@ -390,6 +396,15 @@ func newModel(scrollback int) *model {
 	// can seed via appendEvent. New overrides this with the shared buffer.
 	m.buf = linebuf.New(scrollback, tuiDecompose)
 	return m
+}
+
+// effFilenameWidth is the truncation limit in display columns, applying the
+// default when unset — mirroring how Scrollback treats 0 as "use the default".
+func (m *model) effFilenameWidth() int {
+	if m.filenameWidth > 0 {
+		return m.filenameWidth
+	}
+	return defaultFilenameWidth
 }
 
 func (m *model) Init() tea.Cmd { return nil }
