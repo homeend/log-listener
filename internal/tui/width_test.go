@@ -37,3 +37,36 @@ func TestTruncateMiddleDegenerate(t *testing.T) {
 		t.Fatalf("maxCols 3 want %q, got %q", "any", got)
 	}
 }
+
+func TestWrapLineSingleRowWhenFits(t *testing.T) {
+	got := wrapLine("hello", 5, 10)
+	if len(got) != 1 {
+		t.Fatalf("want 1 row, got %d: %q", len(got), got)
+	}
+	if stripANSI(got[0]) != "hello     " { // padded to width 10
+		t.Fatalf("want padded to width, got %q", stripANSI(got[0]))
+	}
+}
+
+func TestWrapLineSplitsOverflow(t *testing.T) {
+	// 12 visible cols into width 5 => ceil(12/5) = 3 rows.
+	line := "abcdefghijkl"
+	got := wrapLine(line, 12, 5)
+	if len(got) != 3 {
+		t.Fatalf("want 3 rows, got %d", len(got))
+	}
+	for i, r := range got {
+		if w := dispWidth(stripANSI(r)); w != 5 {
+			t.Fatalf("row %d width = %d, want 5 (%q)", i, w, r)
+		}
+	}
+	if joined := stripANSI(got[0]) + stripANSI(got[1]) + stripANSI(got[2]); joined != "abcdefghijkl   " {
+		t.Fatalf("rejoined rows lost content: %q", joined)
+	}
+}
+
+func TestWrapLineAlwaysAtLeastOneRow(t *testing.T) {
+	if got := wrapLine("", 0, 10); len(got) != 1 {
+		t.Fatalf("empty line should still occupy 1 row, got %d", len(got))
+	}
+}

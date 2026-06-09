@@ -75,3 +75,22 @@ func truncateMiddle(s string, maxCols int) string {
 	right := avail - left
 	return takeCols(s, left) + "..." + takeColsRight(s, right)
 }
+
+// wrapLine splits a fully-styled terminal row of visible width visW into
+// ceil(visW/width) rows of exactly `width` display columns, reusing
+// clipANSIWindow so ANSI styling, the search highlight, and wide-rune straddle
+// are preserved across the wrap boundary. Always returns at least one row.
+func wrapLine(line string, visW, width int) []string {
+	if width <= 0 {
+		return []string{line}
+	}
+	n := (visW + width - 1) / width
+	if n < 1 {
+		n = 1
+	}
+	out := make([]string, 0, n)
+	for i := 0; i < n; i++ {
+		out = append(out, clipANSIWindow(line, i*width, width))
+	}
+	return out
+}
