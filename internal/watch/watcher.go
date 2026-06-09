@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
+
+	"github.com/homeend/log-listener/internal/diag"
 )
 
 // Event is a single line emitted by the watcher.
@@ -45,6 +47,7 @@ type Watcher struct {
 	done       chan struct{}
 	closeOnce  sync.Once
 	pollEvery  time.Duration
+	diag       *diag.Logger // optional trace sink; nil = disabled (nil-safe)
 }
 
 // New creates a Watcher. matcher may be nil; in that case new files are
@@ -82,6 +85,24 @@ func (w *Watcher) SetDirMatcher(m NewDirMatcher) {
 	w.dirMatcher = m
 }
 
+// SetFileMatcher replaces the NewFileMatcher consulted when a file appears in a
+// watched directory. Used on config reload to apply new file-filter rules to
+// FUTURE discoveries without tearing down and rebuilding the watcher (which
+// would reset every tailer to EOF and drop in-flight lines).
+func (w *Watcher) SetFileMatcher(m NewFileMatcher) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.matcher = m
+}
+
+// SetDiag installs (or clears) the diagnostic trace sink. Call it before Add so
+// each tailer inherits it. A nil logger disables tracing.
+func (w *Watcher) SetDiag(l *diag.Logger) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.diag = l
+}
+
 // Add registers a file for tailing. fromStart controls whether the existing
 // content is read from offset 0 (true, useful for --once) or only future
 // appends are emitted (false, the default for live tailing).
@@ -99,6 +120,9 @@ func (w *Watcher) Add(path, groupID string, fromStart bool) error {
 	if err != nil {
 		return err
 	}
+	t.diag = w.diag
+	w.diag.Logf("TAILER-OPEN", "path=%s group=%s pos=%d inode=%d fromStart=%v",
+		abs, groupID, t.pos, t.inode, fromStart)
 	w.tailers[abs] = t
 	w.groups[abs] = groupID
 	parent := filepath.Dir(abs)
