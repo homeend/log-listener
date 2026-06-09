@@ -7,6 +7,17 @@ and this project adheres to phased delivery per `PLAN.md`.
 
 ## [Unreleased]
 
+### Added
+- **TUI: middle-ellipsis filename truncation** — long filenames in the file column are
+  truncated at the middle with `…`, toggled live with `f`. Defaults configurable via
+  `tui.truncate_filenames` (default `false`) and `tui.filename_width` (default `16`).
+- **TUI: `s` saves the current visual selection** — in visual line-selection mode (`v`,
+  `space` to anchor), `s` writes the selected lines to a `screen-log-listener-<ts>.txt`
+  file, parallel to `y` (copy reference) and `Y` (copy text).
+- **TUI: `?` searchable help overlay** — opens a modal listing every keybinding for the
+  current OS. Type to filter, `j`/`k` to scroll, `esc`/`?` to close. The `?` hint now
+  also appears in the header bar for discoverability.
+
 ### Changed (BREAKING): render-call DSL syntax is now `$`-prefixed
 - Template render-calls change from `json($N)`/`xml($N)` to `$json($N)`/`$xml($N)`.
   Render-calls now live behind the `$` sigil (like `$N` captures), so literal

@@ -63,6 +63,7 @@ func (m *model) View() string {
 		m.hint(keymap.ActionSearch, "search"),
 		m.hint(keymap.ActionNextMatch, "next") + "/" + m.hint(keymap.ActionPrevMatch, "prev"),
 		m.hint(keymap.ActionFilter, "filter"),
+		m.hint(keymap.ActionHelp, "help"),
 	}
 	header := headerBg.Width(m.width).MaxHeight(1).Render(" log-listener — " + strings.Join(hints, " · ") + " ")
 	contentH := m.contentHeight()

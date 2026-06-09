@@ -383,6 +383,8 @@ output:
 tui:
   enabled: true                     # ignored when stdout isn't a TTY
   scrollback: 10000                 # bounded ring buffer of display lines
+  truncate_filenames: false         # middle-ellipsis long filenames in the file column (toggle live with f)
+  filename_width: 16                # max visible chars for filenames when truncation is on
 ```
 
 YAML is strict — unknown keys (e.g. `directorys:` typo) are an error.
@@ -772,14 +774,16 @@ below. The authoritative per-OS reference is generated from the code into
 | **`Ctrl+E`**        | **Toggle the "renderers" overlay.**                   |
 | **`!` `@` `#` `$` `%` `^` `&` `*` `(`** | **Toggle renderer 1–9 on/off (shifted digits).** |
 | **`m`**             | **Collapse multiline entries to one line + `[...]`.** |
-| **`s`**             | **Save the visible viewport to a `screen-log-listener-*.txt` file (cwd).** |
+| **`s`**             | **Save the visible viewport to a `screen-log-listener-*.txt` file (cwd). In visual mode, saves the current selection instead (parallel to `y`/`Y`).** |
 | **`S`**             | **Save the full scrollback buffer to a `screen-log-listener-*.txt` file (cwd).** |
 | **`]`** / **`[`**   | **Jump to the next / previous multi-line block.**     |
 | **`}`** / **`{`**   | **Jump to the next / previous processor-matched block (e.g. exception).** |
 | **`e`**             | **Toggle the exception left-bar marker.**             |
 | **`y`**             | **Copy reference to clipboard (OSC 52) — `line:<id>`, block `range`, or viewport `range` depending on context (see MCP server section).** |
 | **`Y`**             | **Copy selected text as displayed (no ANSI color, with prefixes, OSC 52) — same contexts as `y`; large selections may hit the OSC 52 size limit, use `s`/`S` to save instead.** |
-| **`v`**             | **Enter visual line-selection mode: `space` sets the selection start; move with ↑/↓ or `j`/`k`; press `y` to copy the reference and exit, or `Y` to copy the text and exit; `esc` cancels.** |
+| **`f`**             | **Toggle middle-ellipsis filename truncation in the file column (configurable via `tui.truncate_filenames` / `tui.filename_width`).** |
+| **`?`**             | **Open the searchable help overlay listing every keybinding for the current OS; type to filter, `j`/`k` scroll, `esc`/`?` close.** |
+| **`v`**             | **Enter visual line-selection mode: `space` sets the selection start; move with ↑/↓ or `j`/`k`; press `y` to copy the reference, `Y` to copy the text, or `s` to save the selection to a file, all exit; `esc` cancels.** |
 
 When you pan horizontally (`←` / `→`), the visible window is clipped from
 the left while ANSI styling (colors and the search highlight) is preserved
