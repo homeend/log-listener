@@ -7,10 +7,16 @@ import (
 	"strings"
 )
 
-// renderXML pretty-prints the input XML. ok=false means the input is not valid
-// XML (the caller should treat the renderer as non-matching). Empty input is ok.
-func renderXML(s string) (Part, bool) {
-	s = strings.TrimSpace(s)
+type xmlRender struct{}
+
+func init() { registerRenderFunc(xmlRender{}) }
+
+func (xmlRender) Name() string { return "xml" }
+
+// Parse pretty-prints the capture as XML. ok=false means it is not valid XML
+// (the renderer falls through). Empty input is an empty text Part.
+func (xmlRender) Parse(raw string) (Part, bool) {
+	s := strings.TrimSpace(raw)
 	if s == "" {
 		return Part{Type: "text", Value: ""}, true
 	}
@@ -19,6 +25,16 @@ func renderXML(s string) (Part, bool) {
 		return Part{Type: "text", Value: s}, false
 	}
 	return Part{Type: "xml", Value: pretty}, true
+}
+
+// Lines splits the pretty-printed XML string into block rows. A non-string
+// value (shouldn't happen for an xml Part) yields no rows.
+func (xmlRender) Lines(v interface{}) []string {
+	s, ok := v.(string)
+	if !ok {
+		return nil
+	}
+	return strings.Split(s, "\n")
 }
 
 func prettyXML(in string) (string, error) {

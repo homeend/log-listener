@@ -31,6 +31,7 @@ type templatePart struct {
 	kind  partKind
 	text  string
 	group int
+	rf    renderFunc // set when kind == partRender
 }
 
 type partKind int
@@ -38,8 +39,7 @@ type partKind int
 const (
 	partLiteral partKind = iota
 	partCapture
-	partRenderJSON
-	partRenderXML
+	partRender
 )
 
 // ParseTemplate parses the template DSL: literal text + $N (capture group)
@@ -78,7 +78,7 @@ func ParseTemplate(src string) (*Template, error) {
 			if err != nil {
 				return nil, err
 			}
-			t.parts = append(t.parts, templatePart{kind: partRenderJSON, group: n})
+			t.parts = append(t.parts, templatePart{kind: partRender, group: n, rf: renderFuncs["json"]})
 			i = end
 		case startsWith(src, i, "xml("):
 			flush()
@@ -86,7 +86,7 @@ func ParseTemplate(src string) (*Template, error) {
 			if err != nil {
 				return nil, err
 			}
-			t.parts = append(t.parts, templatePart{kind: partRenderXML, group: n})
+			t.parts = append(t.parts, templatePart{kind: partRender, group: n, rf: renderFuncs["xml"]})
 			i = end
 		case c == '$' && i+1 < len(src):
 			nx := src[i+1]
@@ -163,16 +163,9 @@ func (t *Template) Execute(captures []string) ([]Part, bool) {
 			text.WriteString(p.text)
 		case partCapture:
 			text.WriteString(capture(p.group))
-		case partRenderJSON:
+		case partRender:
 			flushText()
-			part, ok := renderJSON(capture(p.group))
-			if !ok {
-				return nil, false
-			}
-			parts = append(parts, part)
-		case partRenderXML:
-			flushText()
-			part, ok := renderXML(capture(p.group))
+			part, ok := p.rf.Parse(capture(p.group))
 			if !ok {
 				return nil, false
 			}
