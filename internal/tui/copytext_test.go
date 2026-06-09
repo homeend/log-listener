@@ -47,7 +47,7 @@ func TestSelectionTextSearchHitCopiesWholeEntry(t *testing.T) {
 	m.appendEvent(render.Event{ID: "L1", Group: "g", File: "/a.log",
 		Rendered: []render.Part{{Type: "text", Value: "config:\n  k=v\n  j=w"}}})
 	m.matcher, _ = searchmatch.Compile("config", false)
-	m.searchHit = 1 // row 1 is L1's head row
+	m.setSearchHitRow(1) // row 1 is L1's head row
 	got := buildSelectionText(m)
 	want := joinPlain(m.displayCache[m.visibleEntries()[1].ID]) // ALL of L1's rows, not just the hit row
 	if got != want {
@@ -122,7 +122,7 @@ func TestCopyTextParityWithReference(t *testing.T) {
 	ms := mk()
 	seedIDs(ms, "apple", "banana", "cherry")
 	ms.matcher, _ = searchmatch.Compile("banana", false)
-	ms.searchHit = 1
+	ms.setSearchHitRow(1)
 	assertParity(t, "search", ms, ms.selectedRows())
 }
 

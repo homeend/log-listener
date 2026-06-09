@@ -15,7 +15,7 @@ func (m *model) clearSearch() {
 	m.matcher = nil
 	m.searchQuery = ""
 	m.searchRegex = false
-	m.searchHit = -1
+	m.setSearchHitRow(-1)
 	m.wrapPrompt = 0
 	m.filterMode = false
 }
@@ -81,8 +81,8 @@ func (m *model) searchNext() {
 	if m.matcher == nil || len(m.lines) == 0 {
 		return
 	}
-	from := m.searchHit + 1
-	if m.searchHit < 0 {
+	from := m.searchHitRow() + 1
+	if m.searchHitRow() < 0 {
 		from = m.streamTopRow()
 	}
 	hit := m.findHit(from, +1)
@@ -99,8 +99,8 @@ func (m *model) searchPrev() {
 	if m.matcher == nil || len(m.lines) == 0 {
 		return
 	}
-	from := m.searchHit - 1
-	if m.searchHit < 0 {
+	from := m.searchHitRow() - 1
+	if m.searchHitRow() < 0 {
 		from = m.streamTopRow()
 	}
 	if from < 0 {
@@ -226,7 +226,7 @@ func (m *model) jumpToHit(idx int) {
 	if idx < 0 || idx >= len(m.lines) {
 		return
 	}
-	m.searchHit = idx
+	m.setSearchHitRow(idx)
 	m.tailMode = false
 	rows := m.contentHeight()
 	if m.filterMode {

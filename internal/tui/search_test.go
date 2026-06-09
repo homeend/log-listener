@@ -64,8 +64,8 @@ func TestModelSearchBasic(t *testing.T) {
 		t.Fatalf("matcher not set or searchQuery = %q want %q", m.searchQuery, "needle")
 	}
 	// In tail mode commit walks backward — last hit (15) should win.
-	if m.searchHit != 15 {
-		t.Fatalf("searchHit = %d want 15", m.searchHit)
+	if m.searchHitRow() != 15 {
+		t.Fatalf("searchHit = %d want 15", m.searchHitRow())
 	}
 	if m.tailMode {
 		t.Fatal("commit should unstick tail mode")
@@ -117,20 +117,20 @@ func TestModelSearchNextAndPrev(t *testing.T) {
 	hits := map[int]bool{2: true, 7: true, 15: true}
 	m := seedSearchModel(t, 20, hits)
 	m = typeQuery(t, m, "needle")
-	if m.searchHit != 15 {
-		t.Fatalf("initial hit = %d want 15", m.searchHit)
+	if m.searchHitRow() != 15 {
+		t.Fatalf("initial hit = %d want 15", m.searchHitRow())
 	}
 
 	// p walks backward through hits.
 	m2, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'p'}})
 	m = m2.(*model)
-	if m.searchHit != 7 {
-		t.Fatalf("after p hit = %d want 7", m.searchHit)
+	if m.searchHitRow() != 7 {
+		t.Fatalf("after p hit = %d want 7", m.searchHitRow())
 	}
 	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'p'}})
 	m = m2.(*model)
-	if m.searchHit != 2 {
-		t.Fatalf("after pp hit = %d want 2", m.searchHit)
+	if m.searchHitRow() != 2 {
+		t.Fatalf("after pp hit = %d want 2", m.searchHitRow())
 	}
 
 	// p past the first hit triggers the wrap prompt.
@@ -145,8 +145,8 @@ func TestModelSearchNextAndPrev(t *testing.T) {
 	if m.wrapPrompt != 0 {
 		t.Fatal("y should dismiss the wrap prompt")
 	}
-	if m.searchHit != 15 {
-		t.Fatalf("after wrap hit = %d want 15", m.searchHit)
+	if m.searchHitRow() != 15 {
+		t.Fatalf("after wrap hit = %d want 15", m.searchHitRow())
 	}
 
 	// n past the last hit also prompts.
@@ -156,13 +156,13 @@ func TestModelSearchNextAndPrev(t *testing.T) {
 		t.Fatalf("n past end should set wrapPrompt='n', got %q", string(m.wrapPrompt))
 	}
 	// n answers no — dismiss without moving.
-	prev := m.searchHit
+	prev := m.searchHitRow()
 	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
 	m = m2.(*model)
 	if m.wrapPrompt != 0 {
 		t.Fatal("n should dismiss the wrap prompt")
 	}
-	if m.searchHit != prev {
+	if m.searchHitRow() != prev {
 		t.Fatal("n (decline wrap) must NOT move the hit")
 	}
 }
@@ -180,8 +180,8 @@ func TestModelSearchWrapForward(t *testing.T) {
 	// y wraps to first hit (2).
 	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
 	m = m2.(*model)
-	if m.searchHit != 2 {
-		t.Fatalf("after y wrap hit = %d want 2", m.searchHit)
+	if m.searchHitRow() != 2 {
+		t.Fatalf("after y wrap hit = %d want 2", m.searchHitRow())
 	}
 }
 
@@ -203,9 +203,9 @@ func TestModelSearchSkipsDisabledGroup(t *testing.T) {
 	m = m2.(*model)
 
 	m = typeQuery(t, m, "needle")
-	if m.searchHit != 2 {
+	if m.searchHitRow() != 2 {
 		t.Fatalf("disabled group b hits must be skipped; got hit at %d (events=%+v)",
-			m.searchHit, m.lines)
+			m.searchHitRow(), m.lines)
 	}
 }
 
@@ -220,8 +220,8 @@ func TestModelSearchEscClearsActive(t *testing.T) {
 	if m.matcher != nil {
 		t.Fatal("Esc must clear active term")
 	}
-	if m.searchHit != -1 {
-		t.Fatalf("Esc must reset searchHit to -1, got %d", m.searchHit)
+	if m.searchHitRow() != -1 {
+		t.Fatalf("Esc must reset searchHit to -1, got %d", m.searchHitRow())
 	}
 }
 
@@ -234,16 +234,16 @@ func TestModelSearchCaseInsensitive(t *testing.T) {
 	m2, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 20})
 	m = m2.(*model)
 	m = typeQuery(t, m, "error") // lowercase — should still match
-	if m.searchHit != 0 {
-		t.Fatalf("case-insensitive search missed, hit=%d", m.searchHit)
+	if m.searchHitRow() != 0 {
+		t.Fatalf("case-insensitive search missed, hit=%d", m.searchHitRow())
 	}
 }
 
 func TestModelSearchNoMatch(t *testing.T) {
 	m := seedSearchModel(t, 10, nil) // no needle anywhere
 	m = typeQuery(t, m, "needle")
-	if m.searchHit != -1 {
-		t.Fatalf("no-match commit should leave searchHit=-1, got %d", m.searchHit)
+	if m.searchHitRow() != -1 {
+		t.Fatalf("no-match commit should leave searchHit=-1, got %d", m.searchHitRow())
 	}
 	if m.matcher == nil {
 		t.Fatal("term should stay set so n/p can wrap-prompt")
@@ -329,19 +329,19 @@ func TestSearchEmptyEnterNoPriorTermClears(t *testing.T) {
 func TestSearchUpDownNavigateHits(t *testing.T) {
 	m := seedSearchModel(t, 6, map[int]bool{1: true, 3: true, 5: true})
 	m = typeQuery(t, m, "needle") // tail-mode commit lands on the last hit (5)
-	if m.searchHit < 0 {
+	if m.searchHitRow() < 0 {
 		t.Fatal("expected a current hit after commit")
 	}
 	m2, _ := m.Update(tea.KeyMsg{Type: tea.KeyUp})
 	m = m2.(*model)
-	prev := m.searchHit
+	prev := m.searchHitRow()
 	if prev >= 5 {
 		t.Fatalf("Up should move to an earlier hit, got %d", prev)
 	}
 	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyDown})
 	m = m2.(*model)
-	if m.searchHit <= prev {
-		t.Fatalf("Down should advance to a later hit, got %d (prev %d)", m.searchHit, prev)
+	if m.searchHitRow() <= prev {
+		t.Fatalf("Down should advance to a later hit, got %d (prev %d)", m.searchHitRow(), prev)
 	}
 }
 

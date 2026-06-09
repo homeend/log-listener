@@ -50,7 +50,7 @@ func (m *model) renderDisplayLine(dl displayLine) (string, int) {
 // Falls through to the plain core otherwise.
 func (m *model) renderDisplayLineAt(idx int) (string, int) {
 	dl := m.lines[idx]
-	isCurrent := m.matcher != nil && idx == m.searchHit
+	isCurrent := m.matcher != nil && idx == m.searchHitRow()
 	if m.collapseMultiline && idx+1 < len(m.lines) && isContinuation(m.lines[idx+1]) {
 		// Mutate the local copy so the marker shows on this row only.
 		// dimStyle wraps the marker in ANSI; runeLen on the unstyled

@@ -124,7 +124,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.setStreamTopRow(0)
 			m.tailMode = true
 			m.horizScroll = 0
-			m.searchHit = -1
+			m.setSearchHitRow(-1)
 			// Filtering an emptied buffer would render blank; drop it.
 			m.filterMode = false
 			m.reconcile()

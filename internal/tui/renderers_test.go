@@ -238,7 +238,7 @@ func TestModelRendererToggleClampsSearchHit(t *testing.T) {
 	}
 	preLines := len(m.lines)
 	// Park a search hit near the end of the buffer.
-	m.searchHit = preLines - 1
+	m.setSearchHitRow(preLines - 1)
 
 	// Toggle off — line count collapses; searchHit should clamp.
 	m2, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'!'}})
@@ -246,8 +246,8 @@ func TestModelRendererToggleClampsSearchHit(t *testing.T) {
 	if len(m.lines) >= preLines {
 		t.Fatalf("expected shrink, got pre=%d post=%d", preLines, len(m.lines))
 	}
-	if m.searchHit != -1 && m.searchHit >= len(m.lines) {
-		t.Fatalf("searchHit not clamped: %d, len(lines)=%d", m.searchHit, len(m.lines))
+	if m.searchHitRow() != -1 && m.searchHitRow() >= len(m.lines) {
+		t.Fatalf("searchHit not clamped: %d, len(lines)=%d", m.searchHitRow(), len(m.lines))
 	}
 }
 

@@ -38,8 +38,8 @@ func rangeSlice(lo, hi int) []int {
 //  2. explicitly focused block → focusedBlockRange()
 //  3. else → the visible viewport (collectVisible)
 func (m *model) selectedRows() []int {
-	if m.matcher != nil && m.searchHit >= 0 {
-		if s, e, ok := m.entryRowSpan(m.searchHit); ok {
+	if m.matcher != nil && m.searchHitRow() >= 0 {
+		if s, e, ok := m.entryRowSpan(m.searchHitRow()); ok {
 			return rangeSlice(s, e)
 		}
 	}

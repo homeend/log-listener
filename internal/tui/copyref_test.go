@@ -40,7 +40,7 @@ func TestBuildReferenceSearchHitLine(t *testing.T) {
 	m.groupEnabled["g"] = true
 	seedIDs(m, "apple", "banana", "cherry")
 	m.matcher, _ = searchmatch.Compile("banana", false)
-	m.searchHit = 1
+	m.setSearchHitRow(1)
 	ref := buildReference(m)
 	if ref != "line:L1" {
 		t.Fatalf("search hit ref: %q", ref)
