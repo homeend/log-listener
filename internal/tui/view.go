@@ -368,6 +368,30 @@ func (m *model) publishViewport(visible []int) {
 	m.setViewport(from, to)
 }
 
+// renderVisibleRow builds the full terminal row for line idx, including any
+// leading gutter bar (visual selection, exception mark, or focus). It is the
+// single source of width truth shared by the paint path (renderStream) and the
+// wrap height accounting (visibleRowCost).
+func (m *model) renderVisibleRow(idx int) (string, int) {
+	styled, visW := m.renderDisplayLineAt(idx)
+	if m.visualMode {
+		if vb, ok := m.visualBar(idx); ok {
+			styled = vb + styled
+			visW += visualBarWidth
+		}
+	} else {
+		if bar, ok := m.exceptionBar(idx); ok {
+			styled = bar + styled
+			visW += exceptionBarWidth
+		}
+		if fb, ok := m.focusBar(idx); ok {
+			styled = fb + styled
+			visW += focusBarWidth
+		}
+	}
+	return styled, visW
+}
+
 func (m *model) renderStream(rows int) string {
 	if len(m.lines) == 0 {
 		m.publishViewport(nil) // attached TUI, nothing on screen → from/to ""
@@ -378,22 +402,7 @@ func (m *model) renderStream(rows int) string {
 	m.publishViewport(visible)
 	rendered := make([]string, 0, rows)
 	for _, idx := range visible {
-		styled, visW := m.renderDisplayLineAt(idx)
-		if m.visualMode {
-			if vb, ok := m.visualBar(idx); ok {
-				styled = vb + styled
-				visW += visualBarWidth
-			}
-		} else {
-			if bar, ok := m.exceptionBar(idx); ok {
-				styled = bar + styled
-				visW += exceptionBarWidth
-			}
-			if fb, ok := m.focusBar(idx); ok {
-				styled = fb + styled
-				visW += focusBarWidth
-			}
-		}
+		styled, visW := m.renderVisibleRow(idx)
 		rendered = append(rendered, m.clipLine(styled, visW))
 	}
 	missing := rows - len(rendered)
