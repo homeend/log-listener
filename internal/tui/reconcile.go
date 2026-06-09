@@ -61,8 +61,9 @@ func displayLinesFromEntry(e *linebuf.Entry) []displayLine {
 
 // reconcile pulls a bounded snapshot from the shared buffer and rebuilds
 // m.lines + the ID-keyed display cache, keeping only the tail that fits the
-// scrollback display-line window. View-state indices are dragged down by the
-// number of head rows evicted since the last reconcile (matching trimToCap).
+// scrollback display-line window. View-state is stored as stable anchors (see
+// viewanchor.go), so it survives head eviction without an index-drag; the only
+// residual eviction effect is clearing the focused-block indicator.
 // Coalesces: a no-op when the buffer generation is unchanged.
 func (m *model) reconcile() {
 	if m.buf == nil {
@@ -127,16 +128,12 @@ func (m *model) reconcile() {
 	m.lastGen = gen
 	m.blocksDirty = true
 	if dropped > 0 {
-		m.dragViewStateDown(dropped)
+		// Head rows were evicted. View-state anchors (streamTop/searchHit/
+		// visual) resolve against the new window automatically; the only
+		// residual effect is clearing the focused-block indicator, since the
+		// block it pointed at may have shifted or gone.
+		m.blockFocused = false
 	}
-}
-
-// dragViewStateDown shifts absolute m.lines indices down by `dropped` rows when
-// head entries were evicted, preserving trimToCap's exact semantics: streamTop
-// only when browsing; searchHit/visual anchors always; clamp at 0; unset on
-// scroll-off; clear the focused-block indicator.
-func (m *model) dragViewStateDown(dropped int) {
-	m.blockFocused = false
 }
 
 // visibleEntries returns the entries currently in the display window, in order,
@@ -150,11 +147,11 @@ func (m *model) visibleEntries() []*linebuf.Entry {
 
 // reRenderAll walks every stored entry through renderFn and rebuilds
 // m.lines from the resulting display lines. Called when a renderer
-// toggle changes how the pipeline dispatches lines. Index anchors
-// (streamTop, searchHit) are clamped to the new flat-line range —
-// the viewport may visibly jump if a long stack-trace block collapsed
-// into a single raw line, which is the correct UX for "this is what
-// this line looks like now."
+// toggle changes how the pipeline dispatches lines. View-state anchors
+// (streamTop, searchHit) resolve against the rebuilt window, clamping into
+// re-rendered entries automatically — the viewport may visibly jump if a long
+// stack-trace block collapsed into a single raw line, which is the correct UX
+// for "this is what this line looks like now."
 //
 // If renderFn is nil (no pipeline plumbed — early bootstrap, tests
 // that bypass main.go) reRenderAll is a no-op.

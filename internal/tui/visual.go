@@ -104,9 +104,9 @@ func (m *model) ensureVisualVisible() {
 // up/down cursor-move cases in handleVisualKey.
 //
 // Safe at the lower clamp because visualMode ⇒ len(m.lines) > 0: enterVisual
-// refuses to start on an empty buffer, and eviction (dragViewStateDown) shifts
-// indices but never empties m.lines. Without that invariant len(m.lines)-1
-// would be -1 and the clamp would set visualCursor = -1.
+// refuses to start on an empty buffer, and eviction shifts the window but never
+// empties m.lines. Without that invariant len(m.lines)-1 would be -1 and the
+// clamp would set visualCursor = -1.
 func (m *model) moveVisualCursor(delta int) {
 	m.setVisualCursorRow(m.visualCursorRow() + delta)
 	if m.visualCursorRow() < 0 {

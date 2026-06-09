@@ -7,6 +7,17 @@ and this project adheres to phased delivery per `PLAN.md`.
 
 ## [Unreleased]
 
+### Internal: TUI view-state as stable anchors
+- The TUI's four view-state values (`streamTop`, `searchHit`, `visualCursor`,
+  `visualAnchor`) are now stored as stable `(entryID, rowOffset)` anchors instead
+  of absolute `m.lines` row indices. Anchors resolve against the current reconcile
+  window via shared resolvers (`internal/tui/viewanchor.go`), so view-state
+  survives head eviction and renderer-toggle re-renders on its own — the
+  `dragViewStateDown` index-drag and `reRenderAll`'s post-reconcile clamp block
+  are both removed. A past-end anchor clamps to the last row so over-scrolling
+  down still re-sticks to tail (guarded by a new regression test). No
+  user-visible behavior change.
+
 ### Internal: split `internal/tui/app.go` into focused files
 - The 1678-line `internal/tui/app.go` is split (same `package tui`, **zero
   behavior change**) into responsibility-focused files: `app.go` keeps the `App`

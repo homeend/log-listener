@@ -245,9 +245,9 @@ type model struct {
 	// Shared-buffer sourcing (slice 5-1). buf is the authoritative record
 	// store (shared with MCP in TUI mode; an owned buffer in tests).
 	// displayCache memoizes each entry's display rows by ID; prevIDLines
-	// records the row count per visible ID at the last reconcile (for the
-	// eviction index-drag); clearedSeq is the Clear floor (entries with
-	// Seq <= clearedSeq are hidden).
+	// records the row count per visible ID at the last reconcile (to count how
+	// many head rows were evicted since); clearedSeq is the Clear floor (entries
+	// with Seq <= clearedSeq are hidden).
 	buf          *linebuf.Buffer
 	displayCache map[string][]displayLine
 	lastGen      uint64
@@ -268,12 +268,12 @@ type model struct {
 	// Vertical position in the stream.
 	//   tailMode == true  : viewport pinned to the bottom; new events visible
 	//                       as they arrive. This is the default.
-	//   tailMode == false : viewport locked at absolute index streamTop;
+	//   tailMode == false : viewport locked at the streamTop anchor;
 	//                       new events arrive but do NOT shift the view —
 	//                       the user is browsing.
 	// When the bottom catches up to streamTop (the user scrolls down past
 	// the latest event), tailMode flips back to true automatically.
-	tailMode  bool
+	tailMode   bool
 	streamTopA rowAnchor // anchor for the first visible row when !tailMode (see viewanchor.go)
 
 	// Horizontal pan offset (columns clipped off the left).
