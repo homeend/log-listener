@@ -111,6 +111,9 @@ func (m *model) composeFooterBar(label string, hints []string) string {
 		style = headerBg
 	}
 	if m.width <= 0 {
+		// Pre-size-only defensive path: View() returns "" until the first
+		// WindowSizeMsg sets width+height, so a live render never lands here.
+		// Render hints unclamped (no width to align the status tail against).
 		return style.MaxHeight(1).Render(" " + strings.Join(hints, " · ") + " ")
 	}
 	// Reserve: 1 leading space + 1 trailing space + at least 1 gap + status.

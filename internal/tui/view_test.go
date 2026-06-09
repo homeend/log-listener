@@ -72,7 +72,7 @@ func TestRenderStreamWrappedFillsRowsWithContinuations(t *testing.T) {
 	}
 }
 
-func TestFooterShowsWrapWhenWrapping(t *testing.T) {
+func TestFooterOmitsColumnWhileWrapping(t *testing.T) {
 	m := newModel(100)
 	m2, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 12})
 	m = m2.(*model)

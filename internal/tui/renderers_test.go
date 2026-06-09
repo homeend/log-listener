@@ -198,7 +198,7 @@ func TestModelRendererStartOffSeed(t *testing.T) {
 	}
 }
 
-func TestModelFooterShowsRendererStat(t *testing.T) {
+func TestRenderersPanelReflectsToggle(t *testing.T) {
 	// Renderer stats were intentionally removed from the footer in favour of
 	// the context-hint bar.  Verify that renderer info is visible when the
 	// renderers panel is open (Ctrl+E) and that toggling a renderer is

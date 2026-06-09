@@ -247,11 +247,15 @@ func TestRenderFooterUsesContextHints(t *testing.T) {
 		t.Fatalf("tail footer = %q, want default hints + status", plain)
 	}
 
-	// Visual mode: VISUAL label + its hints.
+	// Visual mode: VISUAL label + its hints, AND the compact status tail (the
+	// old hard-coded visual bar showed no status — the new one does).
 	m.visualMode = true
 	plain = stripANSI(m.renderFooter())
 	if !strings.Contains(plain, "VISUAL") || !strings.Contains(plain, "save") {
 		t.Fatalf("visual footer = %q, want VISUAL hints", plain)
+	}
+	if !strings.Contains(plain, "ev 3") {
+		t.Fatalf("visual footer = %q, want compact status tail (ev 3)", plain)
 	}
 	m.visualMode = false
 
