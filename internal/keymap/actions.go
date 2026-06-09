@@ -47,6 +47,7 @@ const (
 	ActionCopyText             Action = "copy_text"
 	ActionVisualSelect         Action = "visual_select"
 	ActionToggleFilenameTrunc  Action = "toggle_filename_trunc"
+	ActionToggleWordWrap       Action = "toggle_word_wrap"
 	ActionHelp                 Action = "help"
 )
 
@@ -98,6 +99,7 @@ var AllActions = []ActionDef{
 	{ActionCopyText, "Copy text", "Copy the selected text (search line, block, viewport, or visual selection) as displayed.", "main"},
 	{ActionVisualSelect, "Visual select", "Enter visual line-selection mode (space sets the start; y copies the range, Y the text, s saves it to a file, all exit; esc cancels).", "main"},
 	{ActionToggleFilenameTrunc, "Toggle filename truncation", "Shorten long filenames in the file column with a middle ellipsis.", "main"},
+	{ActionToggleWordWrap, "Toggle word wrap", "Wrap long lines to multiple rows instead of horizontal scrolling.", "main"},
 	{ActionHelp, "Help", "Show the searchable keybindings panel.", "main"},
 }
 

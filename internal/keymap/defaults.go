@@ -41,6 +41,7 @@ func defaultFor(goos string) map[Action][]string {
 		ActionCopyText:             {"Y"},
 		ActionVisualSelect:         {"v"},
 		ActionToggleFilenameTrunc:  {"f"},
+		ActionToggleWordWrap:       {"w"},
 		ActionHelp:                 {"?"},
 		// Fast scroll defaults differ per-OS; set below.
 	}

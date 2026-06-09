@@ -207,6 +207,11 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.panBy(horizFastStep)
 		case keymap.ActionResetHoriz:
 			m.horizScroll = 0
+		case keymap.ActionToggleWordWrap:
+			m.wordWrap = !m.wordWrap
+			if m.wordWrap {
+				m.horizScroll = 0
+			}
 		case keymap.ActionCopyReference:
 			if ref := copyReference(m); ref != "" {
 				m.flash = "copied " + ref
