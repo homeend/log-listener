@@ -25,3 +25,53 @@ func dispWidth(s string) int { return runewidth.StringWidth(stripANSI(s)) }
 // runeWidth is the cell width of a single rune (0, 1, or 2). A table lookup —
 // allocation-free, so it's cheap on the per-rune clip hot path.
 func runeWidth(r rune) int { return runewidth.RuneWidth(r) }
+
+// takeCols returns the longest prefix of s whose display width is <= n,
+// never splitting a wide rune (so the result may be < n columns).
+func takeCols(s string, n int) string {
+	w := 0
+	for i, r := range s {
+		rw := runeWidth(r)
+		if w+rw > n {
+			return s[:i]
+		}
+		w += rw
+	}
+	return s
+}
+
+// takeColsRight returns the longest suffix of s whose display width is <= n,
+// never splitting a wide rune.
+func takeColsRight(s string, n int) string {
+	rs := []rune(s)
+	w := 0
+	for i := len(rs) - 1; i >= 0; i-- {
+		rw := runeWidth(rs[i])
+		if w+rw > n {
+			return string(rs[i+1:])
+		}
+		w += rw
+	}
+	return s
+}
+
+// truncateMiddle shortens s to at most maxCols display columns by replacing the
+// middle with "...", measured with go-runewidth so wide/CJK names never
+// overflow. s is returned unchanged if it already fits. Degenerate cases:
+// maxCols <= 0 -> ""; maxCols <= 3 (no room for "..." plus content) -> the
+// first maxCols columns of s with no ellipsis.
+func truncateMiddle(s string, maxCols int) string {
+	if maxCols <= 0 {
+		return ""
+	}
+	if dispWidth(s) <= maxCols {
+		return s
+	}
+	if maxCols <= 3 {
+		return takeCols(s, maxCols)
+	}
+	avail := maxCols - 3
+	left := (avail + 1) / 2
+	right := avail - left
+	return takeCols(s, left) + "..." + takeColsRight(s, right)
+}
