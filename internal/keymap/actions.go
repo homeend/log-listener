@@ -48,6 +48,7 @@ const (
 	ActionVisualSelect         Action = "visual_select"
 	ActionToggleFilenameTrunc  Action = "toggle_filename_trunc"
 	ActionToggleWordWrap       Action = "toggle_word_wrap"
+	ActionDumpDebug            Action = "dump_debug"
 	ActionHelp                 Action = "help"
 )
 
@@ -100,6 +101,7 @@ var AllActions = []ActionDef{
 	{ActionVisualSelect, "Visual select", "Enter visual line-selection mode (space sets the start; y copies the range, Y the text, s saves it to a file, all exit; esc cancels).", "main"},
 	{ActionToggleFilenameTrunc, "Toggle filename truncation", "Shorten long filenames in the file column with a middle ellipsis.", "main"},
 	{ActionToggleWordWrap, "Toggle word wrap", "Wrap long lines to multiple rows instead of horizontal scrolling.", "main"},
+	{ActionDumpDebug, "Dump debug snapshot", "Write a diagnostic snapshot (buffer duplicate scan, view state, recent watch/reload events) to a debug-log-listener-*.txt file.", "main"},
 	{ActionHelp, "Help", "Show the searchable keybindings panel.", "main"},
 }
 

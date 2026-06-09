@@ -193,3 +193,20 @@ func TestParseArgsOutputRequiresValue(t *testing.T) {
 		t.Fatal("expected error for -o with no value")
 	}
 }
+
+func TestParseArgsDebugLog(t *testing.T) {
+	cfg, err := ParseArgs([]string{"--debug-log", "/tmp/ll-debug.log"}, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.DebugLog != "/tmp/ll-debug.log" {
+		t.Errorf("--debug-log = %q, want /tmp/ll-debug.log", cfg.DebugLog)
+	}
+	def, err := ParseArgs(nil, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if def.DebugLog != "" {
+		t.Errorf("DebugLog should default empty, got %q", def.DebugLog)
+	}
+}

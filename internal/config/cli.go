@@ -25,6 +25,7 @@ type Config struct {
 	NoColor    bool
 	SSEAddr    string
 	MCPAddr    string
+	DebugLog   string // --debug-log <path>: write watch/reload diagnostics; "" = off
 	OutputFile string // -o/--output; "" = no file capture. CLI-only (no YAML).
 	ConfigFile string
 	Preloads   []PreloadSpec
@@ -113,6 +114,14 @@ func ParseArgs(args []string, now time.Time) (*Config, error) {
 			}
 			cfg.cliExplicit["mcp_addr"] = true
 			i++
+		case a == "--debug-log":
+			v, next, err := requireValue(args, i, "--debug-log")
+			if err != nil {
+				return nil, err
+			}
+			cfg.DebugLog = v
+			cfg.cliExplicit["debug_log"] = true
+			i = next
 		case a == "--preload":
 			v, next, err := requireValue(args, i, "--preload")
 			if err != nil {

@@ -107,6 +107,7 @@ type Options struct {
 	TruncateFiles bool                   // tui.truncate_filenames default
 	FilenameWidth int                    // tui.filename_width (0 => default)
 	WordWrap      bool                   // tui.word_wrap default
+	DiagDump      func() string          // returns the watch/reload event ring for the debug dump; nil ok
 }
 
 // New creates an App from Options. Files and groups must be passed
@@ -138,6 +139,7 @@ func New(opts Options) *App {
 	m.truncateFiles = opts.TruncateFiles
 	m.filenameWidth = opts.FilenameWidth
 	m.wordWrap = opts.WordWrap
+	m.diagDump = opts.DiagDump
 	if opts.Buffer != nil {
 		m.buf = opts.Buffer // shared store; replaces newModel's owned buffer
 	}
@@ -299,6 +301,10 @@ type model struct {
 	// of being clipped behind horizontal pan. Paint-time only; m.lines and the
 	// viewstate anchors are unaffected.
 	wordWrap bool
+
+	// diagDump returns the watcher/reload event ring (from internal/diag), shown
+	// in the on-demand debug dump. nil in tests / when no watcher is wired.
+	diagDump func() string
 
 	// Group enable/disable — toggled with digit keys 1-9 (mapped to the
 	// first 9 entries of groupOrder). A disabled group's events stay in

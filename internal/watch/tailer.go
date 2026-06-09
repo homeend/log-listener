@@ -6,6 +6,8 @@ import (
 	"errors"
 	"io"
 	"os"
+
+	"github.com/homeend/log-listener/internal/diag"
 )
 
 // Tailer follows a single file. Tick() is called by the watcher loop on
@@ -18,6 +20,7 @@ type Tailer struct {
 	readBuf []byte // 32 KiB scratch buffer — reused across Tick calls
 	inode   uint64
 	pos     int64
+	diag    *diag.Logger // optional trace sink (set by Watcher.Add); nil-safe
 }
 
 // NewTailer opens path. If fromStart is true, reading begins at offset 0;
@@ -72,6 +75,8 @@ func (t *Tailer) Tick() (lines []string, rotated bool, err error) {
 	switch {
 	case statErr != nil:
 		didRotate = true
+		t.diag.Logf("ROTATE", "path=%s reason=stat_missing old_inode=%d old_pos=%d",
+			t.path, t.inode, t.pos)
 	default:
 		ino, e := inodeOf(nil, t.path)
 		if e != nil {
@@ -79,8 +84,12 @@ func (t *Tailer) Tick() (lines []string, rotated bool, err error) {
 		}
 		if ino != t.inode {
 			didRotate = true
+			t.diag.Logf("ROTATE", "path=%s reason=inode_changed old_inode=%d new_inode=%d old_pos=%d new_size=%d",
+				t.path, t.inode, ino, t.pos, fi.Size())
 		} else if fi.Size() < t.pos {
 			didTruncate = true
+			t.diag.Logf("TRUNCATE", "path=%s old_pos=%d new_size=%d",
+				t.path, t.pos, fi.Size())
 		}
 	}
 

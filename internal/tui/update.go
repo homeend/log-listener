@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -212,6 +213,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.wordWrap {
 				m.horizScroll = 0
 			}
+		case keymap.ActionDumpDebug:
+			return m, m.dumpCmd(m.debugDumpText(time.Now()))
 		case keymap.ActionCopyReference:
 			if ref := copyReference(m); ref != "" {
 				m.flash = "copied " + ref
@@ -275,6 +278,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case saveResultMsg:
 		if msg.err != nil {
 			m.flash = "save failed: " + msg.err.Error()
+		} else if msg.label != "" {
+			m.flash = msg.label + msg.path
 		} else {
 			m.flash = fmt.Sprintf("saved %d lines to %s", msg.n, msg.path)
 		}

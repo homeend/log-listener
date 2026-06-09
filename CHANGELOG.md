@@ -7,7 +7,25 @@ and this project adheres to phased delivery per `PLAN.md`.
 
 ## [Unreleased]
 
+### Fixed
+- **Config reload no longer rebuilds the file watcher needlessly.** A reload that
+  only changes renderers/groups/output now keeps every tailer in place (only the
+  file/dir matchers are refreshed); the watcher is rebuilt solely when the
+  watch-set — tailed files + watched directories — actually changes. The old
+  unconditional rebuild reseeked every tailer to EOF (dropping in-flight lines)
+  and briefly ran two watchers over the same files (which could re-emit
+  already-seen lines), especially under high log throughput.
+
 ### Added
+- **On-demand debug dump (`Ctrl+D` in the TUI).** Writes a diagnostic snapshot to
+  `debug-log-listener-*.txt`: a duplicate-content scan of the shared buffer (the
+  signature of a reload/watcher re-emission bug), the current view/buffer state,
+  and a recent watch/reload event ring (`RELOAD` with `rebuilt=true/false`,
+  `TAILER-OPEN` offsets, `ROTATE`/`TRUNCATE`). The events are recorded in memory
+  always, so pressing the key *while an intermittent glitch is on screen*
+  captures that exact moment — no startup flag required.
+- **`--debug-log <path>`** optionally mirrors the same watch/reload event stream
+  to a file continuously, for a persistent trail across a session.
 - **TUI word wrap (`w`).** Long lines wrap to multiple terminal rows instead of
   being clipped behind horizontal pan. Render-time only — viewstate anchors and
   the shared buffer are unaffected. Vertical scroll moves a whole wrapped line at

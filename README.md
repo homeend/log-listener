@@ -249,6 +249,7 @@ nothing to capture). All of these are validated at startup.
 | `--preload <[group=]path>`        | Seed the buffer from a file before tailing (auto-detect raw vs capture). Repeatable. |
 | `--preload-raw <[group=]path>`    | Force raw mode: run the file's lines through the pipeline under a synthetic group.    |
 | `--preload-capture <path>`        | Force capture mode: reconstruct a saved `screen-log-listener-*` export.               |
+| `--debug-log <path>`              | Continuously mirror the watch/reload diagnostics to a file (`RELOAD`, `TAILER-OPEN`, `ROTATE`/`TRUNCATE`). Off by default. These events are *always* recorded in memory regardless — the `Ctrl+D` dump captures them on demand — so this flag is only for a persistent disk trail. |
 
 ### Rule tokens
 
@@ -431,6 +432,11 @@ rebuilds the **groups/file discovery** and **renderers**:
   toggle state resets to the file's `disabled`/`off` defaults).
 - **Output settings are not re-applied** — SSE address, color, and scrollback
   size keep their startup values.
+- **The file watcher is only rebuilt when the watch-set actually changes** (the
+  set of tailed files + watched directories). A reload that only changes
+  renderers, groups, or output leaves every tailer in place, so no in-flight
+  lines are dropped or re-emitted. (Use `--debug-log` to see per-reload
+  `rebuilt=true/false` decisions.)
 - An invalid edit (parse/validation error) is ignored silently; the last good
   config keeps running.
 
@@ -777,6 +783,7 @@ below. The authoritative per-OS reference is generated from the code into
 | **`m`**             | **Collapse multiline entries to one line + `[...]`.** |
 | **`s`**             | **Save the visible viewport to a `screen-log-listener-*.txt` file (cwd). In visual mode, saves the current selection instead (parallel to `y`/`Y`).** |
 | **`S`**             | **Save the full scrollback buffer to a `screen-log-listener-*.txt` file (cwd).** |
+| **`Ctrl+D`**        | **Dump a diagnostic snapshot to a `debug-log-listener-*.txt` file (cwd): a duplicate-content scan of the shared buffer, the current view state, and the recent watch/reload event ring. Press it while a glitch is on screen to capture that exact moment.** |
 | **`]`** / **`[`**   | **Jump to the next / previous multi-line block.**     |
 | **`}`** / **`{`**   | **Jump to the next / previous processor-matched block (e.g. exception).** |
 | **`e`**             | **Toggle the exception left-bar marker.**             |

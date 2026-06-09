@@ -6,6 +6,7 @@
 package linebuf
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"sync"
@@ -97,6 +98,63 @@ func (b *Buffer) Append(ev render.Event) string {
 	b.dirty = true
 	b.gen++
 	return id
+}
+
+// DuplicateReport scans the resident entries for repeated Raw content — the
+// signature of a watcher/reload bug re-emitting the same source line as
+// multiple entries — and returns a human-readable report for the on-demand
+// debug dump. Distinct entries with identical Raw are grouped; their Seqs and
+// files are listed so the trace can be correlated with the reload/rotate log.
+func (b *Buffer) DuplicateReport() string {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	type grp struct {
+		seqs  []uint64
+		files map[string]struct{}
+	}
+	byRaw := map[string]*grp{}
+	order := make([]string, 0, len(b.entries))
+	for _, e := range b.entries {
+		g := byRaw[e.Raw]
+		if g == nil {
+			g = &grp{files: map[string]struct{}{}}
+			byRaw[e.Raw] = g
+			order = append(order, e.Raw)
+		}
+		g.seqs = append(g.seqs, e.Seq)
+		g.files[e.File] = struct{}{}
+	}
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "entries=%d cap=%d gen=%d\n", len(b.entries), b.cap, b.gen)
+	if n := len(b.entries); n > 0 {
+		fmt.Fprintf(&sb, "seq-range=%d..%d\n", b.entries[0].Seq, b.entries[n-1].Seq)
+	}
+	dup := 0
+	for _, raw := range order {
+		g := byRaw[raw]
+		if len(g.seqs) < 2 {
+			continue
+		}
+		dup++
+		if dup > 50 {
+			continue // cap the report; the count below still totals them all
+		}
+		files := make([]string, 0, len(g.files))
+		for f := range g.files {
+			files = append(files, f)
+		}
+		snippet := raw
+		if len(snippet) > 100 {
+			snippet = snippet[:100] + "…"
+		}
+		fmt.Fprintf(&sb, "DUP x%d seqs=%v files=%v raw=%q\n", len(g.seqs), g.seqs, files, snippet)
+	}
+	if dup == 0 {
+		sb.WriteString("no duplicate Raw content in buffer\n")
+	} else {
+		fmt.Fprintf(&sb, "distinct duplicated lines: %d\n", dup)
+	}
+	return sb.String()
 }
 
 // Get returns the entry for id.

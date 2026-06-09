@@ -15,6 +15,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	goruntime "runtime"
+	"sort"
 	"strings"
 	"sync/atomic"
 	"syscall"
@@ -22,6 +23,7 @@ import (
 
 	"github.com/homeend/log-listener/internal/config"
 	"github.com/homeend/log-listener/internal/configwatch"
+	"github.com/homeend/log-listener/internal/diag"
 	"github.com/homeend/log-listener/internal/discover"
 	"github.com/homeend/log-listener/internal/keymap"
 	"github.com/homeend/log-listener/internal/linebuf"
@@ -243,11 +245,12 @@ func loadRuntime(args []string, dropUnmatched bool, now time.Time) (*runtime, er
 // over cfg, registers every assignment as a tailer (fromStart=false → start at
 // EOF, so neither startup nor reload replays existing file content), and adds directory watches.
 // Per-file/dir failures are logged to stderr but do not abort.
-func buildWatcher(cfg *config.Config, assignments []discover.Assignment, stderr io.Writer) (*watch.Watcher, error) {
+func buildWatcher(cfg *config.Config, assignments []discover.Assignment, stderr io.Writer, dbg *diag.Logger) (*watch.Watcher, error) {
 	w, err := watch.New(makeNewFileMatcher(cfg), 2*time.Second)
 	if err != nil {
 		return nil, err
 	}
+	w.SetDiag(dbg) // before Add, so each tailer inherits the trace sink
 	w.SetDirMatcher(makeNewDirMatcher(cfg))
 	for _, a := range assignments {
 		if err := w.Add(a.Path, a.GroupID, false); err != nil {
@@ -260,6 +263,69 @@ func buildWatcher(cfg *config.Config, assignments []discover.Assignment, stderr 
 		}
 	}
 	return w, nil
+}
+
+// watchSetOf is the comparable identity of what a watcher tails: the set of
+// (group, absolute-path) tailers plus the set of watched directories. Two
+// configs producing the same watch-set tail exactly the same files from the
+// same places, so a reload between them needs no watcher rebuild — only a
+// matcher refresh. Rebuilding when nothing changed reseeks every tailer to EOF
+// (dropping in-flight lines) and briefly runs two watchers over the same files
+// (which can re-emit already-seen lines); skipping it avoids both.
+func watchSetOf(assignments []discover.Assignment, cfg *config.Config) string {
+	parts := make([]string, 0, len(assignments)+4)
+	for _, a := range assignments {
+		abs, err := filepath.Abs(a.Path)
+		if err != nil {
+			abs = a.Path
+		}
+		parts = append(parts, "f\x00"+a.GroupID+"\x00"+abs)
+	}
+	for _, d := range dirsToWatch(cfg) { // already absolute
+		parts = append(parts, "d\x00"+d)
+	}
+	sort.Strings(parts)
+	return strings.Join(parts, "\n")
+}
+
+// applyReloadWatcher performs the watcher-side of a config reload: it always
+// swaps the pipeline and re-renders the buffer, then decides whether the
+// watcher must be rebuilt. When the watch-set is unchanged (the common case —
+// the reload only changed renderers/groups/output), it keeps every tailer
+// running and just refreshes the matchers, so no in-flight lines are lost or
+// duplicated. It returns the watcher to use going forward and its watch-set.
+func applyReloadWatcher(w *watch.Watcher, curSet string, rt *runtime, buf *linebuf.Buffer, pipePtr *atomic.Pointer[render.Pipeline], dbg *diag.Logger, stderr io.Writer) (*watch.Watcher, string) {
+	newSet := watchSetOf(rt.assignments, rt.cfg)
+	pipePtr.Store(rt.pipeline)
+	buf.Rerender(func(g, f, raw string) (render.Event, bool) {
+		return rt.pipeline.Render(time.Now(), g, f, raw)
+	})
+	if newSet == curSet {
+		w.SetFileMatcher(makeNewFileMatcher(rt.cfg))
+		w.SetDirMatcher(makeNewDirMatcher(rt.cfg))
+		dbg.Logf("RELOAD", "rebuilt=false files=%d dirs=%d", len(rt.assignments), len(dirsToWatch(rt.cfg)))
+		return w, curSet
+	}
+	newW, err := buildWatcher(rt.cfg, rt.assignments, stderr, dbg)
+	if err != nil {
+		dbg.Logf("RELOAD", "rebuilt=true result=build_error err=%v", err)
+		return w, curSet // build failed: keep the old watcher running
+	}
+	dbg.Logf("RELOAD", "rebuilt=true files=%d dirs=%d", len(rt.assignments), len(dirsToWatch(rt.cfg)))
+	w.Close()
+	return newW, newSet
+}
+
+// newDiag creates the always-on diagnostic recorder: a bounded in-memory ring
+// (dumped on demand from the TUI) plus, when --debug-log is set, a file mirror.
+// It is always non-nil so the on-demand dump has history even without the flag.
+func newDiag(cfg *config.Config, stderr io.Writer) *diag.Logger {
+	d, err := diag.New(2048, cfg.DebugLog)
+	if err != nil {
+		fmt.Fprintf(stderr, "log-listener: cannot open --debug-log %s: %v\n", cfg.DebugLog, err)
+	}
+	d.Logf("INIT", "debug_log=%q", cfg.DebugLog)
+	return d
 }
 
 // tuiPanelState derives the TUI panel seeds (groups, renderers, files) from a
@@ -340,7 +406,9 @@ func runOnce(preloadEvents []render.Event, assignments []discover.Assignment, pi
 }
 
 func runWatch(cfg *config.Config, args []string, dropUnmatched bool, assignments []discover.Assignment, pipePtr *atomic.Pointer[render.Pipeline], buf *linebuf.Buffer, fanout *sink.Fanout, preloadEvents []render.Event, stderr io.Writer) error {
-	w, err := buildWatcher(cfg, assignments, stderr)
+	dbg := newDiag(cfg, stderr)
+	defer dbg.Close()
+	w, err := buildWatcher(cfg, assignments, stderr, dbg)
 	if err != nil {
 		return err
 	}
@@ -349,6 +417,7 @@ func runWatch(cfg *config.Config, args []string, dropUnmatched bool, assignments
 	// leaking the final one. The closure reads w at shutdown. Superseded
 	// watchers are closed inline in the reload branch.
 	defer func() { w.Close() }()
+	curSet := watchSetOf(assignments, cfg)
 
 	for _, ev := range preloadEvents {
 		fanout.Emit(ev)
@@ -394,21 +463,14 @@ func runWatch(cfg *config.Config, args []string, dropUnmatched bool, assignments
 			// continues below are intentionally quiet.
 			rt, err := loadRuntime(args, dropUnmatched, time.Now())
 			if err != nil {
+				dbg.Logf("RELOAD", "result=load_error err=%v", err)
 				continue
 			}
-			newW, err := buildWatcher(rt.cfg, rt.assignments, stderr)
-			if err != nil {
-				continue
-			}
-			// Store the new pipeline before swapping the watcher so no in-flight
-			// line renders under a mismatched renderer. Close the superseded
-			// watcher here; the deferred closure closes the final one.
-			pipePtr.Store(rt.pipeline)
-			buf.Rerender(func(g, f, raw string) (render.Event, bool) {
-				return rt.pipeline.Render(time.Now(), g, f, raw)
-			})
-			w.Close()
-			w = newW
+			// Swap the pipeline + re-render, then rebuild the watcher ONLY if the
+			// watch-set changed. An unchanged watch-set keeps every tailer in
+			// place — no EOF reseek (lost lines), no two-watcher overlap
+			// (duplicated lines).
+			w, curSet = applyReloadWatcher(w, curSet, rt, buf, pipePtr, dbg, stderr)
 		case <-ctx.Done():
 			drainDeadline := time.After(200 * time.Millisecond)
 			for {
@@ -442,10 +504,13 @@ func emit(pipePtr *atomic.Pointer[render.Pipeline], buf *linebuf.Buffer, fanout 
 // events through the renderer pipeline into app.Push() and out to the
 // registered sinks via fanout (SSE and/or output file, if configured).
 func runWatchTUI(cfg *config.Config, args []string, dropUnmatched bool, assignments []discover.Assignment, pipePtr *atomic.Pointer[render.Pipeline], buf *linebuf.Buffer, fanout *sink.Fanout, km *keymap.Keymap, preloadEvents []render.Event, stderr io.Writer) error {
-	w, err := buildWatcher(cfg, assignments, stderr)
+	dbg := newDiag(cfg, stderr)
+	defer dbg.Close()
+	w, err := buildWatcher(cfg, assignments, stderr, dbg)
 	if err != nil {
 		return err
 	}
+	curSet := watchSetOf(assignments, cfg)
 
 	var cfgChanges <-chan struct{}
 	if cfg.SourcePath != "" {
@@ -484,6 +549,7 @@ func runWatchTUI(cfg *config.Config, args []string, dropUnmatched bool, assignme
 		TruncateFiles: cfg.TUITruncateFilenames,
 		FilenameWidth: cfg.TUIFilenameWidth,
 		WordWrap:      cfg.TUIWordWrap,
+		DiagDump:      dbg.Dump,
 	})
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -521,27 +587,15 @@ func runWatchTUI(cfg *config.Config, args []string, dropUnmatched bool, assignme
 				// phase could surface them in a status bar.
 			case <-cfgChanges:
 				// Bad reloads are dropped silently by design (last-good config
-				// keeps running). On success: swap pipeline, rebuild watcher,
-				// then reseed the TUI panels + re-render scrollback.
+				// keeps running). On success: swap pipeline, rebuild the watcher
+				// ONLY if the watch-set changed (else keep tailers in place — no
+				// lost/duplicated lines), then reseed panels + re-render.
 				rt, err := loadRuntime(args, dropUnmatched, time.Now())
 				if err != nil {
+					dbg.Logf("RELOAD", "result=load_error err=%v", err)
 					continue
 				}
-				newW, err := buildWatcher(rt.cfg, rt.assignments, stderr)
-				if err != nil {
-					continue
-				}
-				// Store the new pipeline before app.Reload so the scrollback
-				// re-render (which reads pipePtr via RenderFn) uses the new
-				// renderers. Close the superseded watcher here; the deferred
-				// closure closes the final one.
-				pipePtr.Store(rt.pipeline)
-				buf.Rerender(func(g, f, raw string) (render.Event, bool) {
-					return rt.pipeline.Render(time.Now(), g, f, raw)
-				})
-				w.Close()
-				w = newW
-
+				w, curSet = applyReloadWatcher(w, curSet, rt, buf, pipePtr, dbg, stderr)
 				newGroups, newRenderers, newFiles := tuiPanelState(rt.cfg, rt.pipeline, rt.assignments)
 				app.Reload(newGroups, newRenderers, newFiles)
 			case <-ctx.Done():
