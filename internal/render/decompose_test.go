@@ -49,6 +49,28 @@ func TestDecomposeLinesJSONBlock(t *testing.T) {
 	}
 }
 
+func TestDecomposeXMLNonStringValueProducesNoBlock(t *testing.T) {
+	// An xml Part whose Value isn't a string must contribute zero rows (not a
+	// blank row). Only the text head should remain.
+	got := DecomposeLines(Event{Rendered: []Part{
+		{Type: "text", Value: "head"},
+		{Type: "xml", Value: 123}, // malformed: not a string
+	}})
+	if len(got) != 1 || got[0].Text != "head" || got[0].IsCont {
+		t.Fatalf("bad xml value must yield only the head row, got %+v", got)
+	}
+}
+
+func TestDecomposeUnknownPartTypeIsIgnored(t *testing.T) {
+	got := DecomposeLines(Event{Rendered: []Part{
+		{Type: "text", Value: "head"},
+		{Type: "nope", Value: "x"}, // unregistered type
+	}})
+	if len(got) != 1 || got[0].Text != "head" {
+		t.Fatalf("unknown part type must be ignored, got %+v", got)
+	}
+}
+
 func TestEventIDOmitemptyMarshal(t *testing.T) {
 	withID, _ := json.Marshal(Event{ID: "L7", Rendered: []Part{}})
 	if !strings.Contains(string(withID), `"id":"L7"`) {

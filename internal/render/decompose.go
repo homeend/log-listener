@@ -1,7 +1,6 @@
 package render
 
 import (
-	"encoding/json"
 	"strings"
 )
 
@@ -21,21 +20,16 @@ type DisplayLine struct {
 // and what an agent resolves.
 func DecomposeLines(ev Event) []DisplayLine {
 	var textBuf strings.Builder
-	var blocks []string
+	var blockLines []string
 	for _, p := range ev.Rendered {
-		switch p.Type {
-		case "text":
+		if p.Type == "text" {
 			if s, ok := p.Value.(string); ok {
 				textBuf.WriteString(s)
 			}
-		case "json":
-			if b, err := json.MarshalIndent(p.Value, "", "  "); err == nil {
-				blocks = append(blocks, string(b))
-			}
-		case "xml":
-			if s, ok := p.Value.(string); ok {
-				blocks = append(blocks, s)
-			}
+			continue
+		}
+		if rf, ok := renderFuncs[p.Type]; ok {
+			blockLines = append(blockLines, rf.Lines(p.Value)...)
 		}
 	}
 	text := strings.TrimRight(textBuf.String(), "\n")
@@ -45,10 +39,8 @@ func DecomposeLines(ev Event) []DisplayLine {
 	for _, ln := range textLines[1:] {
 		out = append(out, DisplayLine{Text: expandTabs(ln), IsCont: true})
 	}
-	for _, b := range blocks {
-		for _, ln := range strings.Split(b, "\n") {
-			out = append(out, DisplayLine{Text: expandTabs(ln), IsCont: true})
-		}
+	for _, ln := range blockLines {
+		out = append(out, DisplayLine{Text: expandTabs(ln), IsCont: true})
 	}
 	return out
 }
