@@ -1,6 +1,9 @@
 package tui
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestTruncateMiddleFitsUnchanged(t *testing.T) {
 	if got := truncateMiddle("short.log", 16); got != "short.log" {
@@ -68,5 +71,24 @@ func TestWrapLineSplitsOverflow(t *testing.T) {
 func TestWrapLineAlwaysAtLeastOneRow(t *testing.T) {
 	if got := wrapLine("", 0, 10); len(got) != 1 {
 		t.Fatalf("empty line should still occupy 1 row, got %d", len(got))
+	}
+}
+
+// A styled span (e.g. the search highlight) that crosses a wrap boundary keeps
+// its color on the continuation row: clipANSIWindow re-emits escapes preceding
+// the skip offset, so wrapLine preserves styling across rows.
+func TestWrapLinePreservesStyleAcrossBoundary(t *testing.T) {
+	line := "\x1b[31mabcde\x1b[0m" // 5 red cols
+	got := wrapLine(line, 5, 3)
+	if len(got) != 2 {
+		t.Fatalf("want 2 rows, got %d", len(got))
+	}
+	if stripANSI(got[0]) != "abc" || stripANSI(got[1]) != "de " {
+		t.Fatalf("content lost across boundary: %q / %q", stripANSI(got[0]), stripANSI(got[1]))
+	}
+	for i, r := range got {
+		if !strings.Contains(r, "\x1b[31m") {
+			t.Fatalf("row %d lost its color escape: %q", i, r)
+		}
 	}
 }
