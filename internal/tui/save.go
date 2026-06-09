@@ -60,9 +60,10 @@ func (m *model) snapshotSelection() []string {
 
 // saveResultMsg reports the outcome of a background export write.
 type saveResultMsg struct {
-	path string
-	n    int
-	err  error
+	path  string
+	n     int
+	err   error
+	label string // non-empty (debug dump) overrides the "saved N lines" flash
 }
 
 // saveCmd captures the already-computed export lines and writes them off the

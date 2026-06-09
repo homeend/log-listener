@@ -249,7 +249,7 @@ nothing to capture). All of these are validated at startup.
 | `--preload <[group=]path>`        | Seed the buffer from a file before tailing (auto-detect raw vs capture). Repeatable. |
 | `--preload-raw <[group=]path>`    | Force raw mode: run the file's lines through the pipeline under a synthetic group.    |
 | `--preload-capture <path>`        | Force capture mode: reconstruct a saved `screen-log-listener-*` export.               |
-| `--debug-log <path>`              | Write watch/reload diagnostics to a file: `RELOAD` (whether the watcher was rebuilt), `TAILER-OPEN` (start offset + inode per file), and `ROTATE`/`TRUNCATE` detections. Off by default; use it to capture intermittent reload issues. |
+| `--debug-log <path>`              | Continuously mirror the watch/reload diagnostics to a file (`RELOAD`, `TAILER-OPEN`, `ROTATE`/`TRUNCATE`). Off by default. These events are *always* recorded in memory regardless — the `Ctrl+D` dump captures them on demand — so this flag is only for a persistent disk trail. |
 
 ### Rule tokens
 
@@ -783,6 +783,7 @@ below. The authoritative per-OS reference is generated from the code into
 | **`m`**             | **Collapse multiline entries to one line + `[...]`.** |
 | **`s`**             | **Save the visible viewport to a `screen-log-listener-*.txt` file (cwd). In visual mode, saves the current selection instead (parallel to `y`/`Y`).** |
 | **`S`**             | **Save the full scrollback buffer to a `screen-log-listener-*.txt` file (cwd).** |
+| **`Ctrl+D`**        | **Dump a diagnostic snapshot to a `debug-log-listener-*.txt` file (cwd): a duplicate-content scan of the shared buffer, the current view state, and the recent watch/reload event ring. Press it while a glitch is on screen to capture that exact moment.** |
 | **`]`** / **`[`**   | **Jump to the next / previous multi-line block.**     |
 | **`}`** / **`{`**   | **Jump to the next / previous processor-matched block (e.g. exception).** |
 | **`e`**             | **Toggle the exception left-bar marker.**             |

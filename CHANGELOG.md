@@ -17,10 +17,15 @@ and this project adheres to phased delivery per `PLAN.md`.
   already-seen lines), especially under high log throughput.
 
 ### Added
-- **`--debug-log <path>` watch/reload diagnostics.** Writes timestamped,
-  greppable trace lines — `RELOAD` (with `rebuilt=true/false`), `TAILER-OPEN`
-  (per-file start offset + inode), and `ROTATE`/`TRUNCATE` detections — to help
-  diagnose intermittent reload-under-load issues in the field. Off by default.
+- **On-demand debug dump (`Ctrl+D` in the TUI).** Writes a diagnostic snapshot to
+  `debug-log-listener-*.txt`: a duplicate-content scan of the shared buffer (the
+  signature of a reload/watcher re-emission bug), the current view/buffer state,
+  and a recent watch/reload event ring (`RELOAD` with `rebuilt=true/false`,
+  `TAILER-OPEN` offsets, `ROTATE`/`TRUNCATE`). The events are recorded in memory
+  always, so pressing the key *while an intermittent glitch is on screen*
+  captures that exact moment — no startup flag required.
+- **`--debug-log <path>`** optionally mirrors the same watch/reload event stream
+  to a file continuously, for a persistent trail across a session.
 - **TUI word wrap (`w`).** Long lines wrap to multiple terminal rows instead of
   being clipped behind horizontal pan. Render-time only — viewstate anchors and
   the shared buffer are unaffected. Vertical scroll moves a whole wrapped line at

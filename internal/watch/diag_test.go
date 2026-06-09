@@ -18,7 +18,7 @@ func TestAddLogsTailerOpenOffset(t *testing.T) {
 		t.Fatal(err)
 	}
 	dbgPath := filepath.Join(dir, "debug.log")
-	dl, err := diag.New(dbgPath)
+	dl, err := diag.New(0, dbgPath)
 	if err != nil {
 		t.Fatal(err)
 	}

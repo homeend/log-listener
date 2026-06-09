@@ -316,18 +316,15 @@ func applyReloadWatcher(w *watch.Watcher, curSet string, rt *runtime, buf *lineb
 	return newW, newSet
 }
 
-// openDebugLog opens the --debug-log trace sink, or returns nil (a valid no-op
-// *diag.Logger) when the flag is unset or the file can't be opened.
-func openDebugLog(cfg *config.Config, stderr io.Writer) *diag.Logger {
-	if cfg.DebugLog == "" {
-		return nil
-	}
-	d, err := diag.New(cfg.DebugLog)
+// newDiag creates the always-on diagnostic recorder: a bounded in-memory ring
+// (dumped on demand from the TUI) plus, when --debug-log is set, a file mirror.
+// It is always non-nil so the on-demand dump has history even without the flag.
+func newDiag(cfg *config.Config, stderr io.Writer) *diag.Logger {
+	d, err := diag.New(2048, cfg.DebugLog)
 	if err != nil {
 		fmt.Fprintf(stderr, "log-listener: cannot open --debug-log %s: %v\n", cfg.DebugLog, err)
-		return nil
 	}
-	d.Logf("INIT", "debug_log=%s", cfg.DebugLog)
+	d.Logf("INIT", "debug_log=%q", cfg.DebugLog)
 	return d
 }
 
@@ -409,7 +406,7 @@ func runOnce(preloadEvents []render.Event, assignments []discover.Assignment, pi
 }
 
 func runWatch(cfg *config.Config, args []string, dropUnmatched bool, assignments []discover.Assignment, pipePtr *atomic.Pointer[render.Pipeline], buf *linebuf.Buffer, fanout *sink.Fanout, preloadEvents []render.Event, stderr io.Writer) error {
-	dbg := openDebugLog(cfg, stderr)
+	dbg := newDiag(cfg, stderr)
 	defer dbg.Close()
 	w, err := buildWatcher(cfg, assignments, stderr, dbg)
 	if err != nil {
@@ -507,7 +504,7 @@ func emit(pipePtr *atomic.Pointer[render.Pipeline], buf *linebuf.Buffer, fanout 
 // events through the renderer pipeline into app.Push() and out to the
 // registered sinks via fanout (SSE and/or output file, if configured).
 func runWatchTUI(cfg *config.Config, args []string, dropUnmatched bool, assignments []discover.Assignment, pipePtr *atomic.Pointer[render.Pipeline], buf *linebuf.Buffer, fanout *sink.Fanout, km *keymap.Keymap, preloadEvents []render.Event, stderr io.Writer) error {
-	dbg := openDebugLog(cfg, stderr)
+	dbg := newDiag(cfg, stderr)
 	defer dbg.Close()
 	w, err := buildWatcher(cfg, assignments, stderr, dbg)
 	if err != nil {
@@ -552,6 +549,7 @@ func runWatchTUI(cfg *config.Config, args []string, dropUnmatched bool, assignme
 		TruncateFiles: cfg.TUITruncateFilenames,
 		FilenameWidth: cfg.TUIFilenameWidth,
 		WordWrap:      cfg.TUIWordWrap,
+		DiagDump:      dbg.Dump,
 	})
 
 	ctx, cancel := context.WithCancel(context.Background())
