@@ -17,6 +17,20 @@ and this project adheres to phased delivery per `PLAN.md`.
   already-seen lines), especially under high log throughput.
 
 ### Added
+- **Lag indicator + manual catch-up (`c`) for when the view falls behind.** When
+  log-listener can't drain a fast source as quickly as it arrives (e.g. a stuck
+  upstream that bursts the same lines, with the terminal slow to repaint), the
+  tailers' read position trails the file's end and you see stale content "rolling"
+  (the same block replayed over and over). The bottom bar now shows `⤓ behind N`
+  (bytes the tailers trail live) so you can see it happening; pressing `c`
+  fast-forwards every tailer to the end of its file, drops the unread backlog, and
+  injects a `⤓ skipped N` marker line. The catch-up is lossy by design (skipped
+  bytes don't reach the buffer/MCP/SSE) — it's a manual escape hatch, not automatic.
+- **Debug dump now reports tailer lag.** The `Ctrl+D` snapshot gained a
+  `== tailer lag ==` section: the watcher→pump events-channel saturation
+  (`Pending/Cap` — a full channel means downstream backpressure) and the top
+  lagging files (`pos`/`size`/`lag`), so a single dump shows directly how far
+  behind each tailer is and whether the pipeline is backed up.
 - **TUI bottom bar is now context-sensitive.** The left side surfaces the keys
   most useful at the moment — visual selection, block focus, active search/filter,
   browsing, or live tail — so the hints change as you work. The right side shows a
