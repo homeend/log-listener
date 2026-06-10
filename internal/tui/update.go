@@ -275,6 +275,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, m.lagTickCmd()
 	case catchUpResultMsg:
 		m.applyCatchUp(msg.stat)
+	case reconcileMsg:
+		// Coalesced reconcile signal from the pump (via App.forward): the data
+		// is already in the shared buffer; re-read it once for this batch.
+		m.reconcile()
 	case EventMsg:
 		// The pump already appended to the shared buffer before Push; just
 		// reconcile from it (the event payload is redundant).

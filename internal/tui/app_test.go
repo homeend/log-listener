@@ -253,8 +253,8 @@ func TestModelViewShowsEventAfterUpdate(t *testing.T) {
 		Group: "g1", File: "/tmp/abc.log",
 		Rendered: []render.Part{{Type: "text", Value: "MARKER-9999"}},
 	}
-	// Production: the pump appends to the shared buffer, then Push→EventMsg
-	// triggers a reconcile. appendEvent does both (buffer + reconcile).
+	// Production: the pump appends to the shared buffer, then Push signals a
+	// coalesced reconcileMsg. appendEvent does both (buffer + reconcile).
 	m.(*model).appendEvent(ev)
 	view := m.View()
 	if !strings.Contains(view, "MARKER-9999") {

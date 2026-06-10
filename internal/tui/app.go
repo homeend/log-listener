@@ -49,8 +49,13 @@ type displayLine struct {
 	isBlock   bool
 }
 
-// EventMsg pushes a rendered event into the TUI.
+// EventMsg pushes a rendered event into the TUI. Retained for the seed/test
+// path; the live pump now signals reconciles via reconcileMsg (see App.Push).
 type EventMsg struct{ Event render.Event }
+
+// reconcileMsg asks the model to re-read the shared buffer. The forwarder
+// goroutine emits one per coalesced batch of Push signals.
+type reconcileMsg struct{}
 
 // FileListMsg replaces the file list shown in the Ctrl+I panel.
 type FileListMsg struct{ Files []FileEntry }
@@ -77,6 +82,12 @@ type App struct {
 	prog *tea.Program
 	mu   sync.Mutex
 	done bool
+	// sig is a cap-1 coalescing signal: Push marks "reconcile pending" without
+	// blocking, and a forwarder goroutine turns each signal into a reconcileMsg.
+	// This decouples the pump from bubbletea's paint speed (the backpressure
+	// that let the tailer fall behind). stop ends the forwarder on exit.
+	sig  chan struct{}
+	stop chan struct{}
 }
 
 // GroupInfo is one entry in Options.Groups: ID + soft-off seed.
@@ -169,31 +180,58 @@ func New(opts Options) *App {
 		tea.WithAltScreen(),
 		tea.WithEnvironment(env),
 	)
-	return &App{prog: prog}
+	return &App{
+		prog: prog,
+		sig:  make(chan struct{}, 1),
+		stop: make(chan struct{}),
+	}
 }
 
 // Run blocks until the user quits (q or Ctrl+C). Call from the main goroutine.
 func (a *App) Run() error {
+	go a.forward()
 	_, err := a.prog.Run()
 	a.mu.Lock()
 	a.done = true
 	a.mu.Unlock()
+	close(a.stop) // end the forwarder
 	return err
+}
+
+// forward converts coalesced Push signals into reconcileMsgs on a dedicated
+// goroutine, so any blocking inside prog.Send (a busy paint loop) is absorbed
+// here and never reaches the pump. prog.Send after the program stops is a no-op,
+// so a signal racing shutdown can't hang this goroutine.
+func (a *App) forward() {
+	for {
+		select {
+		case <-a.sig:
+			a.prog.Send(reconcileMsg{})
+		case <-a.stop:
+			return
+		}
+	}
 }
 
 // Push delivers a new rendered event to the TUI. Safe from any goroutine.
 // Calls after the program has exited are no-ops (Send to a stopped program
 // is internally a no-op in bubbletea, but the done check avoids the
 // allocation and the ambiguous semantics).
-func (a *App) Push(ev render.Event) {
+func (a *App) Push(render.Event) {
 	a.mu.Lock()
-	if a.done {
-		a.mu.Unlock()
+	d := a.done
+	a.mu.Unlock()
+	if d {
 		return
 	}
-	prog := a.prog
-	a.mu.Unlock()
-	prog.Send(EventMsg{Event: ev})
+	// Non-blocking coalescing signal. The pump appends to the shared buffer
+	// BEFORE calling Push, so a reconcile triggered by this signal (or by the
+	// signal already queued when we drop) is guaranteed to observe that append.
+	// Never blocks the pump, regardless of how slowly the terminal repaints.
+	select {
+	case a.sig <- struct{}{}:
+	default:
+	}
 }
 
 // SetFiles updates the file panel contents. Safe from any goroutine.

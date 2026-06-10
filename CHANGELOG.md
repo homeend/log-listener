@@ -8,6 +8,17 @@ and this project adheres to phased delivery per `PLAN.md`.
 ## [Unreleased]
 
 ### Fixed
+- **A slow terminal can no longer make log-listener fall behind a fast source.**
+  The TUI event pump was serial: each rendered line was handed to bubbletea with a
+  blocking send, so when the terminal couldn't repaint fast enough the pump stalled,
+  the watcher's event queue filled, and the tailers stopped reading — the terminal's
+  paint speed became the read speed, and a fast/looping source built a backlog that
+  then replayed (the "rolling" duplicate lines). The push is now non-blocking and
+  coalescing: the pump only signals "reconcile pending" (the data is already in the
+  shared buffer), and a forwarder goroutine collapses bursts into one repaint per
+  batch. The shared buffer, MCP, and SSE were always fed upstream of the push, so
+  nothing is dropped — only redundant intermediate repaints are skipped. This makes
+  the `behind`/`c` catch-up tools a rare safety net rather than a routine need.
 - **Config reload no longer rebuilds the file watcher needlessly.** A reload that
   only changes renderers/groups/output now keeps every tailer in place (only the
   file/dir matchers are refreshed); the watcher is rebuilt solely when the
@@ -29,8 +40,8 @@ and this project adheres to phased delivery per `PLAN.md`.
   Caveat: both the indicator's ~1 s poll and the `c` keypress flow through the same
   TUI event loop that the backlog itself saturates, so under heavy backpressure the
   indicator can stop updating and `c` may take a beat to register (it still lands —
-  the skip then stops the source and breaks the loop). Eliminating the backpressure
-  entirely (non-blocking TUI push) is a separate, planned change.
+  the skip then stops the source and breaks the loop). The non-blocking TUI push
+  (see Fixed, above) removes the backpressure that caused this, so it should be rare.
 - **Debug dump now reports tailer lag.** The `Ctrl+D` snapshot gained a
   `== tailer lag ==` section: the watcher→pump events-channel saturation
   (`Pending/Cap` — a full channel means downstream backpressure) and the top
