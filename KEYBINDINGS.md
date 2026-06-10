@@ -19,6 +19,7 @@ A terminal TUI cannot capture the macOS Cmd (⌘) key, so macOS bindings use the
 | Toggle group column | Ctrl+P | ⌃P | Show/hide the group column. |
 | Toggle file column | Ctrl+L | ⌃L | Show/hide the file column. |
 | Clear scrollback | Ctrl+R | ⌃R | Empty the in-memory view (sources keep running). |
+| Catch up to live | c | c | Skip every tailer forward to the end of its file, dropping the unread backlog (use when the lag indicator shows the view is far behind). A marker line records how much was skipped. |
 | Collapse multiline | m | m | Collapse/expand multiline entries. |
 | Scroll up | ↑ / k | ↑ / k | Move up one row. |
 | Scroll down | ↓ / j | ↓ / j | Move down one row. |
@@ -73,4 +74,4 @@ keybindings:
     fast_down: ["ctrl+down"]
 ```
 
-Valid action names: `quit`, `toggle_files`, `toggle_groups`, `toggle_renderers`, `close_overlay`, `search`, `next_match`, `prev_match`, `filter`, `toggle_group_col`, `toggle_file_col`, `clear`, `collapse_all`, `scroll_up`, `scroll_down`, `page_up`, `page_down`, `fast_up`, `fast_down`, `top`, `bottom`, `scroll_left`, `scroll_right`, `fast_left`, `fast_right`, `reset_horiz`, `save_viewport`, `save_scrollback`, `next_block`, `prev_block`, `next_marked_block`, `prev_marked_block`, `toggle_exception_marks`, `copy_reference`, `copy_text`, `visual_select`, `toggle_filename_trunc`, `toggle_word_wrap`, `dump_debug`, `help`.
+Valid action names: `quit`, `toggle_files`, `toggle_groups`, `toggle_renderers`, `close_overlay`, `search`, `next_match`, `prev_match`, `filter`, `toggle_group_col`, `toggle_file_col`, `clear`, `catch_up`, `collapse_all`, `scroll_up`, `scroll_down`, `page_up`, `page_down`, `fast_up`, `fast_down`, `top`, `bottom`, `scroll_left`, `scroll_right`, `fast_left`, `fast_right`, `reset_horiz`, `save_viewport`, `save_scrollback`, `next_block`, `prev_block`, `next_marked_block`, `prev_marked_block`, `toggle_exception_marks`, `copy_reference`, `copy_text`, `visual_select`, `toggle_filename_trunc`, `toggle_word_wrap`, `dump_debug`, `help`.

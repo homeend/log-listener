@@ -132,6 +132,13 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Filtering an emptied buffer would render blank; drop it.
 			m.filterMode = false
 			m.reconcile()
+		case keymap.ActionCatchUp:
+			// Fast-forward every tailer to EOF, dropping the unread backlog.
+			// Runs off the model goroutine (it blocks on the watcher loop);
+			// the result returns as catchUpResultMsg, which injects the marker.
+			if cmd := m.catchUpCmd(); cmd != nil {
+				return m, cmd
+			}
 		case keymap.ActionScrollUp:
 			m.blockFocused = false
 			if m.showFiles {
@@ -262,6 +269,12 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.renderersScroll = 0
 		}
+	case lagTickMsg:
+		// Periodic read-lag sample for the footer indicator; reschedule.
+		m.pollLag()
+		return m, m.lagTickCmd()
+	case catchUpResultMsg:
+		m.applyCatchUp(msg.stat)
 	case EventMsg:
 		// The pump already appended to the shared buffer before Push; just
 		// reconcile from it (the event payload is redundant).

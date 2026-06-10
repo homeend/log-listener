@@ -20,6 +20,30 @@ type Event struct {
 	Line  string
 }
 
+// FileLag reports how far one tailer's read position trails the file's end.
+type FileLag struct {
+	Path string
+	Pos  int64
+	Size int64
+	Lag  int64 // max(0, Size-Pos)
+}
+
+// LagStat is a snapshot of tailer read-lag plus the event-channel saturation.
+// TotalBytes is the sum of per-file Lag; Pending/PendingCap describe the
+// watcher→pump channel (a full channel means downstream backpressure).
+type LagStat struct {
+	TotalBytes int64
+	Files      []FileLag
+	Pending    int
+	PendingCap int
+}
+
+// SkipStat reports the outcome of a SkipToEOF catch-up.
+type SkipStat struct {
+	Files int   // number of tailers that skipped a non-zero amount
+	Bytes int64 // total bytes skipped (sum of per-file lag at skip time)
+}
+
 // NewFileMatcher decides whether a newly-discovered file should be tailed and
 // which group it belongs to.
 type NewFileMatcher func(path string) (groupID string, accept bool)
@@ -45,6 +69,7 @@ type Watcher struct {
 	events     chan Event
 	errs       chan error
 	done       chan struct{}
+	skipReq    chan chan SkipStat // catch-up requests, served on the loop goroutine
 	closeOnce  sync.Once
 	pollEvery  time.Duration
 	diag       *diag.Logger // optional trace sink; nil = disabled (nil-safe)
@@ -69,6 +94,7 @@ func New(matcher NewFileMatcher, pollEvery time.Duration) (*Watcher, error) {
 		events:    make(chan Event, 1024),
 		errs:      make(chan error, 8),
 		done:      make(chan struct{}),
+		skipReq:   make(chan chan SkipStat),
 		pollEvery: pollEvery,
 	}
 	go w.loop()
@@ -122,7 +148,7 @@ func (w *Watcher) Add(path, groupID string, fromStart bool) error {
 	}
 	t.diag = w.diag
 	w.diag.Logf("TAILER-OPEN", "path=%s group=%s pos=%d inode=%d fromStart=%v",
-		abs, groupID, t.pos, t.inode, fromStart)
+		abs, groupID, t.Pos(), t.inode, fromStart)
 	w.tailers[abs] = t
 	w.groups[abs] = groupID
 	parent := filepath.Dir(abs)
@@ -167,6 +193,96 @@ func (w *Watcher) Events() <-chan Event { return w.events }
 // Errors returns the channel of background errors.
 func (w *Watcher) Errors() <-chan error { return w.errs }
 
+// Lag snapshots how far each tailer trails its file's end, plus the event
+// channel saturation. Safe from any goroutine: the tailer list is copied under
+// the lock, then each file is stat-ed unlocked (so a large file set never holds
+// w.mu across I/O). pos is read atomically.
+func (w *Watcher) Lag() LagStat {
+	type pair struct {
+		path string
+		t    *Tailer
+	}
+	w.mu.Lock()
+	snap := make([]pair, 0, len(w.tailers))
+	for path, t := range w.tailers {
+		snap = append(snap, pair{path, t})
+	}
+	w.mu.Unlock()
+
+	out := LagStat{
+		Files:      make([]FileLag, 0, len(snap)),
+		Pending:    len(w.events),
+		PendingCap: cap(w.events),
+	}
+	for _, p := range snap {
+		fi, err := os.Stat(p.path)
+		if err != nil {
+			continue
+		}
+		pos := p.t.Pos()
+		lag := fi.Size() - pos
+		if lag < 0 {
+			lag = 0
+		}
+		out.TotalBytes += lag
+		out.Files = append(out.Files, FileLag{Path: p.path, Pos: pos, Size: fi.Size(), Lag: lag})
+	}
+	return out
+}
+
+// SkipToEOF fast-forwards every tailer to the current end of its file, dropping
+// the unread backlog, and returns what was skipped. The skip runs on the
+// watcher's loop goroutine (so it never races Tick's reads); this call blocks
+// until that goroutine services it, or returns a zero stat if the watcher is
+// closing. Safe from any goroutine.
+func (w *Watcher) SkipToEOF() SkipStat {
+	reply := make(chan SkipStat, 1)
+	select {
+	case w.skipReq <- reply:
+	case <-w.done:
+		return SkipStat{}
+	}
+	select {
+	case st := <-reply:
+		return st
+	case <-w.done:
+		return SkipStat{}
+	}
+}
+
+// skipAllToEOF runs on the loop goroutine. It snapshots the tailers under the
+// lock, then skips each to EOF unlocked (no concurrent Tick can run — Tick is
+// also loop-goroutine-only).
+func (w *Watcher) skipAllToEOF() SkipStat {
+	type pair struct {
+		path string
+		t    *Tailer
+	}
+	w.mu.Lock()
+	snap := make([]pair, 0, len(w.tailers))
+	for path, t := range w.tailers {
+		snap = append(snap, pair{path, t})
+	}
+	w.mu.Unlock()
+
+	var st SkipStat
+	for _, p := range snap {
+		skipped, err := p.t.skipToEOF()
+		if err != nil {
+			w.pushErr(err)
+			continue
+		}
+		if skipped > 0 {
+			st.Files++
+			st.Bytes += skipped
+		}
+	}
+	if st.Bytes > 0 {
+		w.diag.Logf("CATCHUP", "files=%d bytes=%d", st.Files, st.Bytes)
+	}
+	return st
+}
+
 // Close stops the watcher and releases resources.
 func (w *Watcher) Close() error {
 	var err error
@@ -205,6 +321,8 @@ func (w *Watcher) loop() {
 			if err != nil {
 				w.pushErr(err)
 			}
+		case reply := <-w.skipReq:
+			reply <- w.skipAllToEOF()
 		case <-tick:
 			w.tickAll()
 		}

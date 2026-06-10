@@ -22,6 +22,7 @@ const (
 	ActionToggleGroupCol       Action = "toggle_group_col"
 	ActionToggleFileCol        Action = "toggle_file_col"
 	ActionClear                Action = "clear"
+	ActionCatchUp              Action = "catch_up"
 	ActionCollapseAll          Action = "collapse_all"
 	ActionScrollUp             Action = "scroll_up"
 	ActionScrollDown           Action = "scroll_down"
@@ -75,6 +76,7 @@ var AllActions = []ActionDef{
 	{ActionToggleGroupCol, "Toggle group column", "Show/hide the group column.", "main"},
 	{ActionToggleFileCol, "Toggle file column", "Show/hide the file column.", "main"},
 	{ActionClear, "Clear scrollback", "Empty the in-memory view (sources keep running).", "main"},
+	{ActionCatchUp, "Catch up to live", "Skip every tailer forward to the end of its file, dropping the unread backlog (use when the lag indicator shows the view is far behind). A marker line records how much was skipped.", "main"},
 	{ActionCollapseAll, "Collapse multiline", "Collapse/expand multiline entries.", "main"},
 	{ActionScrollUp, "Scroll up", "Move up one row.", "main"},
 	{ActionScrollDown, "Scroll down", "Move down one row.", "main"},

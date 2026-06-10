@@ -4,10 +4,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/homeend/log-listener/internal/watch"
 )
 
 // debugDumpText assembles the on-demand diagnostic snapshot: the current view
@@ -33,6 +36,9 @@ func (m *model) debugDumpText(now time.Time) string {
 
 	b.WriteString("\n== view lines (display duplicate scan) ==\n")
 	b.WriteString(viewDuplicateReport(m.lines))
+
+	b.WriteString("\n== tailer lag ==\n")
+	b.WriteString(m.tailerLagReport())
 
 	b.WriteString("\n== recent watch/reload events ==\n")
 	if m.diagDump != nil {
@@ -89,6 +95,45 @@ func (m *model) enableStateReport() string {
 	}
 	fmt.Fprintf(&sb, "display lines: %d total, %d disabled; longest contiguous disabled run = %d (starts at index %d)\n",
 		len(m.lines), disabled, longest, runStart)
+	return sb.String()
+}
+
+// tailerLagReport summarizes how far each tailer trails its file's end plus the
+// pump-channel saturation — the concrete "how far behind, and is the pipeline
+// backed up" evidence. Driven by the same lag source as the footer indicator.
+func (m *model) tailerLagReport() string {
+	if m.lag == nil {
+		return "(lag diagnostics not wired)\n"
+	}
+	st := m.lag()
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "events channel: %d/%d pending\n", st.Pending, st.PendingCap)
+	fmt.Fprintf(&sb, "total lag = %d bytes across %d files\n", st.TotalBytes, len(st.Files))
+
+	files := append([]watch.FileLag(nil), st.Files...)
+	sort.Slice(files, func(i, j int) bool { return files[i].Lag > files[j].Lag })
+	nonzero := 0
+	for _, f := range files {
+		if f.Lag > 0 {
+			nonzero++
+		}
+	}
+	const topN = 20
+	shown := 0
+	for _, f := range files {
+		if f.Lag == 0 {
+			break // sorted desc — the remainder are all zero
+		}
+		if shown >= topN {
+			fmt.Fprintf(&sb, "… and %d more file(s) with lag\n", nonzero-topN)
+			break
+		}
+		fmt.Fprintf(&sb, "lag=%d pos=%d size=%d %s\n", f.Lag, f.Pos, f.Size, filepath.Base(f.Path))
+		shown++
+	}
+	if shown == 0 {
+		sb.WriteString("all tailers at EOF (no lag)\n")
+	}
 	return sb.String()
 }
 

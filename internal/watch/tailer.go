@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"os"
+	"sync/atomic"
 
 	"github.com/homeend/log-listener/internal/diag"
 )
@@ -19,8 +20,11 @@ type Tailer struct {
 	buf     bytes.Buffer
 	readBuf []byte // 32 KiB scratch buffer — reused across Tick calls
 	inode   uint64
-	pos     int64
-	diag    *diag.Logger // optional trace sink (set by Watcher.Add); nil-safe
+	// pos is the byte offset of the next unread byte. It is mutated on the
+	// watcher's loop goroutine (Tick/open) but read from other goroutines for
+	// lag reporting, so it is atomic.
+	pos  atomic.Int64
+	diag *diag.Logger // optional trace sink (set by Watcher.Add); nil-safe
 }
 
 // NewTailer opens path. If fromStart is true, reading begins at offset 0;
@@ -54,11 +58,11 @@ func (t *Tailer) open(fromStart bool) error {
 	t.file = f
 	t.inode = ino
 	if fromStart {
-		t.pos = 0
+		t.pos.Store(0)
 		return nil
 	}
-	t.pos = fi.Size()
-	_, err = f.Seek(t.pos, io.SeekStart)
+	t.pos.Store(fi.Size())
+	_, err = f.Seek(fi.Size(), io.SeekStart)
 	return err
 }
 
@@ -76,7 +80,7 @@ func (t *Tailer) Tick() (lines []string, rotated bool, err error) {
 	case statErr != nil:
 		didRotate = true
 		t.diag.Logf("ROTATE", "path=%s reason=stat_missing old_inode=%d old_pos=%d",
-			t.path, t.inode, t.pos)
+			t.path, t.inode, t.pos.Load())
 	default:
 		ino, e := inodeOf(nil, t.path)
 		if e != nil {
@@ -85,11 +89,11 @@ func (t *Tailer) Tick() (lines []string, rotated bool, err error) {
 		if ino != t.inode {
 			didRotate = true
 			t.diag.Logf("ROTATE", "path=%s reason=inode_changed old_inode=%d new_inode=%d old_pos=%d new_size=%d",
-				t.path, t.inode, ino, t.pos, fi.Size())
-		} else if fi.Size() < t.pos {
+				t.path, t.inode, ino, t.pos.Load(), fi.Size())
+		} else if fi.Size() < t.pos.Load() {
 			didTruncate = true
 			t.diag.Logf("TRUNCATE", "path=%s old_pos=%d new_size=%d",
-				t.path, t.pos, fi.Size())
+				t.path, t.pos.Load(), fi.Size())
 		}
 	}
 
@@ -129,7 +133,7 @@ func (t *Tailer) Tick() (lines []string, rotated bool, err error) {
 		if _, err := t.file.Seek(0, io.SeekStart); err != nil {
 			return lines, true, err
 		}
-		t.pos = 0
+		t.pos.Store(0)
 	}
 
 	more, merr := t.readAvailable()
@@ -145,7 +149,7 @@ func (t *Tailer) readAvailable() ([]string, error) {
 	for {
 		n, err := t.file.Read(t.readBuf)
 		if n > 0 {
-			t.pos += int64(n)
+			t.pos.Add(int64(n))
 			t.buf.Write(t.readBuf[:n])
 			for {
 				data := t.buf.Bytes()
@@ -175,6 +179,35 @@ func (t *Tailer) readAvailable() ([]string, error) {
 
 // Path returns the path the tailer follows.
 func (t *Tailer) Path() string { return t.path }
+
+// Pos returns the byte offset of the next unread byte. Safe from any goroutine.
+func (t *Tailer) Pos() int64 { return t.pos.Load() }
+
+// skipToEOF fast-forwards the read position to the current end of the open
+// file, discarding any unread bytes and partial line. It returns the number of
+// bytes skipped (current size minus the old position, never negative). It
+// mutates the file offset and so MUST be called on the same goroutine as Tick
+// (the watcher loop) to avoid racing readAvailable. A nil/closed file skips 0.
+func (t *Tailer) skipToEOF() (skipped int64, err error) {
+	if t.file == nil {
+		return 0, nil
+	}
+	fi, err := t.file.Stat()
+	if err != nil {
+		return 0, err
+	}
+	size := fi.Size()
+	if _, err := t.file.Seek(size, io.SeekStart); err != nil {
+		return 0, err
+	}
+	old := t.pos.Load()
+	t.pos.Store(size)
+	t.buf.Reset()
+	if size > old {
+		return size - old, nil
+	}
+	return 0, nil
+}
 
 // Close releases the underlying fd.
 func (t *Tailer) Close() error {

@@ -18,6 +18,10 @@ func (m *model) compactStatus() string {
 	if m.matcher != nil {
 		s += " · /" + m.searchQuery
 	}
+	if m.lagBytes > 0 {
+		// Prominent on the far right: how far the tailers trail live.
+		s = "⤓ behind " + humanBytes(m.lagBytes) + " · " + s
+	}
 	return s
 }
 

@@ -13,6 +13,7 @@ import (
 	"github.com/homeend/log-listener/internal/linebuf"
 	"github.com/homeend/log-listener/internal/render"
 	"github.com/homeend/log-listener/internal/searchmatch"
+	"github.com/homeend/log-listener/internal/watch"
 )
 
 // Note: an earlier version had init() calls into lipgloss.SetColorProfile
@@ -108,6 +109,8 @@ type Options struct {
 	FilenameWidth int                    // tui.filename_width (0 => default)
 	WordWrap      bool                   // tui.word_wrap default
 	DiagDump      func() string          // returns the watch/reload event ring for the debug dump; nil ok
+	Lag           func() watch.LagStat   // tailer read-lag snapshot for the footer indicator + dump; nil ok
+	CatchUp       func() watch.SkipStat  // fast-forward all tailers to EOF (manual catch-up); nil ok
 }
 
 // New creates an App from Options. Files and groups must be passed
@@ -140,6 +143,8 @@ func New(opts Options) *App {
 	m.filenameWidth = opts.FilenameWidth
 	m.wordWrap = opts.WordWrap
 	m.diagDump = opts.DiagDump
+	m.lag = opts.Lag
+	m.catchUp = opts.CatchUp
 	if opts.Buffer != nil {
 		m.buf = opts.Buffer // shared store; replaces newModel's owned buffer
 	}
@@ -306,6 +311,14 @@ type model struct {
 	// in the on-demand debug dump. nil in tests / when no watcher is wired.
 	diagDump func() string
 
+	// lag samples how far the tailers trail their files' ends (and the pump
+	// channel saturation), polled ~1s for the footer indicator and read live
+	// for the debug dump. catchUp fast-forwards every tailer to EOF, dropping
+	// the unread backlog. Both nil in tests / when no watcher is wired.
+	lag      func() watch.LagStat
+	catchUp  func() watch.SkipStat
+	lagBytes int64 // last-polled total read-lag; 0 hides the indicator
+
 	// Group enable/disable — toggled with digit keys 1-9 (mapped to the
 	// first 9 entries of groupOrder). A disabled group's events stay in
 	// m.lines but are skipped during the renderStream window walk.
@@ -429,4 +442,4 @@ func (m *model) effFilenameWidth() int {
 	return defaultFilenameWidth
 }
 
-func (m *model) Init() tea.Cmd { return nil }
+func (m *model) Init() tea.Cmd { return m.lagTickCmd() }

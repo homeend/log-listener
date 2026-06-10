@@ -20,6 +20,7 @@ func defaultFor(goos string) map[Action][]string {
 		ActionToggleGroupCol:       {"ctrl+p"},
 		ActionToggleFileCol:        {"ctrl+l"},
 		ActionClear:                {"ctrl+r"},
+		ActionCatchUp:              {"c"},
 		ActionCollapseAll:          {"m"},
 		ActionScrollUp:             {"up", "k"},
 		ActionScrollDown:           {"down", "j"},

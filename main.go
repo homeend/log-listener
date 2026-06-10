@@ -512,6 +512,13 @@ func runWatchTUI(cfg *config.Config, args []string, dropUnmatched bool, assignme
 	}
 	curSet := watchSetOf(assignments, cfg)
 
+	// wptr exposes the current watcher to the TUI's lag/catch-up callbacks
+	// race-free. The pump goroutine stays the sole owner/mutator of w; it
+	// republishes wptr on reload. The watcher's own Lag/SkipToEOF are
+	// internally concurrency-safe.
+	var wptr atomic.Pointer[watch.Watcher]
+	wptr.Store(w)
+
 	var cfgChanges <-chan struct{}
 	if cfg.SourcePath != "" {
 		cw, err := configwatch.New(cfg.SourcePath, 300*time.Millisecond)
@@ -550,6 +557,8 @@ func runWatchTUI(cfg *config.Config, args []string, dropUnmatched bool, assignme
 		FilenameWidth: cfg.TUIFilenameWidth,
 		WordWrap:      cfg.TUIWordWrap,
 		DiagDump:      dbg.Dump,
+		Lag:           func() watch.LagStat { return wptr.Load().Lag() },
+		CatchUp:       func() watch.SkipStat { return wptr.Load().SkipToEOF() },
 	})
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -596,6 +605,7 @@ func runWatchTUI(cfg *config.Config, args []string, dropUnmatched bool, assignme
 					continue
 				}
 				w, curSet = applyReloadWatcher(w, curSet, rt, buf, pipePtr, dbg, stderr)
+				wptr.Store(w)
 				newGroups, newRenderers, newFiles := tuiPanelState(rt.cfg, rt.pipeline, rt.assignments)
 				app.Reload(newGroups, newRenderers, newFiles)
 			case <-ctx.Done():
