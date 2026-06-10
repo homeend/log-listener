@@ -17,8 +17,8 @@ func tuiDecompose(ev render.Event) []linebuf.Line {
 }
 
 // appendEvent appends an event to the shared buffer and reconciles. In
-// production the pump appends to the buffer and Push triggers a reconcile via
-// EventMsg; this is the seed/test path (and any in-model append) doing both.
+// production the pump appends to the buffer and Push signals a coalesced
+// reconcile; this is the seed/test path (and any in-model append) doing both.
 // The buffer assigns the ID (ev.ID is ignored).
 func (m *model) appendEvent(ev render.Event) {
 	if m.buf == nil {

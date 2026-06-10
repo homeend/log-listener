@@ -243,9 +243,9 @@ func TestNewSeedsInitialFiles(t *testing.T) {
 }
 
 // TestModelViewShowsEventAfterUpdate exercises the model the way bubbletea
-// would: feed a WindowSizeMsg + an EventMsg via Update, then assert the
-// rendered View contains the line. Catches regressions where Update doesn't
-// route to appendEvent or View doesn't include the stream area.
+// would: size it, append an event (buffer + reconcile), then assert the
+// rendered View contains the line. Catches regressions where the append/reconcile
+// path or the View stream area breaks.
 func TestModelViewShowsEventAfterUpdate(t *testing.T) {
 	var m tea.Model = newModel(100)
 	m, _ = m.Update(tea.WindowSizeMsg{Width: 100, Height: 30})

@@ -49,12 +49,8 @@ type displayLine struct {
 	isBlock   bool
 }
 
-// EventMsg pushes a rendered event into the TUI. Retained for the seed/test
-// path; the live pump now signals reconciles via reconcileMsg (see App.Push).
-type EventMsg struct{ Event render.Event }
-
 // reconcileMsg asks the model to re-read the shared buffer. The forwarder
-// goroutine emits one per coalesced batch of Push signals.
+// goroutine emits one per coalesced batch of Push signals (see App.Push).
 type reconcileMsg struct{}
 
 // FileListMsg replaces the file list shown in the Ctrl+I panel.

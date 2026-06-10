@@ -279,10 +279,6 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Coalesced reconcile signal from the pump (via App.forward): the data
 		// is already in the shared buffer; re-read it once for this batch.
 		m.reconcile()
-	case EventMsg:
-		// The pump already appended to the shared buffer before Push; just
-		// reconcile from it (the event payload is redundant).
-		m.reconcile()
 	case FileListMsg:
 		m.files = msg.Files
 		if m.filesScroll >= len(m.files) {
