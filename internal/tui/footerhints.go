@@ -18,8 +18,10 @@ func (m *model) compactStatus() string {
 	if m.matcher != nil {
 		s += " · /" + m.searchQuery
 	}
-	if m.lagBytes > 0 {
-		// Prominent on the far right: how far the tailers trail live.
+	if m.lagBytes >= lagIndicatorFloor {
+		// Prominent on the far right: how far the tailers trail live. Gated
+		// above the per-poll noise floor so it flags a real backlog, not the
+		// transient KB gap every actively-written log shows.
 		s = "⤓ behind " + humanBytes(m.lagBytes) + " · " + s
 	}
 	return s

@@ -15,6 +15,14 @@ import (
 // indicator is a "how far behind" gauge, not a live counter.
 const lagPollEvery = time.Second
 
+// lagIndicatorFloor is the minimum read-lag before the footer surfaces the
+// "behind" indicator. Any actively-written log shows a small transient gap
+// between a write and the next poll; showing it then would fire constantly on
+// healthy tailing. The indicator is meant to flag a genuine backlog (the
+// rolling-replay condition), which is hundreds of KB to MB, so we gate well
+// above the per-poll noise floor. The debug dump always shows exact values.
+const lagIndicatorFloor = 64 * 1024
+
 // lagTickMsg fires on the lag-poll timer; catchUpResultMsg carries the outcome
 // of a manual catch-up back onto the model goroutine.
 type (

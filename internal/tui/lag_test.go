@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	tea "github.com/charmbracelet/bubbletea"
+
 	"github.com/homeend/log-listener/internal/watch"
 )
 
@@ -49,10 +51,42 @@ func TestCompactStatusShowsLag(t *testing.T) {
 		t.Fatal("no indicator expected at zero lag")
 	}
 
+	// Below the floor: a transient KB gap on healthy tailing must stay hidden.
+	m.lagBytes = lagIndicatorFloor - 1
+	if strings.Contains(m.compactStatus(), "behind") {
+		t.Fatalf("sub-floor lag should not show the indicator: %q", m.compactStatus())
+	}
+
 	m.lagBytes = 8_300_000
 	s := m.compactStatus()
 	if !strings.Contains(s, "behind") || !strings.Contains(s, "MB") {
 		t.Fatalf("expected lag indicator with MB, got %q", s)
+	}
+}
+
+// End-to-end: pressing the catch-up key dispatches the action, runs the
+// returned command (which calls the watcher stub), and the result message
+// injects the marker — the whole UX path, not just applyCatchUp in isolation.
+func TestCatchUpKeyInjectsMarker(t *testing.T) {
+	m := seedSearch(t, "one", "two")
+	m.catchUp = func() watch.SkipStat { return watch.SkipStat{Files: 1, Bytes: 5_000_000} }
+	before := len(m.lines)
+
+	m2, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'c'}})
+	m = m2.(*model)
+	if cmd == nil {
+		t.Fatal("catch-up key produced no command")
+	}
+	// Execute the off-loop command, then feed its message back like bubbletea.
+	m3, _ := m.Update(cmd())
+	m = m3.(*model)
+
+	if len(m.lines) <= before {
+		t.Fatalf("marker not injected via keypress: %d -> %d", before, len(m.lines))
+	}
+	last := stripANSI(m.lines[len(m.lines)-1].body)
+	if !strings.Contains(last, "catch up to live") {
+		t.Fatalf("marker text unexpected: %q", last)
 	}
 }
 

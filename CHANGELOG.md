@@ -26,6 +26,11 @@ and this project adheres to phased delivery per `PLAN.md`.
   fast-forwards every tailer to the end of its file, drops the unread backlog, and
   injects a `⤓ skipped N` marker line. The catch-up is lossy by design (skipped
   bytes don't reach the buffer/MCP/SSE) — it's a manual escape hatch, not automatic.
+  Caveat: both the indicator's ~1 s poll and the `c` keypress flow through the same
+  TUI event loop that the backlog itself saturates, so under heavy backpressure the
+  indicator can stop updating and `c` may take a beat to register (it still lands —
+  the skip then stops the source and breaks the loop). Eliminating the backpressure
+  entirely (non-blocking TUI push) is a separate, planned change.
 - **Debug dump now reports tailer lag.** The `Ctrl+D` snapshot gained a
   `== tailer lag ==` section: the watcher→pump events-channel saturation
   (`Pending/Cap` — a full channel means downstream backpressure) and the top

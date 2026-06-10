@@ -395,8 +395,25 @@ bubbletea v2 (upstream).
 
 Press **Ctrl+D** while the glitch is visible. It dumps a diagnostic snapshot to
 `debug-log-listener-*.txt` (cwd): a duplicate-content scan of the buffer, the
-current view state, and the recent watch/reload event ring. For a persistent
-on-disk trail of watch/reload events, run with `--debug-log <path>`.
+current view state, a per-file **tailer lag** section (how far each tailer trails
+its file's end, plus the events-channel saturation), and the recent watch/reload
+event ring. For a persistent on-disk trail of watch/reload events, run with
+`--debug-log <path>`.
+
+### The same block of lines keeps rolling past, over and over.
+
+That's a **backlog replay**: a source wrote a burst faster than log-listener could
+drain it to the terminal (often a stuck upstream re-emitting the same lines, with a
+slow-to-repaint terminal), so the tailers' read position fell behind the file's end
+and is grinding through old content. It is *not* re-reading the file — every byte is
+read forward once; you're just seeing the backlog.
+
+Look at the bottom-right: if it shows **`⤓ behind N`** (e.g. `behind 7.9 MB`), that's
+how far the tailers trail live. Press **`c`** to catch up — it fast-forwards every
+tailer to the end of its file, drops the unread backlog, and prints a `⤓ skipped N`
+marker. (Catch-up is intentionally lossy: skipped lines don't reach the buffer, MCP,
+or SSE.) Restarting log-listener has the same effect, since a fresh start tails from
+each file's end. Press **Ctrl+D** first if you want a diagnostic snapshot for a report.
 
 ### `log-listener --version` says "unknown flag." How do I check the version?
 
