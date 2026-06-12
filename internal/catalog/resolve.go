@@ -200,7 +200,8 @@ func (c *Catalog) emitSource(f *config.File, app, product string, src Source, ke
 	f.Directories = append(f.Directories, g)
 }
 
-// groupID builds a unique, readable directory-group id.
+// groupID builds a unique, readable group id, shared by directory and file
+// groups so their ids can never collide.
 func groupID(app, product, sourceID string, seen map[string]bool) string {
 	id := app
 	if product != "" && !strings.EqualFold(product, app) {

@@ -360,3 +360,53 @@ func TestResolveFileSourceWindowsSeparators(t *testing.T) {
 		t.Errorf("windows path still contains a forward slash: %q", got)
 	}
 }
+
+// TestResolveLenientMixedModeSourceUsesFileLocationsOnly pins the documented
+// remote-catalog behavior: a mixed-mode source (rejected by strict Parse,
+// reachable via parseLenient) is treated as file-mode, and its dir locations
+// contribute no candidates.
+func TestResolveLenientMixedModeSourceUsesFileLocationsOnly(t *testing.T) {
+	c, err := parseLenient([]byte(`
+version: 1
+apps:
+  mixed:
+    sources:
+      - id: main
+        locations:
+          - dir: { linux: '~/logs' }
+          - file: { linux: '~/logs/app.log' }
+`))
+	if err != nil {
+		t.Fatalf("parseLenient: %v", err)
+	}
+	env := Env{OS: "linux", Home: "/home/me", Getenv: func(string) string { return "" },
+		Exists:     func(string) bool { return true },
+		ExistsFile: func(string) bool { return true }}
+	f, err := c.Resolve([]string{"mixed"}, env)
+	if err != nil {
+		t.Fatalf("Resolve: %v", err)
+	}
+	if len(f.Directories) != 0 {
+		t.Errorf("dir locations must contribute nothing: %+v", f.Directories)
+	}
+	if len(f.Files) != 1 || len(f.Files[0].Paths) != 1 ||
+		f.Files[0].Paths[0] != "/home/me/logs/app.log" {
+		t.Errorf("files = %+v", f.Files)
+	}
+}
+
+// TestResolveFileSourceNoLocationForOS guards the file-mode early return: an
+// OS with no candidate paths emits no group at all.
+func TestResolveFileSourceNoLocationForOS(t *testing.T) {
+	c := testFileCatalog(t)
+	env := Env{OS: "darwin", Home: "/Users/me", Getenv: func(string) string { return "" },
+		Exists:     func(string) bool { return true },
+		ExistsFile: func(string) bool { return true }}
+	f, err := c.Resolve([]string{"junie"}, env)
+	if err != nil {
+		t.Fatalf("Resolve: %v", err)
+	}
+	if len(f.Files) != 0 || len(f.Directories) != 0 {
+		t.Errorf("darwin should resolve to nothing: files=%+v dirs=%+v", f.Files, f.Directories)
+	}
+}
