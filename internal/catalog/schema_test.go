@@ -1,6 +1,9 @@
 package catalog
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestParseMinimalCatalog(t *testing.T) {
 	src := []byte(`
@@ -104,6 +107,8 @@ fragments:
 `))
 	if err == nil {
 		t.Fatal("expected error for location with both dir and file")
+	} else if !strings.Contains(err.Error(), "both dir and file") {
+		t.Fatalf("error should name the violated rule: %v", err)
 	}
 }
 
@@ -119,6 +124,8 @@ fragments:
 `))
 	if err == nil {
 		t.Fatal("expected error for location with neither dir nor file")
+	} else if !strings.Contains(err.Error(), "neither dir nor file") {
+		t.Fatalf("error should name the violated rule: %v", err)
 	}
 }
 
@@ -135,6 +142,8 @@ apps:
 `))
 	if err == nil {
 		t.Fatal("expected error for source mixing dir and file locations")
+	} else if !strings.Contains(err.Error(), "mixes dir and file") {
+		t.Fatalf("error should name the violated rule: %v", err)
 	}
 }
 
@@ -151,5 +160,27 @@ apps:
 `))
 	if err == nil {
 		t.Fatal("expected error for filter on a file-based source")
+	} else if !strings.Contains(err.Error(), "filter is not allowed") {
+		t.Fatalf("error should name the violated rule: %v", err)
+	}
+}
+
+// TestParseLenientSkipsValidation pins the strict-vs-lenient split: the remote
+// catalog (parseLenient) must stay usable even when it violates authoring
+// rules a newer binary's validation would reject, mirroring how unknown keys
+// are tolerated there.
+func TestParseLenientSkipsValidation(t *testing.T) {
+	_, err := parseLenient([]byte(`
+version: 1
+fragments:
+  remote:
+    sources:
+      - id: main
+        locations:
+          - dir: { linux: '~/logs' }
+            file: { linux: '~/logs/app.log' }
+`))
+	if err != nil {
+		t.Fatalf("parseLenient must not validate: %v", err)
 	}
 }

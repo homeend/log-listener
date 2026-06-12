@@ -125,6 +125,9 @@ func (c *Catalog) validate() error {
 	return nil
 }
 
+// validateSources checks the per-source location rules for one owner's source
+// list. A source with no locations has no mode and passes untouched — it is
+// inert at resolve time, so there is nothing to enforce.
 func validateSources(owner string, srcs []Source) error {
 	for _, src := range srcs {
 		mode := ""
@@ -144,7 +147,7 @@ func validateSources(owner string, srcs []Source) error {
 			if mode == "" {
 				mode = m
 			} else if mode != m {
-				return fmt.Errorf("%s: source %q: mixes dir and file locations", owner, src.ID)
+				return fmt.Errorf("%s: source %q: location %d mixes dir and file locations", owner, src.ID, i)
 			}
 		}
 		if mode == "file" && src.Filter != "" {
