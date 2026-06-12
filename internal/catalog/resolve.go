@@ -13,10 +13,11 @@ import (
 // Env carries the host facts resolution depends on. Injected for testability;
 // DefaultEnv builds the live one.
 type Env struct {
-	OS     string                    // "linux" | "darwin" | "windows"
-	Home   string                    // user home directory
-	Getenv func(string) string       // environment lookup
-	Exists func(dirGlob string) bool // true if the dir-glob matches an existing directory
+	OS         string                     // "linux" | "darwin" | "windows"
+	Home       string                     // user home directory
+	Getenv     func(string) string        // environment lookup
+	Exists     func(dirGlob string) bool  // true if the dir-glob matches an existing directory
+	ExistsFile func(pathGlob string) bool // true if the path-glob matches an existing regular file
 }
 
 func osKey(os string) string {
@@ -136,15 +137,34 @@ func (c *Catalog) resolveName(n string) (canonical string, isApp, isBundle bool)
 }
 
 // emitSource probe-and-picks a source's drift candidates and appends a
-// directory group to f.
+// directory group (dir-mode source) or a file group (file-mode source) to f.
 func (c *Catalog) emitSource(f *config.File, app, product string, src Source, key string, env Env, seenID map[string]bool) {
+	// A source is file-mode when any location declares file:. Parse-time
+	// validation guarantees uniformity for the bundled catalog; for a lenient
+	// remote catalog, off-mode locations simply contribute no candidate below.
+	fileMode := false
+	for _, loc := range src.Locations {
+		if len(loc.File) > 0 {
+			fileMode = true
+			break
+		}
+	}
+	exists := env.Exists
+	if fileMode {
+		exists = env.ExistsFile
+	}
+
 	var picked []string
 	// firstCandidate is the first location that has a path for this OS, in
 	// declaration order (newest scheme first). It is the best-effort fallback
-	// emitted when no candidate directory currently exists on disk.
+	// emitted when no candidate currently exists on disk.
 	var firstCandidate string
 	for _, loc := range src.Locations {
-		raw, ok := loc.Dir[key]
+		m := loc.Dir
+		if fileMode {
+			m = loc.File
+		}
+		raw, ok := m[key]
 		if !ok {
 			continue
 		}
@@ -152,7 +172,7 @@ func (c *Catalog) emitSource(f *config.File, app, product string, src Source, ke
 		if firstCandidate == "" {
 			firstCandidate = p
 		}
-		if env.Exists(p) {
+		if exists != nil && exists(p) {
 			picked = append(picked, p)
 		}
 	}
@@ -162,9 +182,15 @@ func (c *Catalog) emitSource(f *config.File, app, product string, src Source, ke
 		}
 		picked = []string{firstCandidate}
 	}
+
+	id := groupID(app, product, src.ID, seenID)
+	if fileMode {
+		f.Files = append(f.Files, config.FileGroup{ID: id, Paths: picked})
+		return
+	}
 	rec := false
 	g := config.DirGroup{
-		ID:        groupID(app, product, src.ID, seenID),
+		ID:        id,
 		Paths:     picked,
 		Recursive: &rec,
 	}
@@ -191,8 +217,9 @@ func groupID(app, product, sourceID string, seen map[string]bool) string {
 	return id
 }
 
-// DefaultEnv builds the live Env: real OS, home dir, environment, and an
-// Exists that reports whether a directory glob matches at least one directory.
+// DefaultEnv builds the live Env: real OS, home dir, environment, and
+// existence probes that report whether a glob matches at least one directory
+// (Exists) or regular file (ExistsFile).
 func DefaultEnv() Env {
 	home, _ := os.UserHomeDir()
 	return Env{
@@ -206,6 +233,18 @@ func DefaultEnv() Env {
 			}
 			for _, m := range matches {
 				if fi, err := os.Stat(m); err == nil && fi.IsDir() {
+					return true
+				}
+			}
+			return false
+		},
+		ExistsFile: func(pathGlob string) bool {
+			matches, err := filepath.Glob(pathGlob)
+			if err != nil {
+				return false
+			}
+			for _, m := range matches {
+				if fi, err := os.Stat(m); err == nil && !fi.IsDir() {
 					return true
 				}
 			}

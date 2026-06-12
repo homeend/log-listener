@@ -239,3 +239,124 @@ func TestResolveUnknownName(t *testing.T) {
 		t.Fatal("expected error for unknown name")
 	}
 }
+
+func testFileCatalog(t *testing.T) *Catalog {
+	t.Helper()
+	c, err := Parse([]byte(`
+version: 1
+defaults:
+  output: { color: true, drop_unmatched: false }
+  tui: { enabled: true, scrollback: 20000 }
+fragments:
+  agent-log:
+    sources:
+      - id: main
+        locations:
+          - file:
+              linux:   '~/.{product}/logs/agent.log'
+              windows: '%USERPROFILE%/.{product}/logs/agent.log'
+          - file:
+              linux:   '~/.{product}-local/logs/agent.log'
+apps:
+  junie:
+    use:
+      - { frag: agent-log, product: junie }
+    sources:
+      - id: extra
+        filter: '\.log$'
+        locations:
+          - dir: { linux: '~/.junie/extra' }
+`))
+	if err != nil {
+		t.Fatalf("parse test catalog: %v", err)
+	}
+	return c
+}
+
+func TestResolveFileSourceEmitsFileGroup(t *testing.T) {
+	c := testFileCatalog(t)
+	env := Env{OS: "linux", Home: "/home/me", Getenv: func(string) string { return "" },
+		Exists:     func(string) bool { return true },
+		ExistsFile: func(p string) bool { return p == "/home/me/.junie/logs/agent.log" }}
+
+	f, err := c.Resolve([]string{"junie"}, env)
+	if err != nil {
+		t.Fatalf("Resolve: %v", err)
+	}
+	if len(f.Files) != 1 {
+		t.Fatalf("files = %+v", f.Files)
+	}
+	// product "junie" equals the app name, source id is "main": both suffixes drop.
+	if f.Files[0].ID != "junie" {
+		t.Errorf("file group id = %q", f.Files[0].ID)
+	}
+	if len(f.Files[0].Paths) != 1 || f.Files[0].Paths[0] != "/home/me/.junie/logs/agent.log" {
+		t.Errorf("file group paths = %v", f.Files[0].Paths)
+	}
+	// The dir-mode inline source still emits a directory group alongside.
+	if len(f.Directories) != 1 || f.Directories[0].ID != "junie-extra" {
+		t.Errorf("dirs = %+v", f.Directories)
+	}
+}
+
+func TestResolveFileSourceFallbackWhenNoneExist(t *testing.T) {
+	c := testFileCatalog(t)
+	env := Env{OS: "linux", Home: "/home/me", Getenv: func(string) string { return "" },
+		Exists:     func(string) bool { return false },
+		ExistsFile: func(string) bool { return false }}
+
+	f, err := c.Resolve([]string{"junie"}, env)
+	if err != nil {
+		t.Fatalf("Resolve: %v", err)
+	}
+	if len(f.Files) != 1 || len(f.Files[0].Paths) != 1 ||
+		f.Files[0].Paths[0] != "/home/me/.junie/logs/agent.log" {
+		t.Errorf("fallback = %+v", f.Files)
+	}
+}
+
+func TestResolveFileSourceKeepsAllExisting(t *testing.T) {
+	c := testFileCatalog(t)
+	env := Env{OS: "linux", Home: "/home/me", Getenv: func(string) string { return "" },
+		Exists:     func(string) bool { return true },
+		ExistsFile: func(string) bool { return true }}
+
+	f, err := c.Resolve([]string{"junie"}, env)
+	if err != nil {
+		t.Fatalf("Resolve: %v", err)
+	}
+	want := []string{"/home/me/.junie/logs/agent.log", "/home/me/.junie-local/logs/agent.log"}
+	if len(f.Files) != 1 || len(f.Files[0].Paths) != 2 ||
+		f.Files[0].Paths[0] != want[0] || f.Files[0].Paths[1] != want[1] {
+		t.Errorf("paths = %v, want %v", f.Files[0].Paths, want)
+	}
+}
+
+func TestResolveFileSourceWindowsSeparators(t *testing.T) {
+	c := testFileCatalog(t)
+	env := Env{OS: "windows", Home: `C:\Users\me`,
+		Getenv: func(k string) string {
+			if k == "USERPROFILE" {
+				return `C:\Users\me`
+			}
+			return ""
+		},
+		Exists:     func(string) bool { return false },
+		ExistsFile: func(string) bool { return false }}
+
+	f, err := c.Resolve([]string{"junie"}, env)
+	if err != nil {
+		t.Fatalf("Resolve: %v", err)
+	}
+	if len(f.Files) != 1 {
+		t.Fatalf("files = %+v", f.Files)
+	}
+	got := f.Files[0].Paths[0]
+	want := `C:\Users\me\.junie\logs\agent.log`
+	if got != want {
+		t.Errorf("windows path = %q, want %q", got, want)
+	}
+	if strings.Contains(got, "/") {
+		t.Errorf("windows path still contains a forward slash: %q", got)
+	}
+}
