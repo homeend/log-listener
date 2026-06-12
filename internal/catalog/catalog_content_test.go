@@ -12,7 +12,8 @@ func TestBundledResolvesEveryAppOnEveryOS(t *testing.T) {
 	}
 	env := func(os string) Env {
 		return Env{OS: os, Home: "/home/u", Getenv: func(string) string { return "C:/AppData" },
-			Exists: func(string) bool { return false }} // force best-effort path on all
+			Exists:     func(string) bool { return false }, // force best-effort path on all
+			ExistsFile: func(string) bool { return false }}
 	}
 	for name := range c.Apps {
 		for _, os := range []string{"linux", "darwin", "windows"} {
@@ -24,6 +25,11 @@ func TestBundledResolvesEveryAppOnEveryOS(t *testing.T) {
 			for _, d := range f.Directories {
 				if len(d.Paths) == 0 {
 					t.Errorf("%q/%s: group %q has no paths", name, os, d.ID)
+				}
+			}
+			for _, fg := range f.Files {
+				if len(fg.Paths) == 0 {
+					t.Errorf("%q/%s: file group %q has no paths", name, os, fg.ID)
 				}
 			}
 		}
