@@ -74,6 +74,13 @@ and this project adheres to phased delivery per `PLAN.md`.
 - **TUI: `?` searchable help overlay** — opens a modal listing every keybinding for the
   current OS. Type to filter, `j`/`k` to scroll, `esc`/`?` to close. The `?` hint now
   also appears in the header bar for discoverability.
+- **Catalog file-based sources.** Catalog sources can now declare `file:`
+  locations (symmetric with `dir:`) that resolve to `files:` groups in the
+  generated config — for apps whose log is a single well-known file. The
+  bundled catalog is validated strictly at parse time (exactly one of
+  `dir`/`file` per location, uniform mode per source, no `filter` on file
+  sources). New authoring guide: `internal/catalog/CATALOG.md`. The bundled
+  `catalog.yml` itself is unchanged.
 
 ### Changed (BREAKING): render-call DSL syntax is now `$`-prefixed
 - Template render-calls change from `json($N)`/`xml($N)` to `$json($N)`/`$xml($N)`.

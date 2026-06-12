@@ -5,6 +5,10 @@
 **Feature:** `log-listener init <apps...>` — generate a `log-listener.yml`
 from a catalog of per-application log templates, resolved for the current OS.
 
+> **Extension (2026-06-12):** file-based sources (`file:` locations →
+> `files:` config groups) — see
+> `2026-06-12-catalog-file-sources-design.md`.
+
 ---
 
 ## 1. Problem & goal
