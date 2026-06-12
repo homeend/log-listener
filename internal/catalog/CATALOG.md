@@ -10,7 +10,7 @@ leniently for forward compatibility.
 
 ```yaml
 version: 1        # integer; compared against the online catalog
-defaults:  { …. } # global output/tui blocks copied into generated configs
+defaults:  { … }  # global output/tui blocks copied into generated configs
 fragments: { … }  # reusable, parameterizable source bundles
 apps:      { … }  # named templates the user can `init`
 renderers: { … }  # reusable renderer library referenced by apps
@@ -82,9 +82,10 @@ Paths may contain, in any mode:
 | `{product}`  | the `product:` bound by the app's `use:` entry         |
 | `*` (glob)   | passed through; matched against the filesystem         |
 
-Unknown variables are left verbatim so a missing variable produces a
-visibly-wrong path instead of a silently-empty one. Separators are
-normalized to the target OS (`\` on Windows, `/` elsewhere).
+Unknown variables are kept in the path (`%FOO%` stays verbatim, `$FOO`
+becomes `${FOO}`) so a missing variable produces a visibly-wrong path
+instead of a silently-empty one. Separators are normalized to the target
+OS (`\` on Windows, `/` elsewhere).
 
 ### Drift candidates
 
@@ -128,8 +129,9 @@ apps:
 ```
 
 Generated group ids are `app[-product][-sourceID]` — the product suffix is
-dropped when it equals the app name, the source-id suffix when it is `main`.
-Collisions get a numeric suffix.
+lowercased, and dropped when it equals the app name (case-insensitively);
+the source-id suffix is dropped when it is `main`. Collisions get a numeric
+suffix.
 
 ## Renderers
 
