@@ -104,11 +104,13 @@ log-listener init goland -o -           # print to stdout
 log-listener init --list                # show available apps and bundles
 ```
 
-`init` resolves each app's log locations for your OS, keeps the directories that
-actually exist on disk, attaches sensible renderers, and writes a
+`init` resolves each app's log locations for your OS, keeps the directories and
+files that actually exist on disk, attaches sensible renderers, and writes a
 `log-listener.yml` that the normal `log-listener` run consumes (and
 live-reloads). Apps compose: selecting `junie` pulls in its own logs **plus**
-the Junie↔IDE bridge logs that live inside each JetBrains product.
+the Junie↔IDE bridge logs that live inside each JetBrains product. Catalog
+entries can point at whole log directories or at single well-known files; the
+template format is documented in `internal/catalog/CATALOG.md`.
 
 On an interactive run it offers to fetch a newer template catalog from GitHub
 (`https://raw.githubusercontent.com/homeend/log-listener/main/internal/catalog/catalog.yml`);
