@@ -67,3 +67,89 @@ func TestParseRejectsUnknownKey(t *testing.T) {
 		t.Fatal("expected error for unknown key, got nil")
 	}
 }
+
+func TestParseFileLocation(t *testing.T) {
+	c, err := Parse([]byte(`
+version: 1
+fragments:
+  junie-logs:
+    sources:
+      - id: main
+        locations:
+          - file: { linux: '~/.junie/logs/agent.log' }
+          - file: { linux: '~/.junie-local/logs/agent.log' }
+`))
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	locs := c.Fragments["junie-logs"].Sources[0].Locations
+	if got := locs[0].File["linux"]; got != "~/.junie/logs/agent.log" {
+		t.Errorf("file location = %q", got)
+	}
+	if locs[0].Dir != nil {
+		t.Errorf("dir should be unset on a file location: %+v", locs[0].Dir)
+	}
+}
+
+func TestParseRejectsLocationWithBothDirAndFile(t *testing.T) {
+	_, err := Parse([]byte(`
+version: 1
+fragments:
+  bad:
+    sources:
+      - id: main
+        locations:
+          - dir: { linux: '~/logs' }
+            file: { linux: '~/logs/app.log' }
+`))
+	if err == nil {
+		t.Fatal("expected error for location with both dir and file")
+	}
+}
+
+func TestParseRejectsLocationWithNeither(t *testing.T) {
+	_, err := Parse([]byte(`
+version: 1
+fragments:
+  bad:
+    sources:
+      - id: main
+        locations:
+          - {}
+`))
+	if err == nil {
+		t.Fatal("expected error for location with neither dir nor file")
+	}
+}
+
+func TestParseRejectsMixedModeSource(t *testing.T) {
+	_, err := Parse([]byte(`
+version: 1
+apps:
+  bad:
+    sources:
+      - id: main
+        locations:
+          - dir: { linux: '~/logs' }
+          - file: { linux: '~/logs/app.log' }
+`))
+	if err == nil {
+		t.Fatal("expected error for source mixing dir and file locations")
+	}
+}
+
+func TestParseRejectsFilterOnFileSource(t *testing.T) {
+	_, err := Parse([]byte(`
+version: 1
+apps:
+  bad:
+    sources:
+      - id: main
+        filter: '\.log$'
+        locations:
+          - file: { linux: '~/logs/app.log' }
+`))
+	if err == nil {
+		t.Fatal("expected error for filter on a file-based source")
+	}
+}

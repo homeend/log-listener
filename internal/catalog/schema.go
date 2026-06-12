@@ -5,6 +5,7 @@ package catalog
 
 import (
 	"bytes"
+	"fmt"
 
 	"gopkg.in/yaml.v3"
 )
@@ -49,10 +50,13 @@ type Source struct {
 	Locations []Location `yaml:"locations"`
 }
 
-// Location is one drift candidate; Dir maps an OS key (linux/darwin/windows)
-// to a path that may contain ~, %VAR%, $VAR, and {product}.
+// Location is one drift candidate. Exactly one of Dir/File is set; both map
+// an OS key (linux/darwin/windows) to a path that may contain ~, %VAR%,
+// $VAR, and {product}. Dir names a directory to watch (paired with the
+// source's filter); File names one log file explicitly.
 type Location struct {
-	Dir map[string]string `yaml:"dir"`
+	Dir  map[string]string `yaml:"dir,omitempty"`
+	File map[string]string `yaml:"file,omitempty"`
 }
 
 // App is a named template composed from fragments plus inline sources.
@@ -83,6 +87,9 @@ func Parse(data []byte) (*Catalog, error) {
 	if err := dec.Decode(&c); err != nil {
 		return nil, err
 	}
+	if err := c.validate(); err != nil {
+		return nil, err
+	}
 	return &c, nil
 }
 
@@ -97,4 +104,52 @@ func parseLenient(data []byte) (*Catalog, error) {
 		return nil, err
 	}
 	return &c, nil
+}
+
+// validate enforces authoring rules the YAML schema alone cannot express:
+// each location carries exactly one of dir/file, all locations of a source
+// agree on one mode, and file-based sources have no filter (a filename regex
+// is meaningless when the file is named explicitly). Run only from Parse —
+// the strict bundled-catalog path — so the remote catalog stays lenient.
+func (c *Catalog) validate() error {
+	for name, frag := range c.Fragments {
+		if err := validateSources("fragment "+name, frag.Sources); err != nil {
+			return err
+		}
+	}
+	for name, app := range c.Apps {
+		if err := validateSources("app "+name, app.Sources); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateSources(owner string, srcs []Source) error {
+	for _, src := range srcs {
+		mode := ""
+		for i, loc := range src.Locations {
+			hasDir, hasFile := len(loc.Dir) > 0, len(loc.File) > 0
+			var m string
+			switch {
+			case hasDir && hasFile:
+				return fmt.Errorf("%s: source %q: location %d sets both dir and file", owner, src.ID, i)
+			case hasDir:
+				m = "dir"
+			case hasFile:
+				m = "file"
+			default:
+				return fmt.Errorf("%s: source %q: location %d sets neither dir nor file", owner, src.ID, i)
+			}
+			if mode == "" {
+				mode = m
+			} else if mode != m {
+				return fmt.Errorf("%s: source %q: mixes dir and file locations", owner, src.ID)
+			}
+		}
+		if mode == "file" && src.Filter != "" {
+			return fmt.Errorf("%s: source %q: filter is not allowed on a file-based source", owner, src.ID)
+		}
+	}
+	return nil
 }
